@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta charset="UTF-8">
+<title>公告列表</title>
+</head>
+<body>
+	<h1>公告列表</h1>
+	<table style="width: 50%; text-align: center;">
+		<tr>
+			<th>公告編號</th>
+			<th>公告標題</th>
+			<th>公告時間</th>
+			<th>推播圖</th>
+			<th>文字內容</th>
+		</tr>
+		<tr th:each="ann : ${annList}">
+			<td th:text="${ann.annNo}"></td>
+			<td th:text="${ann.annTitle}"></td>
+			<td th:text="${#temporals.format(ann.annBegin, 'yyyy-MM-dd HH:mm')}"></td>
+			<td>
+				<img th:if="${ann.annImg != null}" th:src="@{/announcement/image/{no}(no=${ann.annNo})}"
+					th:alt="${ann.annTitle}">
+			</td>
+			<td th:text="${ann.annText}"></td>
+			<td>
+				<form th:action="@{/announcement/update/{no}(no=${ann.annNo})}" method="get">
+					<button type="submit">修改公告</button>
+				</form>
+			</td>
+			<td>
+				<form th:action="@{/announcement/delete/{no}(no=${ann.annNo})}" method="post">
+					<button type="submit">刪除公告</button>
+				</form>
+			</td>
+		</tr>
+	</table>
+
+	<br>
+	<br>
+	<br>
+
+	<a th:href="@{/announcement}">回首頁</a>
+</body>
+</html>

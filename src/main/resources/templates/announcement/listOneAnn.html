@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta charset="UTF-8">
+<title>公告查詢結果</title>
+</head>
+<body>
+	<h1>公告查詢結果</h1>
+	<p th:if="${ann == null}">查無資料</p>
+
+	<table th:if="${ann != null}" style="width: 50%; text-align: center;">
+		<tr>
+			<th>公告編號</th>
+			<th>公告標題</th>
+			<th>公告時間</th>
+			<th>推播圖</th>
+			<th>文字內容</th>
+		</tr>
+		<tr>
+			<td th:text="${ann.annNo}"></td>
+			<td th:text="${ann.annTitle}"></td>
+			<td th:text="${#temporals.format(ann.annBegin, 'yyyy-MM-dd HH:mm')}"></td>
+			<td>
+				<img th:if="${ann.annImg != null}" th:src="@{/announcement/image/{no}(no=${ann.annNo})}"
+					th:alt="${ann.annTitle}">
+			</td>
+			<td th:text="${ann.annText}"></td>
+		</tr>
+	</table>
+
+	<br>
+	<br>
+	<br>
+
+	<a th:href="@{/announcement}">回首頁</a>
+</body>
+</html>

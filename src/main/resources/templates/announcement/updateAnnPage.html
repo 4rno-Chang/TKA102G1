@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta charset="UTF-8">
+<title>修改公告</title>
+</head>
+<body>
+	<h1>修改公告</h1>
+	<form th:action="@{/announcement/update}" method="post" enctype="multipart/form-data">
+		<input type="hidden" name="annNo" th:value="${ann.annNo}">
+
+		<div>
+			<label for="annTitle">公告標題：</label>
+			<input type="text" id="annTitle" name="annTitle" th:value="${ann.annTitle}" required>
+		</div>
+
+		<div>
+			<label for="annBegin">公告開始時間：</label>
+			<input type="datetime-local" id="annBegin" name="annBegin"
+				th:value="${#temporals.format(ann.annBegin, 'yyyy-MM-dd''T''HH:mm')}" required>
+		</div>
+
+		<div>
+			<label>目前公告圖片：</label>
+			<img th:if="${ann.annImg != null}" th:src="@{/announcement/image/{no}(no=${ann.annNo})}"
+				th:alt="${ann.annTitle}" width="200">
+		</div>
+		<br>
+		<div>
+			<label for="annImg">更換公告圖片：</label>
+			<input type="file" id="annImg" name="annImg" accept="image/*">
+		</div>
+		<div>
+			<label for="annText">公告內容：</label>
+			<textarea id="annText" name="annText" rows="8" cols="50" th:text="${ann.annText}" required></textarea>
+		</div>
+
+		<button type="submit">確認修改</button>
+	</form>
+	<br>
+	<br>
+	<br>
+
+	<a th:href="@{/announcement}">回首頁</a>
+</body>
+</html>

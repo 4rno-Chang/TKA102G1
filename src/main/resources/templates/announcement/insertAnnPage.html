@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta charset="UTF-8">
+<title>新增公告</title>
+</head>
+<body>
+	<h1>新增公告</h1>
+	<form th:action="@{/announcement/insert}" method="post" enctype="multipart/form-data">
+
+		<div>
+			<label for="annTitle">公告標題：</label>
+			<input type="text" id="annTitle" name="annTitle" required>
+		</div>
+		<br>
+
+		<div>
+			<label for="annBegin">公告開始時間：</label>
+			<input type="datetime-local" id="annBegin" name="annBegin" required>
+		</div>
+		<br>
+
+		<div>
+			<label for="annImg">公告圖片：</label>
+			<input type="file" id="annImg" name="annImg" accept="image/*">
+		</div>
+		<br>
+
+		<div>
+			<label for="annText">公告內容：</label>
+			<textarea id="annText" name="annText" rows="8" cols="50" required></textarea>
+		</div>
+		<br>
+		<button type="submit">新增公告</button>
+
+	</form>
+	<br>
+	<br>
+	<br>
+
+	<a th:href="@{/announcement}">回首頁</a>
+</body>
+</html>

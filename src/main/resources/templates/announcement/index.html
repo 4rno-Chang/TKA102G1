@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta charset="UTF-8">
+<title>公告設定</title>
+</head>
+<body>
+	<h1>公告設定</h1>
+	<p th:if="${errorMsg != null}" style="color: red;" th:text="${errorMsg}"></p>
+
+	<a th:href="@{/announcement/list}">查看所有公告</a>
+	<br>
+	<br>
+	<form th:action="@{/announcement/search}" method="get">
+		<p>
+			<label>公告編號查詢：</label>
+		</p>
+		<input type="text" name="annNo">
+		<p>
+			<input type="submit" value="查詢">
+		</p>
+	</form>
+	<a th:href="@{/announcement/insert}">新增公告</a>
+	<br>
+	<br>
+
+</body>
+</html>
