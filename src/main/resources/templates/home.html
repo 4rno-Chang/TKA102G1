@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta charset="UTF-8">
+<title>Home</title>
+</head>
+<body>
+	<h1>公告</h1>
+	<h3 th:text="${message}"></h3>
+
+	<a th:href="@{/announcement}">進入公告頁面</a>
+	<br>
+	<br>
+
+</body>
+</html>
