@@ -1,4 +1,4 @@
-package com.bistroops.announcement;
+package com.bistroops;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
