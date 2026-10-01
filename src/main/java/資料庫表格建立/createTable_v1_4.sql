@@ -38,6 +38,7 @@ CREATE TABLE IF NOT EXISTS orders(
 
 -- 訂單明細, orders_details
 CREATE TABLE IF NOT EXISTS orders_details(
+	orders_details_no	 INT UNSIGNED AUTO_INCREMENT COMMENT'訂單明細編號',
   orders_no INT UNSIGNED NOT NULL COMMENT '訂單編號',
   meal_no INT UNSIGNED NOT NULL COMMENT '菜品編號',
   promote_no INT UNSIGNED COMMENT '活動編號',
@@ -46,8 +47,8 @@ CREATE TABLE IF NOT EXISTS orders_details(
   od_discount_total INT COMMENT '折扣金額',
   od_actual_price INT COMMENT '小計',
   od_comment VARCHAR(30) COMMENT '備註',
-  od_status VARCHAR(5) COMMENT '訂單狀態',
-  PRIMARY KEY(orders_no, meal_no)
+	od_status VARCHAR(5) COMMENT '訂單狀態',
+  PRIMARY KEY(orders_details_no)
 ) COMMENT '訂單明細';
 
 -- 菜品, meal
@@ -101,6 +102,7 @@ CREATE TABLE IF NOT EXISTS employee(
   emp_add VARCHAR(100) COMMENT '地址',
   emp_sal INTEGER NOT NULL COMMENT '月薪',
   emp_status VARCHAR(2) NOT NULL COMMENT '員工狀態',
+  emp_pic MEDIUMBLOB COMMENT '員工照片',
   PRIMARY KEY (emp_no)
 ) COMMENT '員工';
 
@@ -152,7 +154,7 @@ CREATE TABLE IF NOT EXISTS reservation_datetime (
 CREATE TABLE IF NOT EXISTS waiting (
   waiting_no INT UNSIGNED AUTO_INCREMENT COMMENT '候位編號',
   seat_type_no INT NOT NULL COMMENT '桌型編號',
-  member_no INT UNSIGNED COMMENT '會員編號',
+  mem_no INT UNSIGNED COMMENT '會員編號',
   waiting_tel CHAR(10) NOT NULL COMMENT '電話',
   waiting_name VARCHAR(30) COMMENT '姓名',
   waiting_comment VARCHAR(20) COMMENT '備註',
@@ -355,10 +357,10 @@ INSERT INTO orders_details (orders_no, meal_no, promote_no, od_meal_num, od_disc
 -- 訂單 1 明細 (A01 桌)
 (1, 1, null, 1, 160, 0, 160, '麵包要烤酥一點', '已送達'),
 (1, 4, 1, 1, 380, 0, 380, '飯軟一點', '已送達'),
-(1, 8, null, 1, 130, 0, 130, '少冰', '已取消'),
-(1, 11, 2, 1, 160, 50, 110, '', '等待送餐'),
+(1,8, null, 1, 130, 0, 130, '少冰', '已取消'),
+(1,11, 2, 1, 160, 50, 110, '', '等待送餐'),
 -- 訂單 2 明細 (B01 桌)
-(2, 3, null, 1, 200, 0, 200, '', '已送達'),
+(2,3, null, 1, 200, 0, 200, '', '已送達'),
 (2, 7, 1, 1, 680, 0, 680, '三分熟', '等待送餐'),
 (2, 10, null, 1, 100, 0, 100, '加冰塊與檸檬片', '準備中'),
 -- 訂單 3 明細 (C01 桌)
@@ -368,7 +370,7 @@ INSERT INTO orders_details (orders_no, meal_no, promote_no, od_meal_num, od_disc
 -- 10. 候位 (waiting)
 INSERT INTO waiting (
     seat_type_no,
-    member_no,
+    mem_no,
     waiting_tel,
     waiting_name,
     waiting_comment,
@@ -405,12 +407,12 @@ VALUES
     (3, 3, 6, '2026-08-24 20:45:00', '預約', '6人慶生聚餐');
 
 -- 13. 員工 (employee)
-INSERT INTO employee (emp_name, emp_password, emp_tel, emp_ice, emp_icetel, emp_add, emp_sal, emp_status) VALUES
-('陳小心', '12345678', '0987878787', '', '', '', 30000,'在職'),
-('カイル', '910111213', '0911223344', '愛蜜莉雅', '0987654321', '露格尼卡王國', 40000,'在職'),
-('張學長', '11111111', '0987654321', '', '', '電腦市程式碼街最強社區666號', 100000,'離職'),
-('李木子', 'abcdefgh', '0900111222', '', '', '快樂縣可愛鄉聰明路102號', 40000,'在職'),
-('強滾滾', 'poiuytrew', '0933445566', '張學長', '0987654321', '電腦市程式碼街最強社區666號', 50000, '在職');
+INSERT INTO employee (emp_name, emp_password, emp_tel, emp_ice, emp_icetel, emp_add, emp_sal, emp_status, emp_pic) VALUES
+('陳小心', '12345678', '0987878787', '', '', '', 30000,'在職',null),
+('カイル', '910111213', '0911223344', '愛蜜莉雅', '0987654321', '露格尼卡王國', 40000,'在職',null),
+('張學長', '11111111', '0987654321', '', '', '電腦市程式碼街最強社區666號', 100000,'離職',null),
+('李木子', 'abcdefgh', '0900111222', '', '', '快樂縣可愛鄉聰明路102號', 40000,'在職',null),
+('強滾滾', 'poiuytrew', '0933445566', '張學長', '0987654321', '電腦市程式碼街最強社區666號', 50000, '在職',null);
 
 -- 14. 權限 (permission)
 INSERT INTO permission (perm_exp) VALUES
@@ -502,7 +504,7 @@ ALTER TABLE reservation ADD CONSTRAINT reservation_rsv_dt_fk FOREIGN KEY (rsv_dt
 ALTER TABLE reservation ADD CONSTRAINT reservation_seat_type_fk FOREIGN KEY (seat_type_no) REFERENCES seat_type(seat_type_no);
 
 -- 候位 → 會員、桌型
-ALTER TABLE waiting ADD CONSTRAINT waiting_member_fk FOREIGN KEY (member_no) REFERENCES member(mem_no);
+ALTER TABLE waiting ADD CONSTRAINT waiting_member_fk FOREIGN KEY (mem_no) REFERENCES member(mem_no);
 ALTER TABLE waiting ADD CONSTRAINT waiting_seat_type_fk FOREIGN KEY (seat_type_no) REFERENCES seat_type(seat_type_no);
 
 -- 員工權限 → 員工、系統權限

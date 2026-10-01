@@ -1,4 +1,4 @@
-package com.bistroops.announcement;
+package com.bistroops;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
