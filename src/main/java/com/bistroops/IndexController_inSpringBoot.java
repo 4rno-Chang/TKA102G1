@@ -30,7 +30,7 @@ public class IndexController_inSpringBoot {
     @GetMapping("/")
     public String index(Model model) {
     	model.addAttribute("message", message);
-        return "home"; //view
+        return "frontend_index"; //view
     }
     
 }
