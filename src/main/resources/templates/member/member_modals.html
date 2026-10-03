@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="zh-Hant" xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<!--
+  會員相關的對話框（登入／註冊／忘記密碼／會員中心）
+  其他頁面要使用時，在 </body> 前加上這一行即可：
+    <div th:replace="~{member/member_modals :: modals}"></div>
+  並記得載入 /css/member.css 與 /js/member.js
+
+  ※ 目前畫面用的是假資料。Java 寫好後要改的地方都標了「Thymeleaf 串接」，
+    用 Ctrl+F 搜尋這幾個字就能一個一個找到。整體做法的總覽寫在 member.js 的第 1 區開頭。
+    提示裡的網址（/member/login 等）和欄位名稱（name、phone 等）都是範例，請換成你們實際的。
+-->
+
+<!-- 【Thymeleaf 串接】重新載入後自動打開對話框
+  表單送出後頁面會重新載入，對話框會關上。Controller 用 startView、startTab、toastMsg
+  告訴畫面載入後要打開什麼。開始串接第一個表單時，把下面那行 div 換成：
+
+    <div th:fragment="modals"
+         th:attr="data-start-view=${startView}, data-start-tab=${startTab}, data-toast=${toastMsg}">
+
+  值是 null 的時候 Thymeleaf 不會輸出該屬性，所以平常不受影響。
+  讀取這三個屬性的程式在 member.js 最下面的「7. 頁面載入後」。
+-->
+<div th:fragment="modals">
+
+  <!-- =====================================================
+       對話框 1：登入／註冊／忘記密碼（同一個對話框內切換畫面）
+       ===================================================== -->
+  <div class="modal" id="authModal" hidden>
+    <div class="modal-backdrop" data-close-modal></div>
+
+    <div class="modal-dialog modal-dialog-auth" role="dialog" aria-modal="true" aria-label="會員登入與註冊" tabindex="-1">
+      <button type="button" class="modal-close" data-close-modal aria-label="關閉">×</button>
+
+      <!-- ---------- 畫面：會員登入 ---------- -->
+      <section class="auth-view" data-view="login">
+        <p class="eyebrow">Member Login</p>
+        <h2 class="modal-title">會員登入</h2>
+
+        <!-- 【Thymeleaf 串接】登入
+          1. 下面的 form 開頭改成（th:action 是表單要送去的 Controller 網址）：
+               <form id="loginForm" th:action="@{/member/login}" method="post" novalidate>
+             Controller 用 @RequestParam 接 phone、password、captcha，名稱就是各 input 的 name。
+          2. 驗證圖片的 span 換成圖片（Controller 要寫一個輸出圖片的方法）：
+               <img class="captcha-img" id="captchaImg" th:src="@{/member/captcha}" alt="驗證碼">
+          3. 「登入失敗提示」那行改成由 Controller 給訊息，沒有訊息時維持隱藏：
+               <p class="form-msg error" id="loginError" th:text="${loginError}" th:hidden="${loginError == null}"></p>
+          4. member.js 的修改見「4. 登入」。
+          下面其他表單都是同樣的做法：form 加 th:action 和 method="post"、錯誤訊息加 th:text 和 th:hidden。
+        -->
+        <form id="loginForm" novalidate>
+          <div class="field">
+            <label for="loginPhone">手機</label>
+            <input type="tel" id="loginPhone" name="phone" inputmode="numeric" maxlength="10" placeholder="09XXXXXXXX" autocomplete="tel">
+          </div>
+
+          <div class="field">
+            <label for="loginPassword">密碼</label>
+            <div class="input-wrap">
+              <input type="password" id="loginPassword" name="password" autocomplete="current-password">
+              <button type="button" class="pw-toggle" data-pw-toggle aria-label="顯示密碼">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/><line class="slash" x1="4" y1="4" x2="20" y2="20"/></svg>
+              </button>
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="loginCaptcha">驗證碼</label>
+            <div class="field-row">
+              <input type="text" id="loginCaptcha" name="captcha" maxlength="4" autocomplete="off">
+              <!-- 驗證圖片：目前由 member.js 產生示範文字 -->
+              <span class="captcha-img" id="captchaImg" aria-label="驗證圖片"></span>
+              <button type="button" class="icon-btn" id="captchaRefresh" aria-label="重新產生驗證碼">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 4v5h-5"/></svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- 登入失敗提示 -->
+          <p class="form-msg error" id="loginError" hidden></p>
+
+          <button type="submit" class="btn-solid">登入</button>
+        </form>
+
+        <div class="auth-links">
+          <button type="button" class="link-btn" data-auth-view="forgot">忘記密碼？</button>
+          <button type="button" class="link-btn" data-auth-view="register">註冊會員</button>
+        </div>
+
+        <p class="divider"><span>快速登入</span></p>
+
+        <div class="social-list">
+          <button type="button" class="btn-social" data-social="line">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect width="24" height="24" rx="6" fill="#06C755"/><text x="12" y="15.5" text-anchor="middle" font-size="7.5" font-weight="700" font-family="Arial, sans-serif" fill="#fff">LINE</text></svg>
+            <span>LINE 登入</span>
+          </button>
+          <button type="button" class="btn-social" data-social="google">
+            <svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+            <span>Google 登入</span>
+          </button>
+          <button type="button" class="btn-social" data-social="x">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+            <span>X 登入</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- ---------- 畫面：會員註冊 ---------- -->
+      <section class="auth-view" data-view="register" hidden>
+        <button type="button" class="back-btn" data-auth-view="login">← 返回會員登入</button>
+        <p class="eyebrow">Sign Up</p>
+        <h2 class="modal-title">會員註冊</h2>
+
+        <!-- 【Thymeleaf 串接】註冊
+          1. form 開頭改成：
+               <form id="registerForm" th:action="@{/member/register}" method="post" novalidate>
+             Controller 會收到 phone、code、password、password2。
+          2. 「註冊失敗提示」那行改成：
+               <p class="form-msg error center" id="regError" th:text="${regError}" th:hidden="${regError == null}"></p>
+          3.「發送驗證碼」和「手機是否已註冊」不會重新載入頁面，做法寫在 member.js 的
+             「3-3. setupSendCode」和「4. 註冊 checkRegPhone」。
+        -->
+        <form id="registerForm" novalidate>
+          <div class="field">
+            <label for="regPhone">電話</label>
+            <div class="field-row">
+              <input type="tel" id="regPhone" name="phone" inputmode="numeric" maxlength="10" placeholder="09XXXXXXXX" autocomplete="tel">
+              <button type="button" class="btn-small" id="regSendCode">發送驗證碼</button>
+            </div>
+            <!-- 離開輸入框時顯示「可註冊／已被註冊」，發送驗證碼的結果也顯示在這裡 -->
+            <p class="form-msg" id="regPhoneMsg" hidden></p>
+          </div>
+
+          <div class="field">
+            <label for="regCode">輸入驗證碼</label>
+            <input type="text" id="regCode" name="code" inputmode="numeric" maxlength="6" autocomplete="one-time-code">
+          </div>
+
+          <div class="field">
+            <label for="regPassword">密碼</label>
+            <div class="input-wrap">
+              <input type="password" id="regPassword" name="password" data-pw autocomplete="new-password">
+              <button type="button" class="pw-toggle" data-pw-toggle aria-label="顯示密碼">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/><line class="slash" x1="4" y1="4" x2="20" y2="20"/></svg>
+              </button>
+            </div>
+            <ul class="pw-rules">
+              <li class="rule" data-rule="length">密碼長度至少為 8 個字元的字串</li>
+              <li class="rule" data-rule="charset">僅能使用英文與數字組成</li>
+            </ul>
+          </div>
+
+          <div class="field">
+            <label for="regPassword2">再次輸入密碼</label>
+            <div class="input-wrap">
+              <input type="password" id="regPassword2" name="password2" data-pw-confirm autocomplete="new-password">
+              <button type="button" class="pw-toggle" data-pw-toggle aria-label="顯示密碼">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/><line class="slash" x1="4" y1="4" x2="20" y2="20"/></svg>
+              </button>
+            </div>
+            <p class="form-msg error" data-pw-mismatch hidden>※與密碼不相符請重新輸入</p>
+          </div>
+
+          <!-- 註冊失敗提示（顯示在按鈕上方） -->
+          <p class="form-msg error center" id="regError" hidden></p>
+
+          <button type="submit" class="btn-solid">註冊成為會員</button>
+        </form>
+      </section>
+
+      <!-- ---------- 畫面：忘記密碼（步驟 1：身分驗證） ---------- -->
+      <section class="auth-view" data-view="forgot" hidden>
+        <button type="button" class="back-btn" data-auth-view="login">← 返回會員登入</button>
+        <p class="eyebrow">Forgot Password</p>
+        <h2 class="modal-title">忘記密碼</h2>
+
+        <!-- 【Thymeleaf 串接】忘記密碼步驟 1
+          1. form 開頭改成：
+               <form id="forgotForm" th:action="@{/member/forgot}" method="post" novalidate>
+             Controller 會收到 phone、code。驗證碼正確時把手機存進 session，給步驟 2 使用。
+          2. 驗證碼錯誤那行（id="forgotCodeError"）改成：
+               <p class="form-msg error" id="forgotCodeError" th:text="${forgotCodeError}" th:hidden="${forgotCodeError == null}"></p>
+        -->
+        <form id="forgotForm" novalidate>
+          <p class="form-subtitle">身分驗證</p>
+
+          <div class="field">
+            <label for="forgotPhone">電話</label>
+            <div class="field-row">
+              <input type="tel" id="forgotPhone" name="phone" inputmode="numeric" maxlength="10" placeholder="09XXXXXXXX" autocomplete="tel">
+              <button type="button" class="btn-small" id="forgotSendCode">發送驗證碼</button>
+            </div>
+            <p class="form-msg" id="forgotPhoneMsg" hidden></p>
+            <!-- 手機未註冊時顯示這一行 -->
+            <p class="form-msg error" id="forgotNotRegistered" hidden>
+              ※發送失敗，此手機號碼未註冊，<button type="button" class="link-btn" data-auth-view="register">點選前往註冊</button>
+            </p>
+          </div>
+
+          <div class="field">
+            <label for="forgotCode">輸入驗證碼</label>
+            <input type="text" id="forgotCode" name="code" inputmode="numeric" maxlength="6" autocomplete="one-time-code">
+            <p class="form-msg error" id="forgotCodeError" hidden></p>
+          </div>
+
+          <button type="submit" class="btn-solid">送出</button>
+        </form>
+      </section>
+
+      <!-- ---------- 畫面：忘記密碼（步驟 2：設定新密碼） ---------- -->
+      <section class="auth-view" data-view="reset" hidden>
+        <button type="button" class="back-btn" data-auth-view="login">← 返回會員登入</button>
+        <p class="eyebrow">Reset Password</p>
+        <h2 class="modal-title">忘記密碼</h2>
+
+        <!-- 【Thymeleaf 串接】忘記密碼步驟 2
+          1. form 開頭改成：
+               <form id="resetForm" th:action="@{/member/resetPassword}" method="post" novalidate>
+             Controller 會收到 password、password2，手機請從 session 取出（步驟 1 存的）。
+          2. 錯誤訊息那行（id="resetError"）改成：
+               <p class="form-msg error center" id="resetError" th:text="${resetError}" th:hidden="${resetError == null}"></p>
+        -->
+        <form id="resetForm" novalidate>
+          <div class="field">
+            <label for="resetPassword">更改新密碼</label>
+            <div class="input-wrap">
+              <input type="password" id="resetPassword" name="password" data-pw autocomplete="new-password">
+              <button type="button" class="pw-toggle" data-pw-toggle aria-label="顯示密碼">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/><line class="slash" x1="4" y1="4" x2="20" y2="20"/></svg>
+              </button>
+            </div>
+            <ul class="pw-rules">
+              <li class="rule" data-rule="length">密碼長度至少為 8 個字元的字串</li>
+              <li class="rule" data-rule="charset">僅能使用英文與數字組成</li>
+            </ul>
+          </div>
+
+          <div class="field">
+            <label for="resetPassword2">再次輸入新密碼</label>
+            <div class="input-wrap">
+              <input type="password" id="resetPassword2" name="password2" data-pw-confirm autocomplete="new-password">
+              <button type="button" class="pw-toggle" data-pw-toggle aria-label="顯示密碼">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/><line class="slash" x1="4" y1="4" x2="20" y2="20"/></svg>
+              </button>
+            </div>
+            <p class="form-msg error" data-pw-mismatch hidden>※與密碼不相符請重新輸入</p>
+          </div>
+
+          <p class="form-msg error center" id="resetError" hidden></p>
+
+          <button type="submit" class="btn-solid">送出</button>
+        </form>
+      </section>
+    </div>
+  </div>
+
+
+  <!-- =====================================================
+       對話框 2：會員中心
+       ===================================================== -->
+  <div class="modal" id="memberModal" hidden>
+    <div class="modal-backdrop" data-close-modal></div>
+
+    <div class="modal-dialog modal-dialog-member" role="dialog" aria-modal="true" aria-label="會員中心" tabindex="-1">
+      <button type="button" class="modal-close" data-close-modal aria-label="關閉">×</button>
+
+      <header class="member-head">
+        <p class="eyebrow">Member Center</p>
+        <!-- 【Thymeleaf 串接】會員姓名
+          下面那行改成：
+            <h2 class="member-greeting" id="memberGreeting" th:text="|${session.loginMember?.name ?: '會員'} 您好～|">會員 您好～</h2>
+
+          重要：這個對話框在「沒登入」時也會被放進頁面（只是隱藏），這時 session.loginMember 是 null。
+          所以會員中心裡取會員資料時，一律寫成 loginMember?.name（多一個問號），
+          意思是「loginMember 是 null 就不要往下取」。少了問號，沒登入的人一開頁面就會出現錯誤頁。
+        -->
+        <h2 class="member-greeting" id="memberGreeting">會員 您好～</h2>
+      </header>
+
+      <div class="member-body">
+        <!-- 左側選單 -->
+        <nav class="member-nav" aria-label="會員中心選單">
+          <button type="button" data-member-tab="profile">個人資料</button>
+          <button type="button" data-member-tab="orders">歷史訂單</button>
+          <button type="button" data-member-tab="reservations">預約紀錄</button>
+          <button type="button" data-member-tab="coupons">優惠券</button>
+          <button type="button" data-logout>登出</button>
+        </nav>
+
+        <div class="member-content">
+
+          <!-- ---------- 個人資料 ---------- -->
+          <section class="member-panel" data-panel="profile">
+            <h3 class="panel-title">個人資料</h3>
+            <!-- 【Thymeleaf 串接】個人資料
+              1. form 開頭改成（data-birthday 是給 member.js 設定生日下拉選單用的，格式 yyyy-MM-dd）：
+                   <form id="profileForm" th:action="@{/member/profile}" method="post"
+                         th:attr="data-birthday=${session.loginMember?.birthday}" novalidate>
+              2. 三個輸入框各加上 th:value，把目前的資料帶出來：
+                   姓名  th:value="${session.loginMember?.name}"
+                   Email th:value="${session.loginMember?.email}"
+                   手機  th:value="${session.loginMember?.phone}"
+              3. 錯誤訊息那行（id="profileError"）改成：
+                   <p class="form-msg error" id="profileError" th:text="${profileError}" th:hidden="${profileError == null}"></p>
+              4. Controller 會收到 name、email、phone、birthYear、birthMonth、birthDay。
+                 手機是登入帳號不開放修改，Controller 請忽略送來的 phone，改用 session 裡的。
+              5. member.js 的修改見「6. 個人資料」。
+            -->
+            <form id="profileForm" novalidate>
+              <div class="field">
+                <label for="profileName">姓名</label>
+                <input type="text" id="profileName" name="name" maxlength="20" autocomplete="name">
+              </div>
+
+              <div class="field">
+                <label for="profileEmail">Email</label>
+                <input type="email" id="profileEmail" name="email" placeholder="填寫可獲取最新消息通知" autocomplete="email">
+              </div>
+
+              <div class="field">
+                <label for="profilePhone">手機</label>
+                <!-- 手機是登入帳號，這裡只顯示不開放修改 -->
+                <input type="tel" id="profilePhone" name="phone" readonly>
+              </div>
+
+              <div class="field">
+                <label for="birthYear">生日</label>
+                <div class="birthday-row">
+                  <select id="birthYear" name="birthYear" aria-label="年"></select><span>年</span>
+                  <select id="birthMonth" name="birthMonth" aria-label="月"></select><span>月</span>
+                  <select id="birthDay" name="birthDay" aria-label="日"></select><span>日</span>
+                </div>
+              </div>
+
+              <p class="form-msg error" id="profileError" hidden></p>
+
+              <div class="form-actions">
+                <button type="button" class="btn-outline" data-member-tab="password">更改密碼</button>
+                <button type="submit" class="btn-solid">送出</button>
+              </div>
+            </form>
+          </section>
+
+          <!-- ---------- 更改密碼 ---------- -->
+          <section class="member-panel" data-panel="password" hidden>
+            <button type="button" class="back-btn" data-member-tab="profile">← 返回個人資料</button>
+            <h3 class="panel-title">更改密碼</h3>
+            <!-- 【Thymeleaf 串接】會員中心更改密碼
+              1. form 開頭改成：
+                   <form id="changePwForm" th:action="@{/member/changePassword}" method="post" novalidate>
+                 Controller 會收到 code、password、password2，手機從 session 的 loginMember 取得。
+              2. 顯示手機的那行改成：
+                   <span class="field-static" id="changePwPhone" th:text="${session.loginMember?.phone}">09XXXXXXXX</span>
+              3. 錯誤訊息那行（id="changePwError"）改成：
+                   <p class="form-msg error" id="changePwError" th:text="${changePwError}" th:hidden="${changePwError == null}"></p>
+            -->
+            <form id="changePwForm" novalidate>
+              <p class="form-subtitle">身分驗證</p>
+
+              <div class="field">
+                <span class="field-label">電話</span>
+                <div class="field-row">
+                  <span class="field-static" id="changePwPhone">09XXXXXXXX</span>
+                  <button type="button" class="btn-small" id="changePwSendCode">發送驗證碼</button>
+                </div>
+                <p class="form-msg" id="changePwPhoneMsg" hidden></p>
+              </div>
+
+              <div class="field">
+                <label for="changePwCode">輸入驗證碼</label>
+                <input type="text" id="changePwCode" name="code" inputmode="numeric" maxlength="6" autocomplete="one-time-code">
+              </div>
+
+              <div class="field">
+                <label for="changePwNew">更改新密碼</label>
+                <div class="input-wrap">
+                  <input type="password" id="changePwNew" name="password" data-pw autocomplete="new-password">
+                  <button type="button" class="pw-toggle" data-pw-toggle aria-label="顯示密碼">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/><line class="slash" x1="4" y1="4" x2="20" y2="20"/></svg>
+                  </button>
+                </div>
+                <ul class="pw-rules">
+                  <li class="rule" data-rule="length">密碼長度至少為 8 個字元的字串</li>
+                  <li class="rule" data-rule="charset">僅能使用英文與數字組成</li>
+                </ul>
+              </div>
+
+              <div class="field">
+                <label for="changePwNew2">再次輸入新密碼</label>
+                <div class="input-wrap">
+                  <input type="password" id="changePwNew2" name="password2" data-pw-confirm autocomplete="new-password">
+                  <button type="button" class="pw-toggle" data-pw-toggle aria-label="顯示密碼">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/><line class="slash" x1="4" y1="4" x2="20" y2="20"/></svg>
+                  </button>
+                </div>
+                <p class="form-msg error" data-pw-mismatch hidden>※與密碼不相符請重新輸入</p>
+              </div>
+
+              <p class="form-msg error" id="changePwError" hidden></p>
+
+              <div class="form-actions">
+                <button type="submit" class="btn-solid">送出</button>
+              </div>
+            </form>
+          </section>
+
+          <!-- ---------- 歷史訂單（內容由 member.js 產生） ---------- -->
+          <section class="member-panel" data-panel="orders" hidden>
+            <h3 class="panel-title">歷史訂單</h3>
+            <!-- 【Thymeleaf 串接】歷史訂單
+              Controller 把登入會員的訂單清單放進 Model（名稱 orders），沒登入時放空的清單。
+              把下面那行 div 換成這一段，th:each 會替每一筆訂單產生一塊畫面：
+
+                <div class="record-list" id="ordersList">
+                  <p class="empty-text" th:if="${#lists.isEmpty(orders)}">目前沒有訂單紀錄</p>
+
+                  <div class="record-item" th:each="order : ${orders}">
+                    <button type="button" class="record-head" data-toggle-record aria-expanded="false">
+                      <span class="record-info">
+                        <span th:text="${order.date}">2026年09月20日 11:30</span>
+                        <span th:text="|${order.people} 人|">3 人</span>
+                        <span th:text="${order.type}">用餐</span>
+                      </span>
+                      <span class="record-icon">+</span>
+                    </button>
+                    <div class="record-body" hidden>
+                      <table class="order-table">
+                        <thead><tr><th>品項</th><th class="num">數量</th><th class="num">小計</th></tr></thead>
+                        <tbody>
+                          <tr th:each="item : ${order.items}">
+                            <td th:text="${item.name}">品項名稱</td>
+                            <td class="num" th:text="|× ${item.qty}|">× 1</td>
+                            <td class="num" th:text="'$' + ${item.price * item.qty}">$100</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                      <p class="order-total" th:text="'合計　$' + ${order.total}">合計　$100</p>
+                    </div>
+                  </div>
+                </div>
+
+              日期要顯示成「2026年09月20日」的話，可以用 #temporals.format(order.date, 'yyyy年MM月dd日')
+              （欄位是 LocalDate / LocalDateTime 時）或 #dates.format(...)（欄位是 java.util.Date 時）。
+              合計 order.total 請在 Java 那邊算好。
+
+              注意：這個對話框每個頁面都會放，所以「每個頁面的 Controller」都要把 orders 等清單放進 Model。
+              不想每個 Controller 都寫一次的話，可以另外寫一個加了 @ControllerAdvice 的類別，
+              裡面用 @ModelAttribute("orders") 的方法回傳清單，所有頁面就都會有。
+            -->
+            <div class="record-list" id="ordersList"></div>
+          </section>
+
+          <!-- ---------- 預約紀錄（內容由 member.js 產生） ---------- -->
+          <section class="member-panel" data-panel="reservations" hidden>
+            <h3 class="panel-title">預約紀錄</h3>
+            <div class="sub-tabs">
+              <button type="button" class="active" data-resv-tab="current">當前訂位</button>
+              <button type="button" data-resv-tab="history">歷史訂位</button>
+            </div>
+            <!-- 【Thymeleaf 串接】預約紀錄
+              Controller 把兩份清單放進 Model：currentResvs（當前訂位）、historyResvs（歷史訂位）。
+              兩份都先產生在頁面上，由 member.js 切換要顯示哪一份。把下面那行 div 換成：
+
+                <div class="record-list" id="resvList">
+
+                  <div id="resvCurrent">
+                    <p class="empty-text" th:if="${#lists.isEmpty(currentResvs)}">目前沒有進行中的訂位</p>
+
+                    <div class="record-item" th:each="resv : ${currentResvs}">
+                      <div class="record-head">
+                        <span class="record-info">
+                          <span th:text="${resv.date}">2026年10月10日</span>
+                          <span th:text="${resv.time}">18:30</span>
+                          <span th:text="|${resv.people} 人|">4 人</span>
+                        </span>
+                        <span class="record-actions">
+                          <button type="button" class="btn-small" data-toggle-record aria-expanded="false">訂位明細</button>
+                          <form th:action="@{/member/reservation/cancel}" method="post">
+                            <input type="hidden" name="resvId" th:value="${resv.id}">
+                            <button type="submit" class="btn-small danger">取消訂位</button>
+                          </form>
+                        </span>
+                      </div>
+                      <div class="record-body" hidden>
+                        <p th:text="|訂位編號：${resv.id}|">訂位編號：</p>
+                        <p th:text="|用餐時間：${resv.date} ${resv.time}|">用餐時間：</p>
+                        <p th:text="|用餐人數：${resv.people} 人|">用餐人數：</p>
+                        <p th:text="|備註：${resv.note ?: '無'}|">備註：</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div id="resvHistory" hidden>
+                    （內容和上面 resvCurrent 相同，改成 historyResvs，並拿掉「取消訂位」的 form，
+                      沒有資料時的文字改成「目前沒有歷史訂位」）
+                  </div>
+
+                </div>
+
+              「取消訂位」是每筆各自一個小表單，用隱藏欄位 resvId 告訴 Controller 要取消哪一筆。
+              member.js 的修改見「6. 預約紀錄」。
+            -->
+            <div class="record-list" id="resvList"></div>
+          </section>
+
+          <!-- ---------- 優惠券（內容由 member.js 產生） ---------- -->
+          <section class="member-panel" data-panel="coupons" hidden>
+            <h3 class="panel-title">優惠券</h3>
+            <!-- 【Thymeleaf 串接】優惠券
+              Controller 把優惠券清單放進 Model（名稱 coupons）。把下面那行 div 換成：
+
+                <div class="coupon-list" id="couponList">
+                  <p class="empty-text" th:if="${#lists.isEmpty(coupons)}">目前沒有優惠券</p>
+
+                  <div class="coupon" th:each="coupon : ${coupons}" th:classappend="${coupon.used} ? 'used'">
+                    <h4 th:text="${coupon.title}">優惠券名稱</h4>
+                    <p th:text="${coupon.desc}">優惠券說明</p>
+                    <p class="coupon-expire" th:text="${coupon.used} ? '已使用' : |使用期限：${coupon.expire}|">使用期限：</p>
+                  </div>
+                </div>
+
+              th:classappend 的意思是：已使用的優惠券多加一個 used 的 class（畫面會變灰）。
+            -->
+            <div class="coupon-list" id="couponList"></div>
+          </section>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- 操作結果的小提示（例如「修改成功」） -->
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+</div>
+
+</body>
+</html>

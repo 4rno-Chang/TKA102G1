@@ -126,3 +126,19 @@ document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
 
 /* ========== 6. 頁尾年份 ========== */
 document.getElementById('year').textContent = new Date().getFullYear();
+
+/* ========== 7. 關於我們：點擊切換說明文字（滑鼠移入的效果由 CSS 處理） ========== */
+const aboutBox = document.getElementById('aboutBox');
+
+function toggleAbout() {
+  const isActive = aboutBox.classList.toggle('active');
+  aboutBox.setAttribute('aria-expanded', isActive);
+}
+aboutBox.addEventListener('click', toggleAbout);
+// 鍵盤操作：按 Enter 或空白鍵也能切換
+aboutBox.addEventListener('keydown', e => {
+  if (e.key === 'Enter' || e.key === ' ') {
+    e.preventDefault();
+    toggleAbout();
+  }
+});
