@@ -37,9 +37,14 @@
           <li><a href="#about">關於我們</a></li>
           <li><a href="#faq">常見問題</a></li>
         </ul>
-        <a href="#" class="btn-login" data-open-auth>登入 / 註冊</a>
+        <button type="button" class="btn-login" data-open-auth>登入 / 註冊</button>
         <div class="member-menu">
-          <button type="button" class="member-menu-toggle">會員中心</button>
+          <button type="button" class="member-menu-toggle">
+            <span class="member-avatar" aria-hidden="true">
+              <img th:src="@{/images/member.png}" alt="會員頭像">
+            </span>
+            會員中心
+          </button>
           <div class="member-dropdown">
             <button type="button" data-member-tab="profile">個人資料</button>
             <button type="button" data-member-tab="orders">歷史訂單</button>
@@ -107,7 +112,17 @@
     <!-- ========== 關於我們 ========== -->
     <section class="section reveal" id="about">
       <div class="container">
-        <div class="about-box placeholder">關於我們</div>
+        <!-- 滑鼠移入或點擊後，會蓋上半透明白底並顯示理念文字（效果在 style.css「8. 關於我們」、點擊在 main.js 第 7 區）
+             之後要放背景圖：在下面這個 div 加上
+               th:style="|background-image: url('@{/images/圖片檔名}')|" -->
+        <div class="about-box placeholder" id="aboutBox" role="button" tabindex="0" aria-expanded="false">
+          <span class="about-title">關於我們</span>
+          <p class="about-overlay">
+            Bistroops 相信，好的料理不必拘謹。<br>
+            我們挑選當季食材，用心對待每一道菜，<br>
+            再配上一杯好酒，讓每一次相聚都自在而難忘。
+          </p>
+        </div>
       </div>
     </section>
   </main>

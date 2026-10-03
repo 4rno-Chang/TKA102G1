@@ -142,3 +142,15 @@ aboutBox.addEventListener('keydown', e => {
     toggleAbout();
   }
 });
+
+// 回復成「圖片 + 關於我們」
+function closeAbout() {
+  aboutBox.classList.remove('active');
+  aboutBox.setAttribute('aria-expanded', false);
+}
+// 滑鼠離開區塊時回復
+aboutBox.addEventListener('mouseleave', closeAbout);
+// 點到區塊以外的地方時回復（手機沒有滑鼠離開的動作，靠這個收起）
+document.addEventListener('click', e => {
+  if (!aboutBox.contains(e.target)) closeAbout();
+});
