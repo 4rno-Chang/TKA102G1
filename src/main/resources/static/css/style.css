@@ -142,6 +142,7 @@ img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .nav-list a:hover::after { width: 100%; }
 
 .btn-login {
+  background: none; border: 0; cursor: pointer;
   color: var(--color-primary);
   font-size: 14px;
   font-weight: 500;
@@ -358,6 +359,30 @@ img { display: block; width: 100%; height: 100%; object-fit: cover; }
 }
 #about .container { position: relative; z-index: 0; }
 
+/* 滑鼠移入或點擊後：蓋上 60% 白底並顯示說明文字 */
+.about-box { cursor: pointer; }
+.about-title { transition: opacity var(--transition); }
+.about-overlay {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  padding: 30px;
+  background: rgba(255, 255, 255, .6);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-size: 17px; line-height: 2.1; letter-spacing: 2px;
+  opacity: 0;
+  transition: opacity var(--transition);
+}
+.about-box.active .about-overlay,
+.about-box:focus-visible .about-overlay { opacity: 1; }
+.about-box.active .about-title,
+.about-box:focus-visible .about-title { opacity: 0; }
+/* 有滑鼠的裝置才啟用移入效果，避免手機點擊後卡在顯示狀態 */
+@media (hover: hover) {
+  .about-box:hover .about-overlay { opacity: 1; }
+  .about-box:hover .about-title { opacity: 0; }
+}
+
 
 /* ========== 9. Footer ========== */
 .site-footer { background: var(--color-primary); color: var(--color-white); }
@@ -469,6 +494,7 @@ img { display: block; width: 100%; height: 100%; object-fit: cover; }
   .menu-grid { grid-template-columns: 1fr; max-width: 500px; margin: 0 auto; }
   .faq-question { font-size: 18px; padding: 20px 6px; }
   .about-box { height: 260px; font-size: 28px; }
+  .about-overlay { padding: 20px; font-size: 14px; letter-spacing: 1px; }
   .about-box::after { top: 14px; left: 14px; right: -14px; bottom: -14px; }
 
   .footer-grid { grid-template-columns: 1fr; gap: 36px; padding: 60px 25px; }
