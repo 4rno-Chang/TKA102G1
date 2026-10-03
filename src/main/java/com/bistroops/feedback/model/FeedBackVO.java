@@ -109,15 +109,6 @@ public class FeedBackVO {
 		this.feeRating = feeRating;
 	}
 
-	@Override
-	public String toString() {
-		return "feedbackVO [feedbackNo=" + feedbackNo + ", feeCustomer=" + feeCustomer + ", feeCustomerTel="
-				+ feeCustomerTel + ", feeCustomerTime=" + feeCustomerTime + ", feeTime=" + feeTime + ", feeContent="
-				+ feeContent + ", feeRating=" + feeRating + "]";
-	}
-
-
-
 
 
 }

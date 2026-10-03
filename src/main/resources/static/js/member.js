@@ -438,7 +438,11 @@ function openAuth(view = 'login') {
 
 document.addEventListener('click', e => {
   // Header 的「登入 / 註冊」
-  if (e.target.closest('[data-open-auth]')) { openAuth('login'); return; }
+  if (e.target.closest('[data-open-auth]')) {
+    e.preventDefault();   // 取消連結原本的動作，避免 href="#" 讓頁面跳回頂端
+    openAuth('login');
+    return;
+  }
   // 對話框內切換畫面的連結（忘記密碼？／註冊會員／返回會員登入）
   const switcher = e.target.closest('[data-auth-view]');
   if (switcher) showAuthView(switcher.dataset.authView);
