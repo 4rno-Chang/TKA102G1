@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="zh-Hant" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bistroops 後台｜訂單管理</title>
+  <link rel="icon" th:href="@{/images/logo-mark.svg}" type="image/svg+xml">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;700&display=swap">
+  <link rel="stylesheet" th:href="@{/css/staff.css}" />
+  <script th:src="@{/js/staff.js}" defer></script>
+  <script th:src="@{/js/staff-orders.js}" defer></script>
+</head>
+
+<body class="staff-layout">
+  <nav th:replace="~{staff/staff_sidebar :: sidebar('orders')}"></nav>
+
+  <main class="staff-main">
+    <header class="staff-header">
+      <div>
+        <p class="staff-eyebrow">Orders</p>
+        <h1 class="staff-title">訂單管理</h1>
+      </div>
+      <p class="staff-clock" id="staffClock"></p>
+    </header>
+
+    <!-- 篩選：依狀態 + 用桌號或訂單編號搜尋 -->
+    <!-- 【Thymeleaf 串接】篩選和搜尋改成一個 method="get" 的表單，條件會帶在網址上，
+         例如 /staff/orders?status=PAID&keyword=A1，Controller 用 @RequestParam 接 status 和 keyword。
+         把下面整個 orders-tools 的 div 換成：
+
+        <form class="orders-tools" th:action="@{/staff/orders}" method="get">
+          <div class="chips">
+            <button type="submit" class="chip" name="status" value=""
+                    th:classappend="${status == null or status == ''} ? 'active'">全部</button>
+            <button type="submit" class="chip" name="status" value="ACTIVE"
+                    th:classappend="${status == 'ACTIVE'} ? 'active'">用餐中</button>
+            （待結帳 DONE、已結帳 PAID、已取消 CANCELLED 寫法相同）
+          </div>
+          <input type="search" class="staff-input" name="keyword" th:value="${keyword}" placeholder="輸入桌號或訂單編號">
+        </form>
+
+         按哪一顆狀態按鈕，表單就帶著那顆的 value 和輸入框裡的關鍵字一起送出。
+         Controller 記得把收到的 status 和 keyword 再放回 Model，畫面才知道哪一顆要標成選取中。 -->
+    <div class="orders-tools">
+      <div class="chips" id="orderFilters">
+        <button type="button" class="chip active" data-filter="ALL">全部</button>
+        <button type="button" class="chip" data-filter="ACTIVE">用餐中</button>
+        <button type="button" class="chip" data-filter="DONE">待結帳</button>
+        <button type="button" class="chip" data-filter="PAID">已結帳</button>
+        <button type="button" class="chip" data-filter="CANCELLED">已取消</button>
+      </div>
+      <input type="search" class="staff-input" id="orderSearch" placeholder="輸入桌號或訂單編號" aria-label="搜尋訂單">
+    </div>
+
+    <section class="staff-card">
+      <!-- 欄位名稱（手機寬度時隱藏） -->
+      <div class="order-row order-row-head">
+        <span>訂單編號</span><span>桌號</span><span>人數</span><span>下單時間</span><span class="num">金額</span><span>狀態</span><span></span>
+      </div>
+      <!-- 每一筆訂單一列，點一下可以展開餐點明細；由 staff-orders.js 產生 -->
+      <!-- 【Thymeleaf 串接】清單改用 th:each 產生。把下面 id="orderList" 的那行 div 換成：
+
+        <div id="orderList">
+          <p class="staff-empty" th:if="${#lists.isEmpty(orders)}">沒有符合條件的訂單</p>
+
+          <div class="order-item" th:each="order : ${orders}">
+            <button type="button" class="order-row" data-toggle-order>
+              <span class="order-id" th:text="${order.id}">訂單編號</span>
+              <span><span class="badge badge-table" th:text="${order.table}">A1</span></span>
+              <span th:text="|${order.people} 人|">2 人</span>
+              <span th:text="${order.time}">12:30</span>
+              <span class="num order-amount" th:text="'$' + ${order.payAmount}">$1,246</span>
+              <span><span class="tag" th:classappend="${order.statusClass}" th:text="${order.statusText}">用餐中</span></span>
+              <span class="order-icon">+</span>
+            </button>
+
+            <div class="order-detail" hidden>
+              <p class="order-detail-note" th:if="${order.note}" th:text="|備註：${order.note}|">備註</p>
+              <table class="receipt-table">
+                <thead><tr><th>品項</th><th class="num">數量</th><th class="num">小計</th><th class="num">折扣</th><th>狀態</th></tr></thead>
+                <tbody>
+                  <tr th:each="item : ${order.items}" th:classappend="${item.cancelled} ? 'row-cancelled'">
+                    <td>
+                      <span class="dish-tag" th:text="${item.category}">主菜</span>
+                      <span th:text="${item.name}">品名</span>
+                      <small class="dish-note" th:if="${item.note}" th:text="${item.note}">備註</small>
+                    </td>
+                    <td class="num" th:text="|× ${item.qty}|">× 1</td>
+                    <td class="num" th:text="'$' + ${item.price * item.qty}">$620</td>
+                    <td class="num discount" th:text="${item.discount > 0} ? |-${item.discount}| : ''"></td>
+                    <td th:text="${item.statusText}">已送達</td>
+                  </tr>
+                </tbody>
+              </table>
+              <p class="order-detail-sum">
+                總價、總折扣、實付金額與結帳或取消的資訊，用 th:text 顯示
+              </p>
+            </div>
+          </div>
+        </div>
+
+           狀態的中文與顏色請在 Java 準備好：
+             order.statusText   用餐中／待結帳／已結帳／已取消
+             order.statusClass  tag-yellow／tag-red／tag-green／tag-gray（對應上面四種）
+             item.statusText    製作中／等待送餐／已送達／已取消
+           明細一開始是 hidden，點一下那一列才展開。這個展開的動作不需要後端，
+           staff-orders.js 改成只做這件事即可（見該檔案第 1 區的提示）。 -->
+      <div id="orderList"></div>
+    </section>
+  </main>
+
+  <div class="staff-toast" id="staffToast" role="status" aria-live="polite"></div>
+</body>
+
+</html>

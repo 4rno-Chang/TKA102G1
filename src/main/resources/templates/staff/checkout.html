@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="zh-Hant" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bistroops 後台｜結帳</title>
+  <link rel="icon" th:href="@{/images/logo-mark.svg}" type="image/svg+xml">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;700&display=swap">
+  <link rel="stylesheet" th:href="@{/css/staff.css}" />
+  <script th:src="@{/js/staff.js}" defer></script>
+  <script th:src="@{/js/staff-checkout.js}" defer></script>
+</head>
+
+<body class="staff-layout">
+  <nav th:replace="~{staff/staff_sidebar :: sidebar('checkout')}"></nav>
+
+  <main class="staff-main">
+    <header class="staff-header">
+      <div>
+        <p class="staff-eyebrow">Checkout</p>
+        <h1 class="staff-title">結帳</h1>
+      </div>
+      <p class="staff-clock" id="staffClock"></p>
+    </header>
+
+    <div class="checkout">
+
+      <!-- 左：尚未結帳的訂單，每一列由 staff-checkout.js 產生 -->
+      <!-- 【Thymeleaf 串接】清單改用 th:each 產生。Controller 把未結帳、未取消的訂單放進 Model（名稱 orders）。
+           把下面 id="checkoutList" 的那行 div 換成：
+
+        <div class="checkout-list" id="checkoutList">
+          <p class="staff-empty" th:if="${#lists.isEmpty(orders)}">目前沒有未結帳的訂單</p>
+
+          <div class="checkout-row" th:each="o : ${orders}"
+               th:classappend="${order != null and order.id == o.id} ? 'selected'">
+            <span class="badge badge-table" th:text="${o.table}">A1</span>
+            <span class="badge" th:text="|${o.people} 人|">2 人</span>
+            <span class="checkout-row-info">
+              <span class="checkout-row-id" th:text="${o.id}">訂單編號</span>
+              <span class="tag" th:classappend="${o.allServed} ? 'tag-red' : 'tag-yellow'"
+                    th:text="${o.allServed} ? '待結帳' : '用餐中'">用餐中</span>
+            </span>
+            <span class="checkout-row-amount" th:text="'$' + ${o.payAmount}">$1,246</span>
+            <a class="staff-btn btn-pay" th:href="@{/staff/checkout(order=${o.id})}">結帳</a>
+          </div>
+        </div>
+
+           「結帳」是連結，網址帶上訂單編號；Controller 收到 order 參數時，
+           把那一筆訂單也放進 Model（名稱 order），右邊就會顯示它的明細。
+           o.allServed（餐點是否全部送達）和 o.payAmount（實付金額）請在 Java 算好。 -->
+      <section class="staff-card checkout-list-card">
+        <h2 class="staff-card-title">未結帳的訂單</h2>
+        <div class="checkout-list" id="checkoutList"></div>
+      </section>
+
+      <!-- 右：餐點明細。按了某一列的「結帳」才會顯示內容 -->
+      <!-- 【Thymeleaf 串接】明細改用 Model 裡的 order 顯示（沒有選訂單時 order 是 null）：
+           1. 「請從左邊選擇」那一行加上 th:if="${order == null}"
+           2. receiptBody 那個 div 的 hidden 改成 th:if="${order != null}"；
+              外層 section 加上 th:classappend="${order != null} ? 'open'"（直立的平板靠這個 class 把明細蓋在清單上）
+           3. 右上角的 × 改成連結 <a class="receipt-close" th:href="@{/staff/checkout}">×</a>
+           4. 桌號、人數、訂單編號、下單時間、總折扣、總價、實付金額都加上 th:text，例如
+                <span class="badge badge-table" th:text="${order.table}">A1</span>
+           5. 餐點那幾列改成（被取消的餐點不要列出來，請在 Java 先排除，或加 th:unless="${item.cancelled}"）：
+                <tr th:each="item : ${order.items}">
+                  <td th:text="${item.name}">品名</td>
+                  <td class="num" th:text="${item.qty}">1</td>
+                  <td class="num" th:text="${item.price}">620</td>
+                  <td class="num discount" th:text="${item.discount > 0} ? |-${item.discount}| : ''"></td>
+                </tr>
+           6. 「還有餐點尚未送達」的提醒：hidden 改成 th:if="${!order.allServed}"
+           7. 刷卡／現金：兩顆按鈕包在同一個表單裡，按哪一顆，Controller 的 method 就收到那顆的 value
+                <form th:action="@{/staff/checkout/pay}" method="post">
+                  <input type="hidden" name="orderId" th:value="${order.id}">
+                  <button type="submit" class="staff-btn btn-card" name="method" value="刷卡">刷卡</button>
+                  <button type="submit" class="staff-btn btn-cash" name="method" value="現金">現金</button>
+                </form>
+              Controller 把訂單標記成已結帳、記下付款方式與時間後，redirect 回 /staff/checkout。
+           改完後，staff-checkout.js 只需要留下「送出前跳確認視窗」的程式（見該檔案第 3 區的提示）。 -->
+      <section class="staff-card receipt" id="receipt">
+        <!-- 還沒選訂單時顯示這段 -->
+        <p class="receipt-empty" id="receiptEmpty">請從左邊選擇要結帳的訂單</p>
+
+        <div class="receipt-body" id="receiptBody" hidden>
+          <button type="button" class="receipt-close" id="receiptClose" aria-label="關閉餐點明細">×</button>
+
+          <div class="receipt-top">
+            <span class="badge badge-table" id="receiptTable">A1</span>
+            <span class="badge" id="receiptPeople">2 人</span>
+            <h2 class="receipt-title">餐點明細</h2>
+          </div>
+          <p class="receipt-meta">訂單編號：<span id="receiptId"></span></p>
+          <p class="receipt-meta">下單時間：<span id="receiptTime"></span></p>
+
+          <table class="receipt-table">
+            <thead>
+              <tr><th>品項</th><th class="num">數量</th><th class="num">單價</th><th class="num">折扣</th></tr>
+            </thead>
+            <!-- 每一道餐點一列，由 staff-checkout.js 產生 -->
+            <tbody id="receiptItems"></tbody>
+          </table>
+
+          <dl class="receipt-sum">
+            <div><dt>總折扣</dt><dd id="receiptDiscount">0</dd></div>
+            <div><dt>總價</dt><dd id="receiptTotal">0</dd></div>
+            <div class="receipt-pay"><dt>實付金額</dt><dd id="receiptPay">0</dd></div>
+          </dl>
+
+          <!-- 這桌還有餐點沒送達時顯示的提醒 -->
+          <p class="receipt-warn" id="receiptWarn" hidden>這桌還有餐點尚未送達</p>
+
+          <div class="receipt-actions">
+            <!-- 會員：還沒做，先留按鈕。
+                 【Thymeleaf 串接】之後要做會員折扣時，把 data-coming-soon 拿掉，
+                 改成輸入會員手機的小表單送到 Controller，由 Controller 算好折扣後回到這一頁 -->
+            <button type="button" class="staff-btn" data-coming-soon="會員">會員</button>
+            <button type="button" class="staff-btn btn-card" data-pay="刷卡">刷卡</button>
+            <button type="button" class="staff-btn btn-cash" data-pay="現金">現金</button>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <div class="staff-toast" id="staffToast" role="status" aria-live="polite"></div>
+</body>
+
+</html>
