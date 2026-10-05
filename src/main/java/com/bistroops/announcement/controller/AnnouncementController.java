@@ -27,20 +27,20 @@ public class AnnouncementController {
 	
 	@GetMapping("")
 	public String index() {
-		return "announcement/index";
+		return "staff/announcement/index";
 	}
     
     @GetMapping("/list")
 	public String list(Model model) {
 		model.addAttribute("annList", annService.getAll());
-		return "announcement/listAllAnns";
+		return "staff/announcement/listAllAnns";
 	} 
     
 	@GetMapping("/search")
 	public String search(@RequestParam(name = "annNo", required = false) String annNoStr, Model model) {
 		if (annNoStr == null || annNoStr.trim().isEmpty()) {
 			model.addAttribute("errorMsg", "請輸入公告編號");
-			return "announcement/index";
+			return "staff/announcement/index";
 		}
 
 		try {
@@ -49,20 +49,20 @@ public class AnnouncementController {
 
 			if (ann == null) {
 				model.addAttribute("errorMsg", "查無此公告編號：" + annNo);
-				return "announcement/index";
+				return "staff/announcement/index";
 			}
 			model.addAttribute("ann", ann);
-			return "announcement/listOneAnn";
+			return "staff/announcement/listOneAnn";
 
 		} catch (NumberFormatException e) {
 			model.addAttribute("errorMsg", "公告編號格式錯誤");
-			return "announcement/index";
+			return "staff/announcement/index";
 		}
 	}
 
 	@GetMapping("/insert")
 	public String insertPage() {
-		return "announcement/insertAnnPage";
+		return "staff/announcement/insertAnnPage";
 	}
 
 	@PostMapping("/insert")
@@ -71,7 +71,7 @@ public class AnnouncementController {
 
 		if (annTitle == null || annTitle.trim().isEmpty()) {
 			model.addAttribute("errorMsg", "請輸入公告標題");
-			return "announcement/index";
+			return "staff/announcement/index";
 		}
 
 		try {
@@ -83,7 +83,7 @@ public class AnnouncementController {
 		} catch (Exception e) {
 			e.printStackTrace();
 			model.addAttribute("errorMsg", "新增公告失敗");
-			return "announcement/index";
+			return "staff/announcement/index";
 		}
 
 		return "redirect:/announcement";
@@ -93,7 +93,7 @@ public class AnnouncementController {
 	public String updatePage(@PathVariable Integer annNo, Model model) {
 		AnnouncementVO ann = annService.getAnnNoQuery(annNo);
 		model.addAttribute("ann", ann);
-		return "announcement/updateAnnPage";
+		return "staff/announcement/updateAnnPage";
 	}
 
 	@PostMapping("/update")
@@ -102,7 +102,7 @@ public class AnnouncementController {
 
 		if (annTitle == null || annTitle.trim().isEmpty()) {
 			model.addAttribute("errorMsg", "請輸入公告標題");
-			return "announcement/index";
+			return "staff/announcement/index";
 		}
 
 		try {
@@ -114,7 +114,7 @@ public class AnnouncementController {
 		} catch (Exception e) {
 			e.printStackTrace();
 			model.addAttribute("errorMsg", "修改公告失敗");
-			return "announcement/index";
+			return "staff/announcement/index";
 		}
 
 		return "redirect:/announcement";
