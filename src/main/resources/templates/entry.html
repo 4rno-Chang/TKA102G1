@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="zh-Hant" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bistroops｜選擇入口</title>
+  <link rel="icon" th:href="@{/images/logo-mark.svg}" type="image/svg+xml">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Noto+Sans+TC:wght@300;400;500;700&family=Noto+Serif+TC:wght@500;600&display=swap">
+  <!-- style.css 提供共用的顏色、字型變數 -->
+  <link rel="stylesheet" th:href="@{/css/style.css}" />
+  <link rel="stylesheet" th:href="@{/css/entry.css}" />
+  <script th:src="@{/js/entry.js}" defer></script>
+</head>
+
+<body class="entry-page">
+  <main class="entry">
+    <img class="entry-logo" th:src="@{/images/logo-dark.svg}" alt="bistroops">
+
+    <p class="entry-eyebrow" id="entryGreeting">Welcome</p>
+    <h1 class="entry-title">請選擇要進入的系統</h1>
+    <span class="entry-line" aria-hidden="true"></span>
+
+    <div class="entry-choices">
+      <!-- 前台：顧客首頁 -->
+      <a class="entry-card card-front" th:href="@{/bistroops}" data-key="1">
+        <span class="card-en">Guest</span>
+        <span class="card-name">前台</span>
+        <span class="card-desc">顧客首頁・預約訂位・瀏覽菜單</span>
+        <span class="card-go">進入前台 <span aria-hidden="true">→</span></span>
+        <kbd class="card-key">1</kbd>
+      </a>
+
+      <!-- 後台：員工／管理員 -->
+      <a class="entry-card card-staff" th:href="@{/staff}" data-key="2">
+        <span class="card-en">Staff</span>
+        <span class="card-name">後台</span>
+        <span class="card-desc">員工・管理員使用</span>
+        <span class="card-go">進入後台 <span aria-hidden="true">→</span></span>
+        <kbd class="card-key">2</kbd>
+      </a>
+    </div>
+
+    <p class="entry-hint">也可以按鍵盤 <kbd>1</kbd> / <kbd>2</kbd> 快速進入</p>
+  </main>
+</body>
+
+</html>
