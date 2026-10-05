@@ -661,3 +661,57 @@ img { display: block; width: 100%; height: 100%; object-fit: cover; }
   .hero-text .btn-outline { align-self: stretch; }
   .carousel { height: 260px; }
 }
+
+
+/* ===== 已登入會員按鈕 ===== */
+
+.member-menu-toggle {
+    /* 清掉 button 原生樣式 */
+    appearance: none;
+    -webkit-appearance: none;
+    border: 0;
+    padding: 0;
+    margin: 0;
+    background: none;
+
+    /* 完全比照 .nav-list a */
+    position: relative;
+    color: var(--color-text);
+    font-family: var(--font-sans);
+    font-size: 15px;
+    font-weight: 400;
+    line-height: 1.8;
+    letter-spacing: 2px;
+
+    cursor: pointer;
+    white-space: nowrap;
+
+    transition: color var(--transition);
+}
+
+
+/* 右上角會員中心CSS */
+.member-menu-toggle::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    bottom: -7px;
+
+    width: 0;
+    height: 2px;
+
+    background: var(--color-gold);
+    transition: width var(--transition);
+}
+
+
+
+.member-menu-toggle:hover {
+    color: var(--color-primary);
+}
+
+
+
+.member-menu-toggle:hover::after {
+    width: 100%;
+}
