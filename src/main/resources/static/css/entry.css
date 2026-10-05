@@ -1,0 +1,178 @@
+/* =========================================================
+   入口選擇頁（localhost:8080）
+   顏色、字型變數來自 style.css 的 :root
+   ========================================================= */
+
+.entry-page {
+  margin: 0;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 16px;
+  box-sizing: border-box;
+  background:
+    radial-gradient(ellipse at top, var(--lux-champagne) 0%, transparent 60%),
+    var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+}
+
+.entry {
+  width: 100%;
+  max-width: 760px;
+  text-align: center;
+}
+
+.entry-logo {
+  height: 44px;
+  margin-bottom: 28px;
+}
+
+.entry-eyebrow {
+  margin: 0 0 8px;
+  font-family: var(--font-serif);
+  font-size: 1.25rem;
+  font-style: italic;
+  letter-spacing: .08em;
+  color: var(--color-primary);
+}
+
+.entry-title {
+  margin: 0;
+  font-family: "Noto Serif TC", var(--font-serif);
+  font-size: clamp(1.5rem, 4vw, 2rem);
+  font-weight: 600;
+  letter-spacing: .12em;
+}
+
+.entry-line {
+  display: block;
+  width: 64px;
+  height: 1px;
+  margin: 24px auto 40px;
+  background: var(--color-gold);
+}
+
+/* ---------- 兩張卡片 ---------- */
+.entry-choices {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+.entry-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 44px 24px 36px;
+  border: 1px solid var(--lux-line);
+  text-decoration: none;
+  overflow: hidden;
+  transition: transform var(--transition), box-shadow var(--transition);
+}
+
+/* 頂端的金色漸層粗線：滑過時出現 */
+.entry-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 4px;
+  background: var(--lux-gold-gradient);
+  transform: scaleX(0);
+  transition: transform var(--transition);
+}
+
+.entry-card:hover,
+.entry-card:focus-visible {
+  transform: translateY(-6px);
+  box-shadow: 0 18px 40px rgba(35, 32, 28, .14);
+  outline: none;
+}
+
+.entry-card:hover::before,
+.entry-card:focus-visible::before,
+.entry-card.is-pressed::before {
+  transform: scaleX(1);
+}
+
+.card-en {
+  font-family: var(--font-serif);
+  font-size: .95rem;
+  font-style: italic;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+}
+
+.card-name {
+  font-family: "Noto Serif TC", var(--font-serif);
+  font-size: 1.75rem;
+  font-weight: 600;
+  letter-spacing: .3em;
+  padding-left: .3em; /* 抵銷 letter-spacing，讓字真正置中 */
+}
+
+.card-desc {
+  font-size: .9rem;
+  letter-spacing: .05em;
+}
+
+.card-go {
+  margin-top: 14px;
+  padding: 8px 22px;
+  border: 1px solid currentColor;
+  font-size: .85rem;
+  letter-spacing: .15em;
+}
+
+.card-key {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  font-family: var(--font-serif);
+  font-size: .8rem;
+  opacity: .5;
+}
+
+/* 前台：香檳色底 */
+.card-front {
+  background: var(--color-bg-light);
+  color: var(--color-text);
+}
+.card-front .card-en,
+.card-front .card-go { color: var(--color-primary); }
+.card-front .card-desc { color: var(--color-text-light); }
+
+/* 後台：深墨色底 + 淺金字 */
+.card-staff {
+  background: var(--lux-ink);
+  color: var(--color-white);
+}
+.card-staff .card-en,
+.card-staff .card-go { color: var(--lux-gold-light); }
+.card-staff .card-desc { color: rgba(255, 255, 255, .65); }
+
+/* ---------- 底部提示 ---------- */
+.entry-hint {
+  margin-top: 32px;
+  font-size: .8rem;
+  color: var(--color-text-light);
+}
+
+.entry-hint kbd {
+  display: inline-block;
+  min-width: 1.4em;
+  padding: 1px 6px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-light);
+  font-family: var(--font-sans);
+}
+
+/* ---------- 手機：上下排 ---------- */
+@media (max-width: 640px) {
+  .entry-choices { grid-template-columns: 1fr; gap: 16px; }
+  .entry-card { padding: 32px 20px 28px; }
+  .entry-hint { display: none; } /* 手機沒有鍵盤 */
+}

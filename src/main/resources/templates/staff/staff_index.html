@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="zh-Hant" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bistroops 後台｜主頁</title>
+  <link rel="icon" th:href="@{/images/logo-mark.svg}" type="image/svg+xml">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;700&display=swap">
+  <link rel="stylesheet" th:href="@{/css/staff.css}" />
+  <script th:src="@{/js/staff.js}" defer></script>
+</head>
+
+<body class="staff-layout">
+  <!-- 左邊選單（共用），括號內是目前所在的頁面 -->
+  <nav th:replace="~{staff/staff_sidebar :: sidebar('home')}"></nav>
+
+  <main class="staff-main">
+    <header class="staff-header">
+      <div>
+        <p class="staff-eyebrow">Bistroops Staff</p>
+      </div>
+      <!-- 日期與時間由 staff.js 填入 -->
+      <p class="staff-clock" id="staffClock"></p>
+    </header>
+
+    <!-- 常用功能的大按鈕 -->
+    <section class="home-grid">
+      <!-- 每個大按鈕上方的圖示，和左邊選單同一項的圖示相同（從 staff_sidebar.html 複製過來的） -->
+      <a class="home-tile tile-red" th:href="@{/staff/workboard}">
+        <svg class="home-tile-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M9 5V3h6v2M8 11h8M8 15h5"/></svg>
+        <span class="home-tile-title">工作面板</span>
+        <span class="home-tile-desc">內場出餐、外場送餐</span>
+      </a>
+      <a class="home-tile tile-yellow" th:href="@{/staff/checkout}">
+        <svg class="home-tile-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15 9.5c-.5-1-1.600-1.500-3-1.500-1.700 0-3 .8-3 2s1.300 1.700 3 2 3 .8 3 2-1.300 2-3 2c-1.400 0-2.500-.5-3-1.500M12 6v2M12 16v2"/></svg>
+        <span class="home-tile-title">結帳</span>
+        <span class="home-tile-desc">查看餐點明細並收款</span>
+      </a>
+      <a class="home-tile tile-green" th:href="@{/staff/orders}">
+        <svg class="home-tile-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/></svg>
+        <span class="home-tile-title">訂單管理</span>
+        <span class="home-tile-desc">查詢所有訂單</span>
+      </a>
+    </section>
+
+    <!-- 訂候位管理：整個長條都可以點，點了前往訂候位的畫面。
+         訂候位的頁面還沒做，所以先用 data-coming-soon（點了會跳出「尚未開放」）。
+         頁面做好後，把下面的 <button type="button" ... data-coming-soon="訂候位"> 換成
+           <a class="staff-card home-bar" th:href="@{/staff/訂候位的網址}">
+         結尾的 </button> 換成 </a> 即可。
+
+         【Thymeleaf 串接】裡面的時間與組數目前是寫死的示範數字。
+         Controller 把資料放進 Model 後，在那幾個 <strong> 加上 th:text，例如
+           <strong th:text="${nextRoundTime}">18:00</strong>
+           <strong th:text="${nextRoundCount}">6</strong>
+           <strong th:text="${waitingCount}">3</strong>
+           <strong th:text="${callingNumber}">12</strong> -->
+    <button type="button" class="staff-card home-bar" data-coming-soon="訂候位">
+      <span class="home-bar-title">訂候位管理</span>
+      <span class="home-bar-stats">
+        <span class="home-bar-stat">最近一輪訂位（<strong>18:00</strong>）共 <strong class="home-bar-num">6</strong> 組</span>
+        <span class="home-bar-stat">目前候位 <strong class="home-bar-num">3</strong> 組</span>
+        <span class="home-bar-stat">目前叫號 <strong class="home-bar-num">12</strong> 號</span>
+      </span>
+      <span class="home-bar-arrow" aria-hidden="true">›</span>
+    </button>
+
+    <!-- 示範資料的說明。
+         【Thymeleaf 串接】接上資料庫後，這整個 section 可以刪掉，
+         staff.js 最下面第 6 區「重設示範資料」的程式也一起刪掉 -->
+    <section class="staff-card home-note">
+      <h2 class="staff-card-title">目前使用示範資料</h2>
+      <p>後台的訂單是寫在 staff.js 裡的假資料，操作結果只會暫存在這台裝置的瀏覽器。</p>
+      <button type="button" class="staff-btn" id="resetDemo">重設示範資料</button>
+    </section>
+  </main>
+
+  <div class="staff-toast" id="staffToast" role="status" aria-live="polite"></div>
+</body>
+
+</html>
