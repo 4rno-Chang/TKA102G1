@@ -34,7 +34,7 @@ public class MemberController {
 	        redirectAttributes.addFlashAttribute("regError", "請輸入手機號碼");
 	        redirectAttributes.addFlashAttribute("startView", "register");
 
-	        return "redirect:/";
+	        return "redirect:/bistroops";
 	    }
 
 	    // 手機號碼必須為 09 開頭，共 10 碼
@@ -43,7 +43,7 @@ public class MemberController {
 	        redirectAttributes.addFlashAttribute("regError", "手機號碼格式錯誤");
 	        redirectAttributes.addFlashAttribute("startView", "register");
 
-	        return "redirect:/";
+	        return "redirect:/bistroops";
 	    }
 
 	    // 密碼不可空白
@@ -52,7 +52,7 @@ public class MemberController {
 	        redirectAttributes.addFlashAttribute("regError", "請輸入密碼");
 	        redirectAttributes.addFlashAttribute("startView", "register");
 
-	        return "redirect:/";
+	        return "redirect:/bistroops";
 	    }
 
 	    // 呼叫 Service 註冊
@@ -72,7 +72,7 @@ public class MemberController {
 	                "login"
 	        );
 
-	        return "redirect:/";
+	        return "redirect:/bistroops";
 
 	    } else {
 
@@ -87,7 +87,7 @@ public class MemberController {
 	                "register"
 	        );
 
-	        return "redirect:/";
+	        return "redirect:/bistroops";
 		    }
 		}
 			// 檢查手機號碼是否已註冊
@@ -116,12 +116,12 @@ public class MemberController {
 	    	//登入成功，把會員資料存進Session
 	        session.setAttribute("member", member);
 	        
-	        return "redirect:/";
+	        return "redirect:/bistroops";
 	    	
 	    } else {
 	    	
 	    	//登入失敗
-	        return "redirect:/";
+	        return "redirect:/bistroops";
 	    }
 	}
 	
@@ -171,7 +171,7 @@ public class MemberController {
 
 	    //沒有登入
 	    if (member == null) {
-	        return "redirect:/";
+	    	return "redirect:/bistroops";
 	    }
 
 	    //取得目前登入會員的會員編號
@@ -213,7 +213,7 @@ public class MemberController {
 	        
 	        
 	    // 修改完回首頁
-	    return "redirect:/";
+	    return "redirect:/bistroops";
 	    
 	}
 	
