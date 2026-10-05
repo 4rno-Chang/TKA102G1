@@ -425,8 +425,8 @@ function showAuthView(name) {
   // 每次切換都把表單與提示訊息清乾淨
   [loginForm, registerForm, forgotForm, resetForm].forEach(form => form.reset());
   authModal.querySelectorAll('.form-msg').forEach(msg => { msg.hidden = true; });
-  resetRegSendCode();
-  resetForgotSendCode();
+  //resetRegSendCode();
+  //resetForgotSendCode();
   if (name === 'login') refreshCaptcha();
   authModal.scrollTop = 0;
 }
@@ -460,38 +460,28 @@ const loginError = $('loginError');
 async function refreshCaptcha() {
   captchaImg.textContent = await memberApi.newCaptcha();
 }
+
 $('captchaRefresh').addEventListener('click', refreshCaptcha);
 
-loginForm.addEventListener('submit', async e => {
+
+// ---------- 登入送出 ----------
+loginForm.addEventListener('submit', e => {
   e.preventDefault();
+
   const data = {
     phone: loginForm.phone.value.trim(),
     password: loginForm.password.value,
     captcha: loginForm.captcha.value.trim()
   };
+
   if (!data.phone || !data.password || !data.captcha) {
     setMsg(loginError, '※請完整填寫手機、密碼與驗證碼', 'error');
     return;
   }
 
-  // 【Thymeleaf 串接】登入
-  //   上面的欄位檢查保留。從這裡到函式結尾（showToast('登入成功') 為止）整段換成一行：
-  //     loginForm.submit();
-  //   表單就會送到 th:action 指定的 Controller。Controller 要做的事：
-  //     成功：session.setAttribute("loginMember", 會員物件)，帶 toastMsg="登入成功" 後 redirect 回頁面
-  //     失敗：帶 loginError="※帳號或密碼錯誤"（或 "※驗證碼錯誤"）和 startView="login" 回到頁面
-  const result = await withSubmitLock(loginForm, () => memberApi.login(data));
-  if (!result.ok) {
-    setMsg(loginError, result.message || '※帳號或密碼錯誤', 'error');
-    loginForm.captcha.value = '';
-    refreshCaptcha();
-    return;
-  }
-
-  closeModal(authModal);
-  setLoggedIn(result.name);
-  showToast('登入成功');
+  loginForm.submit();
 });
+
 
 // 快速登入：後端完成後改成導向各平台的登入網址
 // 例如 location.href = '/oauth2/authorization/' + provider;
@@ -506,76 +496,81 @@ authModal.querySelectorAll('[data-social]').forEach(btn => {
 const regPhoneMsg = $('regPhoneMsg');
 const regError = $('regError');
 const isRegPasswordValid = setupPasswordCheck(registerForm);
-let regPhoneTaken = false;
 
-// 檢查手機是否已被註冊，並在電話欄位下方顯示結果
-async function checkRegPhone() {
-  const phone = registerForm.phone.value.trim();
-  if (phone === '') { setMsg(regPhoneMsg, ''); return false; }
-  if (!PHONE_RE.test(phone)) {
-    setMsg(regPhoneMsg, '※請輸入正確的手機號碼（09 開頭共 10 碼）', 'error');
-    return false;
-  }
-  // 【Thymeleaf 串接】離開輸入框時檢查手機是否已註冊
-  //   和「發送驗證碼」一樣要在背景送出請求。Controller 加 @ResponseBody 回傳 String，
-  //   已註冊回 "TAKEN"、可註冊回 "OK"，然後把下面那行換成：
-  //
-  //     const text = await fetch('/member/checkPhone?phone=' + phone).then(res => res.text());
-  //     regPhoneTaken = text === 'TAKEN';
-  //
-  //   如果想先不做這個功能：把下面那行改成 regPhoneTaken = false; 即可，
-  //   手機重複的情況改由註冊送出後，Controller 用 regError 回報。
-  regPhoneTaken = await memberApi.isPhoneRegistered(phone);
-  // 等待期間使用者可能又改了號碼，這時就不顯示舊的結果
-  if (phone !== registerForm.phone.value.trim()) return false;
-  if (regPhoneTaken) setMsg(regPhoneMsg, '☒ 手機號碼已被註冊', 'error');
-  else setMsg(regPhoneMsg, '☑ 可註冊的手機號碼', 'ok');
-  return !regPhoneTaken;
-}
-// 使用者離開電話輸入框時檢查
-registerForm.phone.addEventListener('blur', checkRegPhone);
+// 離開手機欄位時，先檢查格式
+registerForm.memTel.addEventListener('blur', () => {
 
-const resetRegSendCode = setupSendCode({
-  button: $('regSendCode'),
-  getPhone: () => registerForm.phone.value.trim(),
-  purpose: 'register',
-  msgEl: regPhoneMsg
-});
+  const phone = registerForm.memTel.value.trim();
 
-registerForm.addEventListener('submit', async e => {
-  e.preventDefault();
-  setMsg(regError, '');
-
-  const passwordValid = isRegPasswordValid();
-  const phoneValid = await checkRegPhone();
-  const code = registerForm.code.value.trim();
-  if (registerForm.phone.value.trim() === '') {
-    setMsg(regPhoneMsg, '※請輸入手機號碼', 'error');
-  }
-  if (!phoneValid || !passwordValid) return;
-  if (code === '') { setMsg(regError, '※請輸入驗證碼', 'error'); return; }
-
-  // 【Thymeleaf 串接】註冊
-  //   上面的欄位檢查保留。從這裡到函式結尾整段換成一行：
-  //     registerForm.submit();
-  //   Controller 要做的事：
-  //     成功：帶 startView="login"、toastMsg="註冊成功，請登入" 後 redirect 回頁面
-  //     失敗：帶 regError="註冊失敗！請嘗試重新輸入" 和 startView="register" 回到頁面
-  //   Controller 會收到 phone、code、password、password2 四個欄位（input 的 name）
-  const phone = registerForm.phone.value.trim();
-  const result = await withSubmitLock(registerForm, () => memberApi.register({
-    phone, code, password: registerForm.password.value
-  }));
-  if (!result.ok) {
-    setMsg(regError, result.message || '註冊失敗！請嘗試重新輸入', 'error');
+  if (phone === '') {
+    setMsg(regPhoneMsg, '');
     return;
   }
 
-  showAuthView('login');
-  loginForm.phone.value = phone;   // 幫使用者先填好剛註冊的手機
-  showToast('註冊成功，請登入');
+  if (!PHONE_RE.test(phone)) {
+    setMsg(
+      regPhoneMsg,
+      '※請輸入正確的手機號碼（09 開頭共 10 碼）',
+      'error'
+    );
+    return;
+  }
+
+  setMsg(regPhoneMsg, '☑ 手機號碼格式正確', 'ok');
 });
 
+
+// 註冊送出
+registerForm.addEventListener('submit', async e => {
+
+  // 先攔住，做前端檢查
+  e.preventDefault();
+
+  setMsg(regError, '');
+
+  const phone = registerForm.memTel.value.trim();
+  const password = registerForm.memPassword.value;
+  const password2 = registerForm.password2.value;
+
+  // 1. 手機
+  if (phone === '') {
+    setMsg(regPhoneMsg, '※請輸入手機號碼', 'error');
+    return;
+  }
+
+  if (!PHONE_RE.test(phone)) {
+    setMsg(
+      regPhoneMsg,
+      '※請輸入正確的手機號碼（09 開頭共 10 碼）',
+      'error'
+    );
+    return;
+  }
+
+  // 2. 密碼規則
+  if (!isRegPasswordValid()) {
+    return;
+  }
+
+  // 3. 再次輸入密碼
+  if (password !== password2) {
+    setMsg(regError, '※兩次輸入的密碼不相同', 'error');
+    return;
+  }
+
+  // 4. 到後端檢查手機號碼是否已註冊
+  const result = await fetch(
+    '/member/checkPhone?memTel=' + encodeURIComponent(phone)
+  ).then(res => res.text());
+
+  if (result === 'TAKEN') {
+    setMsg(regError, '手機號碼已註冊', 'error');
+    return;
+  }
+
+  // 手機號碼沒有被註冊，正式送出註冊表單
+  registerForm.submit();
+ 	 });
 // ---------- 忘記密碼：步驟 1 身分驗證 ----------
 const forgotPhoneMsg = $('forgotPhoneMsg');
 const forgotNotRegistered = $('forgotNotRegistered');
@@ -775,25 +770,28 @@ birthMonth.addEventListener('change', fillDays);
 //       fillDays();
 //       birthDay.value = d || '';
 //     }
-async function loadProfile() {
+function loadProfile() {
   setMsg(profileError, '');
-  const profile = await memberApi.getProfile();
-  profileName.value = profile.name || '';
-  profileForm.email.value = profile.email || '';
-  profileForm.phone.value = profile.phone || '';
 
-  const [y, m, d] = (profile.birthday || '').split('-').map(Number);
+  const [y, m, d] = (profileForm.dataset.birthday || '')
+    .split('-')
+    .map(Number);
+
   birthYear.value = y || '';
   birthMonth.value = m || '';
+
   fillDays();
+
   birthDay.value = d || '';
 }
 
-profileForm.addEventListener('submit', async e => {
+profileForm.addEventListener('submit', e => {
   e.preventDefault();
   setMsg(profileError, '');
 
   const email = profileForm.email.value.trim();
+
+  // Email 有填才檢查格式
   if (email !== '' && !EMAIL_RE.test(email)) {
     setMsg(profileError, '※Email 格式不正確', 'error');
     return;
@@ -802,30 +800,14 @@ profileForm.addEventListener('submit', async e => {
   // 生日三個欄位要嘛都選、要嘛都不選
   const parts = [birthYear.value, birthMonth.value, birthDay.value];
   const filled = parts.filter(Boolean).length;
+
   if (filled !== 0 && filled !== 3) {
     setMsg(profileError, '※請完整選擇生日的年、月、日', 'error');
     return;
   }
-  const birthday = filled === 3
-    ? `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`
-    : '';
 
-  // 【Thymeleaf 串接】儲存個人資料
-  //   上面的欄位檢查保留。從這裡到函式結尾整段換成一行：
-  //     profileForm.submit();
-  //   Controller 會收到 name、email、phone、birthYear、birthMonth、birthDay（生日是三個分開的欄位，
-  //   沒選的時候是空字串）。上面組好的 birthday 變數就用不到了，可以連同那幾行一起刪掉。
-  //   Controller 要做的事：更新資料庫，並記得把 session 裡的 loginMember 也換成新的
-  //     成功：帶 startTab="profile"、toastMsg="修改成功" 後 redirect 回頁面
-  //     失敗：帶 profileError="儲存失敗！請稍後再試" 和 startTab="profile" 回到頁面
-  const name = profileName.value.trim();
-  const result = await withSubmitLock(profileForm, () => memberApi.updateProfile({ name, email, birthday }));
-  if (!result.ok) {
-    setMsg(profileError, result.message || '儲存失敗！請稍後再試', 'error');
-    return;
-  }
-  setLoggedIn(name);
-  showToast('修改成功');
+  // 驗證通過，正式送到 Controller
+  profileForm.submit();
 });
 
 // ---------- 更改密碼 ----------
@@ -1042,11 +1024,16 @@ async function loadCoupons() {
 }
 
 
-/* ========== 7. 頁面載入後 ==========
+ /*========== 7. 頁面載入後 ==========
    【Thymeleaf 串接】表單送出後頁面會重新載入，對話框會關上。
    Controller 用 startView / startTab / toastMsg 告訴畫面「載入後要打開什麼」，
    HTML 會把這三個值寫在最外層 div 的 data- 屬性上（見 member_modals.html 最上面的提示），
    由下面這段程式讀出來處理。開始串接第一個表單時，把這段的註解拿掉即可：
+   
+   注意：showMemberTab('profile') 會呼叫 loadProfile()，而 loadProfile() 目前第一行的
+      setMsg(profileError, '') 會把 Controller 送來的 profileError 清掉，
+      所以 loadProfile() 要先照它上面的提示改好。
+      ==================================== */
 
      const startInfo = authModal.parentElement.dataset;   // 就是 th:fragment="modals" 那個 div
 
@@ -1062,10 +1049,6 @@ async function loadCoupons() {
        showMemberTab(startInfo.startTab);
      }
      if (startInfo.toast) showToast(startInfo.toast);
-
-   注意：showMemberTab('profile') 會呼叫 loadProfile()，而 loadProfile() 目前第一行的
-   setMsg(profileError, '') 會把 Controller 送來的 profileError 清掉，
-   所以 loadProfile() 要先照它上面的提示改好。
-   ==================================== */
-
+   
+   
 })();

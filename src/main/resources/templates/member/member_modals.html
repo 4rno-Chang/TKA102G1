@@ -23,7 +23,8 @@
   值是 null 的時候 Thymeleaf 不會輸出該屬性，所以平常不受影響。
   讀取這三個屬性的程式在 member.js 最下面的「7. 頁面載入後」。
 -->
-<div th:fragment="modals">
+<div th:fragment="modals"
+     th:attr="data-start-view=${startView}, data-start-tab=${startTab}, data-toast=${toastMsg}">
 
   <!-- =====================================================
        對話框 1：登入／註冊／忘記密碼（同一個對話框內切換畫面）
@@ -50,7 +51,7 @@
           4. member.js 的修改見「4. 登入」。
           下面其他表單都是同樣的做法：form 加 th:action 和 method="post"、錯誤訊息加 th:text 和 th:hidden。
         -->
-        <form id="loginForm" novalidate>
+        <form id="loginForm" th:action="@{/member/login}" method="post" novalidate>
           <div class="field">
             <label for="loginPhone">手機</label>
             <input type="tel" id="loginPhone" name="phone" inputmode="numeric" maxlength="10" placeholder="09XXXXXXXX" autocomplete="tel">
@@ -122,11 +123,11 @@
           3.「發送驗證碼」和「手機是否已註冊」不會重新載入頁面，做法寫在 member.js 的
              「3-3. setupSendCode」和「4. 註冊 checkRegPhone」。
         -->
-        <form id="registerForm" novalidate>
+       <form id="registerForm" th:action="@{/member/register}" method="post" novalidate>
           <div class="field">
             <label for="regPhone">電話</label>
             <div class="field-row">
-              <input type="tel" id="regPhone" name="phone" inputmode="numeric" maxlength="10" placeholder="09XXXXXXXX" autocomplete="tel">
+              <input type="tel" id="regPhone" name="memTel" inputmode="numeric" maxlength="10" placeholder="09XXXXXXXX" autocomplete="tel">
               <button type="button" class="btn-small" id="regSendCode">發送驗證碼</button>
             </div>
             <!-- 離開輸入框時顯示「可註冊／已被註冊」，發送驗證碼的結果也顯示在這裡 -->
@@ -141,7 +142,7 @@
           <div class="field">
             <label for="regPassword">密碼</label>
             <div class="input-wrap">
-              <input type="password" id="regPassword" name="password" data-pw autocomplete="new-password">
+              <input type="password" id="regPassword" name="memPassword" data-pw autocomplete="new-password">
               <button type="button" class="pw-toggle" data-pw-toggle aria-label="顯示密碼">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/><line class="slash" x1="4" y1="4" x2="20" y2="20"/></svg>
               </button>
@@ -164,7 +165,7 @@
           </div>
 
           <!-- 註冊失敗提示（顯示在按鈕上方） -->
-          <p class="form-msg error center" id="regError" hidden></p>
+          <p class="form-msg error center" id="regError" th:text="${regError}" th:hidden="${regError == null}"></p>
 
           <button type="submit" class="btn-solid">註冊成為會員</button>
         </form>
@@ -266,19 +267,20 @@
     <div class="modal-dialog modal-dialog-member" role="dialog" aria-modal="true" aria-label="會員中心" tabindex="-1">
       <button type="button" class="modal-close" data-close-modal aria-label="關閉">×</button>
 
-      <header class="member-head">
-        <p class="eyebrow">Member Center</p>
-        <!-- 【Thymeleaf 串接】會員姓名
-          下面那行改成：
-            <h2 class="member-greeting" id="memberGreeting" th:text="|${session.loginMember?.name ?: '會員'} 您好～|">會員 您好～</h2>
-
-          重要：這個對話框在「沒登入」時也會被放進頁面（只是隱藏），這時 session.loginMember 是 null。
-          所以會員中心裡取會員資料時，一律寫成 loginMember?.name（多一個問號），
-          意思是「loginMember 是 null 就不要往下取」。少了問號，沒登入的人一開頁面就會出現錯誤頁。
-        -->
-        <h2 class="member-greeting" id="memberGreeting">會員 您好～</h2>
-      </header>
-
+		<div class="member-head">
+	    <p class="eyebrow">MEMBER CENTER</p>
+	
+	    <h2 class="member-greeting" id="memberGreeting">
+	        <span th:if="${session.member != null and session.member.memName != null and !session.member.memName.isBlank()}"
+	              th:text="${session.member.memName}"></span>
+	
+	        <span th:if="${session.member != null and (session.member.memName == null or session.member.memName.isBlank())}"
+	              th:text="${session.member.memTel}"></span>
+	
+	        會員，你好
+	    </h2>
+		</div>
+		
       <div class="member-body">
         <!-- 左側選單 -->
         <nav class="member-nav" aria-label="會員中心選單">
@@ -308,21 +310,21 @@
                  手機是登入帳號不開放修改，Controller 請忽略送來的 phone，改用 session 裡的。
               5. member.js 的修改見「6. 個人資料」。
             -->
-            <form id="profileForm" novalidate>
+            <form id="profileForm" th:action="@{/member/update}" method="post"  th:attr="data-birthday=${session.member?.memBirth}" novalidate>
               <div class="field">
                 <label for="profileName">姓名</label>
-                <input type="text" id="profileName" name="name" maxlength="20" autocomplete="name">
+                <input type="text" id="profileName" name="name" maxlength="20" autocomplete="name" th:value="${session.member?.memName}">
               </div>
 
               <div class="field">
                 <label for="profileEmail">Email</label>
-                <input type="email" id="profileEmail" name="email" placeholder="填寫可獲取最新消息通知" autocomplete="email">
+                <input type="email" id="profileEmail" name="email" placeholder="填寫可獲取最新消息通知" autocomplete="email" th:value="${session.member?.memMail}">
               </div>
 
               <div class="field">
                 <label for="profilePhone">手機</label>
                 <!-- 手機是登入帳號，這裡只顯示不開放修改 -->
-                <input type="tel" id="profilePhone" name="phone" readonly>
+                <input type="tel" id="profilePhone" name="phone" th:value="${session.member?.memTel}" readonly>
               </div>
 
               <div class="field">
