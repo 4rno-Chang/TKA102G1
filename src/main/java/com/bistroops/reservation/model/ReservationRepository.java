@@ -30,4 +30,29 @@ public interface ReservationRepository extends JpaRepository<ReservationVO, Long
 	List<ReservationVO> search(@Param("startTime") LocalDateTime startTime, @Param("endTime") LocalDateTime endTime,
 			@Param("status") String status);
 
+	
+	
+	@Query("""
+		    SELECT COUNT(r)
+		    FROM ReservationVO r
+		    WHERE r.rsvDt.rsvDtNo = :rsvDtNo
+		      AND r.seatType.seatTypeNo = :seatTypeNo
+		      AND r.rsvStatus IN ('預約', '實到')
+		    """)
+		long countActiveByTimeAndSeatType(
+		        @Param("rsvDtNo") Long rsvDtNo,
+		        @Param("seatTypeNo") Integer seatTypeNo);
+	
+	
+	@Query("""
+		    SELECT COUNT(r)
+		    FROM ReservationVO r
+		    WHERE r.member.memNo = :memNo
+		      AND r.rsvDt.rsvDtNo = :rsvDtNo
+		      AND r.rsvStatus IN ('預約', '實到')
+		    """)
+		long countActiveByMemberAndTime(
+		        @Param("memNo") Integer memNo,
+		        @Param("rsvDtNo") Long rsvDtNo);
+	
 }
