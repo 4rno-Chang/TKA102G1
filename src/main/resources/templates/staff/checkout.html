@@ -11,9 +11,9 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet"
     href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;700&display=swap">
-  <link rel="stylesheet" th:href="@{/css/staff.css}" />
-  <script th:src="@{/js/staff.js}" defer></script>
-  <script th:src="@{/js/staff-checkout.js}" defer></script>
+  <link rel="stylesheet" th:href="@{/css/staff/staff.css}" />
+  <script th:src="@{/js/staff/staff.js}" defer></script>
+  <script th:src="@{/js/staff/staff-checkout.js}" defer></script>
 </head>
 
 <body class="staff-layout">
@@ -40,7 +40,6 @@
           <div class="checkout-row" th:each="o : ${orders}"
                th:classappend="${order != null and order.id == o.id} ? 'selected'">
             <span class="badge badge-table" th:text="${o.table}">A1</span>
-            <span class="badge" th:text="|${o.people} 人|">2 人</span>
             <span class="checkout-row-info">
               <span class="checkout-row-id" th:text="${o.id}">訂單編號</span>
               <span class="tag" th:classappend="${o.allServed} ? 'tag-red' : 'tag-yellow'"
@@ -65,9 +64,9 @@
            2. receiptBody 那個 div 的 hidden 改成 th:if="${order != null}"；
               外層 section 加上 th:classappend="${order != null} ? 'open'"（直立的平板靠這個 class 把明細蓋在清單上）
            3. 右上角的 × 改成連結 <a class="receipt-close" th:href="@{/staff/checkout}">×</a>
-           4. 桌號、人數、訂單編號、下單時間、總折扣、總價、實付金額都加上 th:text，例如
+           4. 桌號、訂單編號、下單時間、總折扣、總價、實付金額都加上 th:text，例如
                 <span class="badge badge-table" th:text="${order.table}">A1</span>
-           5. 餐點那幾列改成（被取消的餐點不要列出來，請在 Java 先排除，或加 th:unless="${item.cancelled}"）：
+           5. 餐點那幾列改成（被取消的餐點不要列出來，請在 Java 先排除，或加 th:unless="${item.status == '已取消'}"）：
                 <tr th:each="item : ${order.items}">
                   <td th:text="${item.name}">品名</td>
                   <td class="num" th:text="${item.qty}">1</td>
@@ -92,7 +91,6 @@
 
           <div class="receipt-top">
             <span class="badge badge-table" id="receiptTable">A1</span>
-            <span class="badge" id="receiptPeople">2 人</span>
             <h2 class="receipt-title">餐點明細</h2>
           </div>
           <p class="receipt-meta">訂單編號：<span id="receiptId"></span></p>

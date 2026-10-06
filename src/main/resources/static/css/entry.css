@@ -9,7 +9,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 48px 16px;
+  padding: 30px 16px;
   box-sizing: border-box;
   background:
     radial-gradient(ellipse at top, var(--lux-champagne) 0%, transparent 60%),
@@ -25,8 +25,8 @@
 }
 
 .entry-logo {
-  height: 44px;
-  margin-bottom: 28px;
+  width: 500px;
+  margin-bottom: 0px;
 }
 
 .entry-eyebrow {

@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="zh-Hant" xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<!--
+  前台共用的「頁首」和「頁尾」（內容和 frontend_index.html 的相同）
+  預約訂位、候位的頁面都是引用這裡，所以選單要增減項目時，改這一個檔案就好。
+
+  使用方式：在頁面的 <body> 裡
+    頁首：<header th:replace="~{front/front_layout :: header('reservation')}"></header>
+          括號內填「目前是哪一頁」，對應的選單項目會變成選取中的樣子。
+          可以填：reservation（預約訂位）／waiting（候位狀況）；都不是就填 ''（兩個單引號）
+    頁尾：<footer th:replace="~{front/front_layout :: footer}"></footer>
+    回到頂端的按鈕：<button th:replace="~{front/front_layout :: backToTop}"></button>
+
+  頁面還需要自己載入：
+    style.css、member.css，再加上自己的樣式（訂位用 reservation.css、候位用 waiting.css）
+    member.js（會員登入），再加上自己的程式（訂位用 reservation.js、候位用 waiting.js；選單開合、頁尾年份也寫在裡面）
+    並在 <body> 最前面放會員對話框：<div th:replace="~{front/member/member_modals :: modals}"></div>
+
+  【Thymeleaf 串接】這個檔案沒有假資料：
+    登入狀態（顯示「登入 / 註冊」還是會員的名字）已經是讀 session 裡的 member，接上資料庫後不用改。
+    唯一還沒接的是「最新消息」的連結，頁首和頁尾各有一個，目前是 href="#"（點了不會去任何地方）。
+    最新消息的前台頁面做好後，把那兩個 <a href="#"> 改成 <a th:href="@{/最新消息的網址}">。
+
+  frontend_index.html 目前還是用它自己寫的頁首頁尾。之後想讓首頁也共用這一份，
+  把首頁的 <header>...</header> 和 <footer>...</footer> 換成上面兩行即可
+  （選單裡「瀏覽菜單」等連結在這裡已經寫成完整網址，從哪一頁點都能回到首頁的那個區塊）。
+-->
+
+<!-- ========== 頁首 ========== -->
+<header class="site-header" id="siteHeader" th:fragment="header(active)">
+  <div class="header-inner">
+    <a th:href="@{/bistroops}" class="logo">
+      <img th:src="@{/images/logo-dark.svg}" alt="bistroops">
+    </a>
+
+    <button class="menu-toggle" id="menuToggle" aria-label="開啟選單" aria-expanded="false"><span></span></button>
+
+    <nav class="nav" id="mainNav">
+      <ul class="nav-list">
+        <li><a href="#">最新消息</a></li>
+        <li><a th:href="@{/bistroops/reservation}" th:classappend="${active == 'reservation'} ? 'active'">預約訂位</a></li>
+        <li><a th:href="@{/bistroops/waiting}" th:classappend="${active == 'waiting'} ? 'active'">候位狀況</a></li>
+        <li><a th:href="@{/bistroops} + '#menu'">瀏覽菜單</a></li>
+        <li><a th:href="@{/bistroops} + '#about'">關於我們</a></li>
+        <li><a th:href="@{/bistroops} + '#faq'">常見問題</a></li>
+      </ul>
+
+      <!-- 未登入 -->
+      <button type="button" class="btn-login" data-open-auth th:if="${session.member == null}">
+        登入 / 註冊
+      </button>
+
+      <!-- 已登入 -->
+      <button type="button" class="member-menu-toggle" data-member-tab="profile" th:if="${session.member != null}">
+        <span th:text="${session.member.memName != null and !session.member.memName.isBlank() ? session.member.memName : session.member.memTel}">
+          09XXXXXXXX
+        </span>
+        會員，你好
+      </button>
+    </nav>
+  </div>
+</header>
+
+<!-- ========== 頁尾 ========== -->
+<footer class="site-footer" th:fragment="footer">
+  <div class="footer-grid">
+    <div>
+      <h4>一起面對有限公司</h4>
+    </div>
+
+    <div>
+      <h4>Navigation</h4>
+      <ul class="footer-links">
+        <li><a href="#">最新消息</a></li>
+        <li><a th:href="@{/bistroops} + '#menu'">瀏覽菜單</a></li>
+        <li><a th:href="@{/bistroops/reservation}">預約訂位</a></li>
+        <li><a th:href="@{/bistroops} + '#about'">關於我們</a></li>
+        <li><a th:href="@{/bistroops/waiting}">候位狀況</a></li>
+        <li><a th:href="@{/bistroops} + '#faq'">常見問題</a></li>
+      </ul>
+    </div>
+
+    <div class="footer-contact">
+      <h4>Contact</h4>
+      <p>組別：TKA102G1</p>
+      <p>成員：</p>
+    </div>
+
+    <div>
+      <h4>Follow Us</h4>
+    </div>
+  </div>
+  <p class="copyright">© <span id="year"></span> Bistroops. All rights reserved.</p>
+</footer>
+
+<!-- ========== 回到頂端 ========== -->
+<button class="back-to-top" id="backToTop" aria-label="回到頂端" th:fragment="backToTop">↑</button>
+
+</body>
+</html>

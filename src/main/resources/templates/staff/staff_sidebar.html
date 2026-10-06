@@ -45,15 +45,42 @@
       <span>結帳</span>
     </a>
 
-    <button type="button" class="staff-menu-item" data-coming-soon="菜單管理">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z"/><path d="M5 17a3 3 0 0 1 3-3h11M9 8h6"/></svg>
-      <span>菜單管理</span>
-    </button>
+    <!-- 後臺管理：摺疊選單。平常只看得到「後臺管理」這一顆，點了才展開下面三項，再點一次收起。
+         展開／收起由 staff.js 的「選單的摺疊群組」控制：它會替外層的 staff-group 加上或拿掉 open 這個 class，
+         並記住目前是不是展開的，換到別的後台頁面時會維持同樣的狀態。
 
-    <button type="button" class="staff-menu-item" data-coming-soon="員工管理">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.500"/><path d="M2.500 20c0-3.500 2.900-6 6.500-6s6.500 2.500 6.500 6"/><circle cx="17.500" cy="9" r="2.500"/><path d="M17 14.200c2.600.300 4.500 2.300 4.500 5"/></svg>
-      <span>員工管理</span>
-    </button>
+         裡面三項的功能都還沒做，先用 data-coming-soon。之後某一項做好了，
+         把那顆 <button type="button" ... data-coming-soon="..."> 換成連結（結尾的 </button> 換成 </a>）：
+           <a class="staff-menu-item staff-sub-item" th:href="@{/staff/employees}"
+              th:classappend="${active == 'employees'} ? 'active'">
+         並在那個頁面引用選單時填對應的名稱，例如 sidebar('employees')。
+
+         【Thymeleaf 串接】停在這三個頁面時，選單應該自動展開。到時候把下面那行 div 改成：
+           <div class="staff-group"
+                th:classappend="${active == 'employees' or active == 'members' or active == 'menu'} ? 'open'"> -->
+    <div class="staff-group">
+      <button type="button" class="staff-menu-item staff-group-toggle" data-menu-group aria-expanded="false">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 12h4M12 12h8M4 17h12"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="17" r="2"/></svg>
+        <span>後臺管理 <span class="staff-group-arrow" aria-hidden="true">▾</span></span>
+      </button>
+
+      <div class="staff-submenu">
+        <button type="button" class="staff-menu-item staff-sub-item" data-coming-soon="員工管理">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.500"/><path d="M2.500 20c0-3.500 2.900-6 6.500-6s6.500 2.500 6.500 6"/><circle cx="17.500" cy="9" r="2.500"/><path d="M17 14.200c2.600.300 4.500 2.300 4.500 5"/></svg>
+          <span>員工管理</span>
+        </button>
+
+        <button type="button" class="staff-menu-item staff-sub-item" data-coming-soon="會員管理">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2.200"/><path d="M5.500 16c.600-1.800 2-2.600 3.500-2.600s2.900.800 3.500 2.600M15 10h4M15 13.500h3"/></svg>
+          <span>會員管理</span>
+        </button>
+
+        <button type="button" class="staff-menu-item staff-sub-item" data-coming-soon="菜單管理">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z"/><path d="M5 17a3 3 0 0 1 3-3h11M9 8h6"/></svg>
+          <span>菜單管理</span>
+        </button>
+      </div>
+    </div>
   </div>
 
   <!-- 【Thymeleaf 串接】員工登入做好後：

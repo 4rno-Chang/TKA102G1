@@ -1,7 +1,7 @@
 /* =========================================================
    Bistroops 會員功能（登入／註冊／忘記密碼／會員中心）
    對應的 HTML：templates/member/member_modals.html
-   對應的 CSS ：static/css/member.css
+   對應的 CSS ：static/css/front/member.css
 
    ※ 目前畫面用的是假資料。Java 寫好後要改的地方都標了「Thymeleaf 串接」，
      用 Ctrl+F 搜尋這幾個字就能一個一個找到（這個檔案和 member_modals.html 都有）。

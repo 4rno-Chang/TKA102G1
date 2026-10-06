@@ -186,6 +186,25 @@ button { cursor: pointer; }
 /* 目前所在的頁面 */
 .staff-menu-item.active { background: var(--st-red); color: #fff; }
 .staff-brand.active { color: var(--st-red); }
+/* 摺疊選單（後臺管理）：外層 staff-group 有 open 這個 class 時才顯示裡面的項目 */
+.staff-group { display: flex; flex-direction: column; gap: 6px; }
+.staff-submenu {
+  display: none;
+  flex-direction: column; gap: 4px;
+  padding: 4px;
+  background: var(--st-soft);   /* 用深一階的底色把三個項目框在一起，看得出是同一組 */
+  border-radius: 14px;
+}
+.staff-group.open .staff-submenu { display: flex; }
+/* 展開時「後臺管理」的文字變深色，小箭頭轉向上 */
+.staff-group.open .staff-group-toggle { color: var(--st-text); }
+.staff-group-arrow { display: inline-block; transition: transform .2s; }
+.staff-group.open .staff-group-arrow { transform: rotate(180deg); }
+/* 裡面的項目比外面的小一點 */
+.staff-sub-item { min-height: 58px; font-size: 12px; }
+.staff-sub-item svg { width: 22px; height: 22px; }
+.staff-sub-item:hover { background: var(--st-card); }
+
 /* 最下面的「員工登入」 */
 .staff-menu-bottom { margin-top: auto; border-top: 1px solid var(--st-border); border-radius: 0 0 14px 14px; }
 
@@ -438,10 +457,13 @@ button { cursor: pointer; }
 .dish:not(:disabled):active { transform: translateY(2px); box-shadow: none; }
 .dish:not(:disabled) .dish-state { color: var(--st-red); font-weight: 700; }
 
-/* TO_SERVE 等待送餐：黃框 */
+/* 等待送餐：黃框 */
 .dish.is-to-serve { background: #fdf4dc; border-color: var(--st-yellow); }
 .dish.is-to-serve .dish-state { color: #9a6a0c; font-weight: 700; }
-/* SERVED 已送達：劃線變淡 */
+/* 狀態下面的小字提示（內場「等待送餐」下面的「再點一次可退回」） */
+.dish-state { text-align: right; line-height: 1.3; }
+.dish-sub { display: block; color: var(--st-muted); font-size: 11px; font-weight: 400; }
+/* 已送達：劃線變淡 */
 .dish.is-served { background: #f3ede2; border-color: #efe6d6; }
 .dish.is-served .dish-name { color: #b3a696; text-decoration: line-through; }
 .dish.is-served .dish-tag { background: #cfc5b7; }
@@ -467,17 +489,6 @@ button { cursor: pointer; }
 
 
 /* ---------- 備註（卡片上顯示的） ---------- */
-/* 整桌的備註：餐點清單上面的黃色長條 */
-.table-note {
-  margin: 12px 14px 0;
-  padding: 8px 12px;
-  background: #fdf4dc;
-  border-left: 4px solid var(--st-yellow);
-  border-radius: 8px;
-  color: #7a5410;
-  font-size: 14px; font-weight: 500;
-}
-.table-note::before { content: "備註："; }
 /* 一道餐點的備註：品名下面的紅色小字 */
 .dish-note {
   display: inline-block; width: 100%;   /* 自己佔一行；用 inline-block 才不會被「已送達」的刪除線劃到 */
@@ -541,7 +552,8 @@ button { cursor: pointer; }
 .edit-items { display: grid; gap: 8px; }
 .edit-item { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; align-items: center; gap: 10px; }
 /* 每一列最右邊的「刪除／復原」按鈕 */
-.edit-remove { min-width: 76px; border-color: var(--st-red); color: var(--st-red); }
+/* 寬度固定 88px、左右內距設 0：不管文字是「刪除」「復原」還是「已送達」，框框都一樣大 */
+.edit-remove { width: 75px; min-width: 0; padding: 0; border-color: var(--st-red); color: var(--st-red); }
 .edit-remove:hover { background: #fbeee9; }
 .edit-remove:disabled { border-color: var(--st-border); color: var(--st-muted); cursor: not-allowed; }
 .edit-remove:disabled:hover { background: var(--st-card); }
@@ -577,8 +589,6 @@ button { cursor: pointer; }
   border-radius: 14px;
 }
 .delete-warn-title { margin-bottom: 4px; color: var(--st-red-dark); font-size: 18px; font-weight: 700; }
-/* 選到的刪除原因用紅色 */
-#deleteReasons .chip.active { background: var(--st-red); border-color: var(--st-red); }
 
 
 /* ========== 6. 結帳 ========== */
@@ -591,7 +601,7 @@ button { cursor: pointer; }
 }
 
 .checkout-row {
-  display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto auto; align-items: center; gap: 10px;
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: 10px;
   padding: 12px;
   border: 1px solid var(--st-border);
   border-radius: 14px;
@@ -649,6 +659,48 @@ button { cursor: pointer; }
   margin-bottom: 16px;
 }
 .orders-tools .staff-input { flex: 1; min-width: 200px; max-width: 320px; }
+/* 狀態按鈕靠左，日期切換和搜尋框靠右 */
+.orders-tools .chips { margin-right: auto; }
+
+/* 日期切換（在「全部」「已結帳」「已取消」出現）：‹ 日期 › 三個東西排成一小組 */
+.date-nav {
+  flex: none;
+  display: flex; align-items: center;
+  height: 48px;
+  background: var(--st-card);
+  border: 1px solid var(--st-border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+/* 左右箭頭 */
+.date-nav-btn {
+  display: grid; place-items: center;
+  width: 44px; height: 100%;
+  background: none; border: 0;
+  color: var(--st-red);
+  font-size: 24px; line-height: 1;
+  transition: background-color .2s;
+}
+.date-nav-btn:hover { background: var(--st-soft); }
+/* 不能再往後（已經是今天）：變淡、不能點 */
+.date-nav-btn:disabled,
+.date-nav-btn.is-disabled { color: var(--st-border); cursor: not-allowed; background: none; }
+/* 中間的日期：文字在下面，透明的日期欄位蓋在上面，點文字就會打開月曆 */
+.date-nav-date {
+  position: relative;
+  display: grid; place-items: center;
+  min-width: 108px; height: 100%;
+  padding: 0 6px;
+  border-inline: 1px solid var(--st-border);
+  font-weight: 500;
+  white-space: nowrap;
+}
+.date-nav-input {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  opacity: 0;          /* 看不到，但仍然點得到 */
+  cursor: pointer;
+}
 
 /* 狀態篩選的按鈕 */
 .chips { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -664,10 +716,10 @@ button { cursor: pointer; }
 .chip:hover { background: var(--st-soft); }
 .chip.active { background: var(--st-text); border-color: var(--st-text); color: #fff; }
 
-/* 每一筆訂單：七個欄位排成一列 */
+/* 每一筆訂單：六個欄位排成一列（訂單編號、桌號、下單時間、金額、狀態、展開的 +） */
 .order-row {
   display: grid;
-  grid-template-columns: 1.5fr .7fr .7fr .9fr 1fr 1fr 28px;
+  grid-template-columns: 1.5fr .7fr .9fr 1fr 1fr 28px;
   align-items: center; gap: 10px;
   width: 100%; min-height: 60px;
   padding: 8px 10px;
@@ -691,7 +743,6 @@ button.order-row:hover { background: #fbf3e2; }
 .order-detail-sum { margin-top: 12px; text-align: right; }
 .order-detail-sum strong { color: var(--st-red); font-size: 18px; }
 .order-detail-pay { display: block; color: var(--st-muted); font-size: 14px; }
-.order-detail-note { padding: 12px 6px 4px; color: #7a5410; font-size: 14px; font-weight: 500; }
 /* 明細裡被刪除的餐點：整列變淡，品名和金額劃線 */
 .row-cancelled td { color: #b3a696; }
 .row-cancelled td:not(:last-child) { text-decoration: line-through; }
@@ -714,16 +765,15 @@ button.order-row:hover { background: #fbf3e2; }
   }
   .receipt-close { top: 0; right: 0; }
 
-  /* 訂單管理：每一筆改成兩行（上：編號、桌號、狀態　下：人數、時間、金額） */
+  /* 訂單管理：每一筆改成兩行（上：編號、桌號、狀態　下：時間、金額） */
   .order-row-head { display: none; }
   .order-row { grid-template-columns: minmax(0, 1fr) auto auto 28px; row-gap: 2px; }
   .order-row > :nth-child(1) { grid-column: 1; grid-row: 1; }             /* 訂單編號 */
   .order-row > :nth-child(2) { grid-column: 2; grid-row: 1 / span 2; }    /* 桌號 */
-  .order-row > :nth-child(3) { display: none; }                           /* 人數（展開明細後再看） */
-  .order-row > :nth-child(4) { grid-column: 1; grid-row: 2; color: var(--st-muted); font-size: 14px; }   /* 下單時間 */
-  .order-row > :nth-child(5) { grid-column: 3; grid-row: 2; }             /* 金額 */
-  .order-row > :nth-child(6) { grid-column: 3; grid-row: 1; text-align: right; }   /* 狀態 */
-  .order-row > :nth-child(7) { grid-column: 4; grid-row: 1 / span 2; }    /* + */
+  .order-row > :nth-child(3) { grid-column: 1; grid-row: 2; color: var(--st-muted); font-size: 14px; }   /* 下單時間 */
+  .order-row > :nth-child(4) { grid-column: 3; grid-row: 2; }             /* 金額 */
+  .order-row > :nth-child(5) { grid-column: 3; grid-row: 1; text-align: right; }   /* 狀態 */
+  .order-row > :nth-child(6) { grid-column: 4; grid-row: 1 / span 2; }    /* + */
   .order-detail { margin-inline: 0; padding-inline: 10px; overflow-x: auto; }
 }
 
@@ -741,6 +791,9 @@ button.order-row:hover { background: #fbf3e2; }
     overflow-x: auto; overflow-y: hidden;
   }
   .staff-menu { flex-direction: row; gap: 4px; }
+  /* 摺疊選單在手機上是橫的：展開時三個項目接在「後臺管理」的右邊 */
+  .staff-group { flex: none; flex-direction: row; gap: 4px; }
+  .staff-submenu { flex-direction: row; padding: 0 4px; }
   .staff-brand,
   .staff-menu-item { width: 68px; min-height: 0; height: 62px; }
   .staff-brand { margin: 0; padding-bottom: 8px; border-bottom: 0; border-radius: 14px; }
@@ -785,8 +838,8 @@ button.order-row:hover { background: #fbf3e2; }
     max-height: max(220px, calc(100dvh - 330px));
   }
 
-  .checkout-row { grid-template-columns: auto auto minmax(0, 1fr) auto; }
-  .checkout-row-amount { grid-column: 3; text-align: right; }
+  .checkout-row { grid-template-columns: auto minmax(0, 1fr) auto; }
+  .checkout-row-amount { grid-column: 2; text-align: right; }
   .checkout-row-info { grid-column: 1 / -1; grid-row: 2; }
   .receipt-actions .staff-btn { flex: 1; min-width: 0; }
 }
