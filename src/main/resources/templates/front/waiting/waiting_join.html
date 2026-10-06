@@ -2,20 +2,20 @@
 <html lang="zh-Hant" xmlns:th="http://www.thymeleaf.org">
 
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Bistroops｜現場取號</title>
-  <link rel="icon" th:href="@{/images/logo-mark.svg}" type="image/svg+xml">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bistroops｜現場取號</title>
+<link rel="icon" th:href="@{/images/logo-mark.svg}" type="image/svg+xml">
 
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet"
-    href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Noto+Sans+TC:wght@300;400;500;700&family=Noto+Serif+TC:wght@500;600&display=swap">
-  <link rel="stylesheet" th:href="@{/css/front/style.css}" />
-  <link rel="stylesheet" th:href="@{/css/front/member.css}" />
-  <link rel="stylesheet" th:href="@{/css/front/waiting.css}" />
-  <script th:src="@{/js/front/member.js}" defer></script>
-  <script th:src="@{/js/front/waiting.js}" defer></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet"
+	href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Noto+Sans+TC:wght@300;400;500;700&family=Noto+Serif+TC:wght@500;600&display=swap">
+<link rel="stylesheet" th:href="@{/css/front/style.css}" />
+<link rel="stylesheet" th:href="@{/css/front/member.css}" />
+<link rel="stylesheet" th:href="@{/css/front/waiting.css}" />
+<script th:src="@{/js/front/member.js}" defer></script>
+<script th:src="@{/js/front/waiting.js}" defer></script>
 </head>
 
 <!--
@@ -43,55 +43,67 @@
 -->
 
 <body>
-  <div th:replace="~{front/member/member_modals :: modals}"></div>
-  <header th:replace="~{front/front_layout :: header('')}"></header>
+	<div th:replace="~{front/member/member_modals :: modals}"></div>
+	<header th:replace="~{front/front_layout :: header('')}"></header>
 
-  <main class="booking">
-    <div class="container">
+	<main class="booking">
+		<div class="container">
 
-      <header class="booking-head">
-        <p class="eyebrow">Waiting List</p>
-        <h1 class="booking-title">現場取號</h1>
-        <p class="booking-lead">選擇桌型並留下聯絡資料，即可領取號碼牌。</p>
-      </header>
+			<header class="booking-head">
+				<p class="eyebrow">Waiting List</p>
+				<h1 class="booking-title">現場取號</h1>
+				<p class="booking-lead">選擇桌型並留下聯絡資料，即可領取號碼牌。</p>
+			</header>
 
-      <!-- 兩個步驟：目前在第一步 -->
-      <ol class="booking-steps">
-        <li class="active"><span class="step-no">1</span>選擇桌型與填寫資料</li>
-        <li><span class="step-no">2</span>領取號碼牌</li>
-      </ol>
+			<!-- 兩個步驟：目前在第一步 -->
+			<ol class="booking-steps">
+				<li class="active"><span class="step-no">1</span>選擇桌型與填寫資料</li>
+				<li><span class="step-no">2</span>領取號碼牌</li>
+			</ol>
 
-      <!-- 已停止取號時只顯示這一段，由 waiting.js 控制顯示或隱藏。
+			<!-- 已停止取號時只顯示這一段，由 waiting.js 控制顯示或隱藏。
            【Thymeleaf 串接 1】把 hidden 換成 th:if="${!open}"；
            下面 id="joinOpen" 那個 div 的 hidden 換成 th:if="${open}" -->
-      <section class="booking-result" id="joinClosed" hidden>
-        <h2 class="result-title">目前已停止取號</h2>
-        <p class="result-notice">上午最晚發放至 12:30，下午最晚發放至 18:30。<br>其他安排請洽現場人員。</p>
-        <a class="btn-outline" th:href="@{/bistroops/waiting}">查看候位狀況</a>
-      </section>
+			<section class="booking-result" id="joinClosed" th:if="${not open}">
+				<h2 class="result-title">目前已停止取號</h2>
+				<p class="result-notice">
+					上午最晚發放至 12:30，下午最晚發放至 18:30。<br>其他安排請洽現場人員。
+				</p>
+				<a class="btn-outline" th:href="@{/bistroops/waiting}">查看候位狀況</a>
+			</section>
 
-      <div class="booking-layout" id="joinOpen" hidden>
+			<div class="booking-layout" id="joinOpen" th:if="${open}">
 
-        <!-- ========== 左：桌型與聯絡資料 ========== -->
-        <section class="booking-card">
-          <h2 class="booking-card-title">選擇桌型與填寫資料 <small class="required-note"><b>*</b> 必填</small></h2>
+				<!-- ========== 左：桌型與聯絡資料 ========== -->
+				<section class="booking-card">
+					<h2 class="booking-card-title">
+						選擇桌型與填寫資料 <small class="required-note"><b>*</b> 必填</small>
+					</h2>
 
-          <!-- 還沒登入時，提醒可以先登入（登入後姓名與手機會自動帶入）。
+					<!-- 還沒登入時，提醒可以先登入（登入後姓名與手機會自動帶入）。
                「登入」會打開會員的登入對話框（data-open-auth 由 member.js 處理）。
                注意：目前登入成功後 MemberController 會回到首頁（redirect:/bistroops），
                所以客人登入完要再回到這一頁（重新掃 QR code）。想讓登入後留在原本的頁面，要修改 MemberController 的登入方法。 -->
-          <p class="booking-tip" th:if="${session.member == null}">
-            已經是會員？<button type="button" class="link-btn" data-open-auth>登入</button>後會自動帶入您的姓名與手機。
-          </p>
+					<p class="booking-tip" th:if="${session.member == null}">
+						已經是會員？
+						<button type="button" class="link-btn" data-open-auth>登入</button>
+						後會自動帶入您的姓名與手機。
+					</p>
 
-          <!-- 【Thymeleaf 串接 2】表單
+					<!-- 【Thymeleaf 串接 2】表單
                下面那行 form 換成（送到 Controller 檢查、存進資料庫並產生號碼）：
                  <form id="joinForm" th:action="@{/bistroops/waiting/join}" method="post" novalidate> -->
-          <form id="joinForm" novalidate>
+					<form id="joinForm" th:action="@{/bistroops/waiting/join}"
+						method="post" novalidate>
 
-            <div class="booking-block">
-              <h3 class="booking-label">選擇桌型 <small>各桌型分開排隊，不共用順位，預設皆為1桌，如有多人用餐需求請洽櫃台人員。</small></h3>
-              <!-- 桌型的選項由 waiting.js 產生，每個選項下面一行小字是目前等待的組數。
+						<input type="hidden" name="waitingCsrfToken"
+							th:value="${waitingCsrfToken}">
+
+						<div class="booking-block">
+							<h3 class="booking-label">
+								選擇桌型 <small>各桌型分開排隊，不共用順位，預設皆為1桌，如有多人用餐需求請洽櫃台人員。</small>
+							</h3>
+							<!-- 桌型的選項由 waiting.js 產生，每個選項下面一行小字是目前等待的組數。
                    【Thymeleaf 串接 3】把下面那行 div 換成：
                      <div class="choice-row" id="joinTypes">
                        <label class="choice" th:each="queue : ${queues}">
@@ -105,10 +117,22 @@
                        </label>
                      </div>
                    data-waiting 和 data-estimate 是給 waiting.js 更新右邊摘要用的，要保留。 -->
-              <div class="choice-row" id="joinTypes"></div>
-            </div>
+							<div class="choice-row" id="joinTypes">
+								<label class="choice" th:each="queue : ${queues}"> <input
+									type="radio" name="tableType" th:value="${queue.tableType}"
+									th:checked="${queue.tableType == tableType}"
+									th:attr="data-waiting=${queue.waitingCount},
+                        data-estimate=${queue.estimate}">
 
-            <!-- 【Thymeleaf 串接 4】輸入框的預設值與錯誤訊息
+									<span class="choice-box"> <span
+										th:text="|${queue.tableType} 人桌|"></span> <small
+										th:text="|等待 ${queue.waitingCount} 組|"></small>
+								</span>
+								</label>
+							</div>
+						</div>
+
+						<!-- 【Thymeleaf 串接 4】輸入框的預設值與錯誤訊息
                  送出後被 Controller 退回時，要顯示客人剛剛填的內容，所以兩個 th:value 改成：
                    姓名  th:value="${name} ?: ${session.member?.memName}"
                    手機  th:value="${phone} ?: ${session.member?.memTel}"
@@ -116,54 +140,78 @@
                  備註存進 waiting 的 waiting_comment，那個欄位最多 20 字，所以輸入框的 maxlength 是 20。
                  錯誤訊息那一行換成：
                    <p class="form-msg error booking-error" id="contactError" th:text="${error}" th:hidden="${error == null}"></p> -->
-            <div class="field">
-              <label for="joinName">聯絡人姓名 <b class="required">*</b></label>
-              <input type="text" id="joinName" name="name" maxlength="20" placeholder="請輸入姓名" autocomplete="name"
-                     th:value="${session.member?.memName}" data-summary="sumName">
-            </div>
+						<div class="field">
+							<label for="joinName">聯絡人姓名 <b class="required">*</b></label> <input
+								type="text" id="joinName" name="name" maxlength="20"
+								placeholder="請輸入姓名" autocomplete="name"
+								th:value="${name} ?: ${session.member?.memName}"
+								data-summary="sumName">
+						</div>
 
-            <div class="field">
-              <label for="joinPhone">手機號碼 <b class="required">*</b></label>
-              <input type="tel" id="joinPhone" name="phone" inputmode="numeric" maxlength="10" placeholder="09XXXXXXXX" autocomplete="tel"
-                     th:value="${session.member?.memTel}" data-summary="sumPhone">
-              <p class="form-msg">到號時會以這支手機通知您。</p>
-            </div>
+						<div class="field">
+							<label for="joinPhone">手機號碼 <b class="required">*</b></label> <input
+								type="tel" id="joinPhone" name="phone" inputmode="numeric"
+								maxlength="10" placeholder="09XXXXXXXX" autocomplete="tel"
+								th:value="${phone} ?: ${session.member?.memTel}"
+								data-summary="sumPhone">
+							<p class="form-msg">到號時會以這支手機通知您。</p>
+						</div>
 
-            <div class="field">
-              <label for="joinNote">備註（選填）</label>
-              <textarea id="joinNote" name="note" rows="3" maxlength="20"
-                        placeholder="例如：需要兒童椅、有長輩同行。" data-summary="sumNote"></textarea>
-            </div>
+						<div class="field">
+							<label for="joinNote">備註（選填）</label>
+							<textarea id="joinNote" name="note" rows="3" maxlength="20"
+								th:text="${note}" placeholder="例如：需要兒童椅、有長輩同行。"
+								data-summary="sumNote"></textarea>
+						</div>
 
-            <p class="form-msg error booking-error" id="contactError" hidden></p>
+						<p class="form-msg error booking-error" id="contactError"
+							th:text="${error}" th:hidden="${error == null}"></p>
 
-            <div class="booking-actions">
-              <button type="submit" class="btn-solid">領取號碼牌</button>
-            </div>
-          </form>
-        </section>
+						<div class="booking-actions">
+							<button type="submit" class="btn-solid">領取號碼牌</button>
+						</div>
+					</form>
+				</section>
 
-        <!-- ========== 右：候位摘要（由 waiting.js 填入） ========== -->
-        <aside class="booking-summary">
-          <h2 class="booking-card-title">候位摘要</h2>
-          <dl class="summary-list">
-            <div><dt>桌型</dt><dd id="sumTable"></dd></div>
-            <div><dt>目前等待</dt><dd id="sumWaiting"></dd></div>
-            <div><dt>預估等候</dt><dd id="sumEstimate"></dd></div>
-            <div><dt>聯絡人姓名</dt><dd id="sumName"></dd></div>
-            <div><dt>手機號碼</dt><dd id="sumPhone"></dd></div>
-            <div><dt>備註</dt><dd id="sumNote"></dd></div>
-          </dl>
-          <p class="summary-status">目前尚未取號</p>
-          <p class="summary-hint">到號後請於 10 分鐘內回到現場報到。</p>
-        </aside>
+				<!-- ========== 右：候位摘要（由 waiting.js 填入） ========== -->
+				<aside class="booking-summary">
+					<h2 class="booking-card-title">候位摘要</h2>
+					<dl class="summary-list">
+						<div>
+							<dt>桌型</dt>
+							<dd id="sumTable"></dd>
+						</div>
+						<div>
+							<dt>目前等待</dt>
+							<dd id="sumWaiting"></dd>
+						</div>
+						<div>
+							<dt>預估等候</dt>
+							<dd id="sumEstimate"></dd>
+						</div>
+						<div>
+							<dt>聯絡人姓名</dt>
+							<dd id="sumName"></dd>
+						</div>
+						<div>
+							<dt>手機號碼</dt>
+							<dd id="sumPhone"></dd>
+						</div>
+						<div>
+							<dt>備註</dt>
+							<dd id="sumNote"></dd>
+						</div>
+					</dl>
+					<p class="summary-status">目前尚未取號</p>
+					<p class="summary-hint">到號後請於 10 分鐘內回到現場報到。</p>
+				</aside>
 
-      </div>
-    </div>
-  </main>
+			</div>
+		</div>
+	</main>
 
-  <footer th:replace="~{front/front_layout :: footer}"></footer>
-  <button th:replace="~{front/front_layout :: backToTop}"></button>
+	<footer th:replace="~{front/front_layout :: footer}"></footer>
+	<button th:replace="~{front/front_layout :: backToTop}"></button>
 </body>
 
 </html>

@@ -29,7 +29,7 @@ public class WaitingVO {
 	private SeatTypeVO seatType;
 
 	@ManyToOne(fetch = FetchType.LAZY)
-	@JoinColumn(name = "mem_no")
+	@JoinColumn(name = "member_no")
 	private MemberVO member;
 
 	@Column(name = "waiting_tel", nullable = false, length = 10)

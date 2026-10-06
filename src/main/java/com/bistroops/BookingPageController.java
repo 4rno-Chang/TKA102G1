@@ -101,16 +101,6 @@ public class BookingPageController {
 		return "front/waiting/waiting_status";
 	}
 
-	// 現場取號的表單（客人掃 QR code 開啟；QR code 的內容就是這一頁的完整網址）
-	@GetMapping("/waiting/join")
-	public String waitingJoin() {
-		return "front/waiting/waiting_join";
-	}
-
-	// 號碼牌
-	@GetMapping("/waiting/ticket")
-	public String waitingTicket() {
-		return "front/waiting/waiting_ticket";
-	}
+	
 
 }
