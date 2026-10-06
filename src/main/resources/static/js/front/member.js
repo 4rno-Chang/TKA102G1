@@ -380,7 +380,13 @@ function setupSendCode({ button, getPhone, purpose, msgEl, onFail }) {
     //   Controller 回傳的文字：成功回 "OK"；失敗回要顯示的訊息（例如 "☒ 手機號碼已被註冊"）；
     //   忘記密碼時手機未註冊請回 "NOT_REGISTERED"（畫面會顯示「點選前往註冊」那一行）。
     //   purpose 是 'change' 時 phone 會是空字串，請改用 session 裡登入中會員的手機。
-    const result = await memberApi.sendCode(phone, purpose);
+	const text = await fetch('/member/sendCode', {
+	   method: 'POST',
+	   body: new URLSearchParams({ phone: phone ?? '', purpose })   // Controller 用 @RequestParam 接
+	}).then(res => res.text());
+	const result = text === 'OK'
+	   ? { ok: true }
+	   : { ok: false, message: text, reason: text };
 
     if (!result.ok) {
       button.disabled = false;
@@ -594,19 +600,78 @@ const resetForgotSendCode = setupSendCode({
 });
 
 forgotForm.addEventListener('submit', async e => {
+
   e.preventDefault();
   setMsg(forgotCodeError, '');
+
   const phone = forgotForm.phone.value.trim();
   const code = forgotForm.code.value.trim();
 
+  // 手機格式錯誤
   if (!PHONE_RE.test(phone)) {
     forgotNotRegistered.hidden = true;
-    setMsg(forgotPhoneMsg, '※請輸入正確的手機號碼（09 開頭共 10 碼）', 'error');
+
+    setMsg(
+      forgotPhoneMsg,
+      '※請輸入正確的手機號碼（09 開頭共 10 碼）',
+      'error'
+    );
+
     return;
   }
-  if (code === '') { setMsg(forgotCodeError, '※請輸入驗證碼', 'error'); return; }
 
-  // 【Thymeleaf 串接】忘記密碼步驟 1
+  // 沒有輸入驗證碼
+  if (code === '') {
+    setMsg(
+      forgotCodeError,
+      '※請輸入驗證碼',
+      'error'
+    );
+    return;
+  }
+
+  // 到 Controller 驗證手機 + 驗證碼
+  const result = await fetch('/member/verifyForgotCode', {
+    method: 'POST',
+    body: new URLSearchParams({
+      phone: phone,
+      code: code
+    })
+  }).then(res => res.text());
+
+  // 驗證成功
+  if (result === 'OK') {
+    showAuthView('reset');
+    return;
+  }
+
+  // 還沒有發送驗證碼
+  if (result === 'NO_CODE') {
+    forgotForm.code.value = '';
+
+    setMsg(
+      forgotCodeError,
+      '※請先發送驗證碼',
+      'error'
+    );
+
+    forgotForm.code.focus();
+    return;
+  }
+
+  // 驗證碼錯誤
+  forgotForm.code.value = '';
+
+  setMsg(
+    forgotCodeError,
+    '※驗證碼錯誤請重新輸入',
+    'error'
+  );
+
+  forgotForm.code.focus();
+});
+
+  // 【Thymeleaf 串接】忘記密碼步驟 1  已完成
   //   上面的欄位檢查保留。從這裡到函式結尾整段換成一行：
   //     forgotForm.submit();
   //   Controller 要做的事：
@@ -614,47 +679,30 @@ forgotForm.addEventListener('submit', async e => {
   //                 帶 startView="reset" 回到頁面，畫面就會打開「設定新密碼」
   //     驗證碼錯誤：帶 forgotCodeError="※驗證碼錯誤請重新輸入" 和 startView="forgot" 回到頁面
   //   改完後，上面的 let forgotData = null; 和這裡的 forgotData 都用不到了，可以刪掉
-  const result = await withSubmitLock(forgotForm, () => memberApi.verifyCode({ phone, code }));
-  if (!result.ok) {
-    // 驗證碼錯誤：畫面維持，只顯示錯誤訊息
-    setMsg(forgotCodeError, '※驗證碼錯誤請重新輸入', 'error');
-    return;
-  }
 
-  // 驗證成功：進到設定新密碼的畫面
-  showAuthView('reset');
-  forgotData = { phone, code };
-});
 
-// ---------- 忘記密碼：步驟 2 設定新密碼 ----------
-const resetError = $('resetError');
-const isResetPasswordValid = setupPasswordCheck(resetForm);
 
-resetForm.addEventListener('submit', async e => {
-  e.preventDefault();
-  setMsg(resetError, '');
-  if (!isResetPasswordValid()) return;
+  // ---------- 忘記密碼：步驟 2 設定新密碼 ----------
+  const resetError = $('resetError');
+  const isResetPasswordValid = setupPasswordCheck(resetForm);
 
-  // 【Thymeleaf 串接】忘記密碼步驟 2
-  //   從這裡到函式結尾整段換成一行：
-  //     resetForm.submit();
-  //   Controller 要做的事：從 session 取出步驟 1 存的 resetPhone，更新密碼後把它移除
-  //     成功：帶 startView="login"、toastMsg="修改成功，請重新登入" 後 redirect 回頁面
-  //     失敗（例如 session 裡沒有 resetPhone）：帶 resetError="修改失敗！請重新操作" 和 startView="reset"
-  const result = await withSubmitLock(resetForm, () => memberApi.resetPassword({
-    ...forgotData, password: resetForm.password.value
-  }));
-  if (!result.ok) {
-    setMsg(resetError, result.message || '修改失敗！請重新操作', 'error');
-    return;
-  }
+  resetForm.addEventListener('submit', e => {
 
-  const phone = forgotData.phone;
-  forgotData = null;
-  showAuthView('login');
-  loginForm.phone.value = phone;
-  showToast('修改成功，請重新登入');
-});
+    e.preventDefault();
+
+    setMsg(resetError, '');
+
+    if (!isResetPasswordValid()) return;
+
+    // 【Thymeleaf 串接】忘記密碼步驟 2
+    //   從這裡到函式結尾整段換成一行：
+    //     resetForm.submit();
+    //   Controller 要做的事：從 session 取出步驟 1 存的 resetPhone，更新密碼後把它移除
+    //     成功：帶 startView="login"、toastMsg="修改成功，請重新登入" 後 redirect 回頁面
+    //     失敗（例如 session 裡沒有 resetPhone）：帶 resetError="修改失敗！請重新操作" 和 startView="reset"
+
+    resetForm.submit();
+  });
 
 
 /* ========== 5. 登入狀態（切換 Header 顯示） ========== */
@@ -756,7 +804,7 @@ fillDays();
 birthYear.addEventListener('change', fillDays);
 birthMonth.addEventListener('change', fillDays);
 
-// 【Thymeleaf 串接】顯示個人資料
+// 【Thymeleaf 串接】顯示個人資料  已完成
 //   姓名、Email、手機改由 HTML 的 th:value 直接帶出（見 member_modals.html 的 profileForm），
 //   JS 只剩「生日下拉選單」要處理，因為選項是 JS 產生的。
 //   HTML 會把生日放在表單的 data-birthday 屬性上，所以整個函式換成：
@@ -812,7 +860,45 @@ profileForm.addEventListener('submit', e => {
 const changePwForm = $('changePwForm');
 const changePwError = $('changePwError');
 const changePwPhoneMsg = $('changePwPhoneMsg');
+
+const changePwCode = $('changePwCode');
+const changePwCodeMsg = $('changePwCodeMsg');
+let changePwCodeVerified = false;
+
 const isChangePasswordValid = setupPasswordCheck(changePwForm);
+
+changePwCode.addEventListener('input', async () => {
+	
+  changePwCodeVerified = false;
+
+  const code = changePwCode.value.trim();
+
+  // 還沒輸入滿 6 碼，不驗證
+  if (code.length !== 6) {
+    setMsg(changePwCodeMsg, '');
+    return;
+  }
+
+  // 呼叫後端驗證
+  const result = await fetch('/member/verifyCode', {
+    method: 'POST',
+    body: new URLSearchParams({ code })
+  }).then(res => res.text());
+
+  if (result === 'OK') {
+	
+	changePwCodeVerified = true;
+    setMsg(changePwCodeMsg,'✓ 驗證成功','ok');
+
+  } else if (result === 'NO_CODE') {
+
+    setMsg(changePwCodeMsg,'※請先發送驗證碼','error');
+
+  } else {
+	
+    setMsg(changePwCodeMsg,'※驗證碼錯誤','error');
+  }
+});
 
 const resetChangePwSendCode = setupSendCode({
   button: $('changePwSendCode'),
@@ -822,26 +908,34 @@ const resetChangePwSendCode = setupSendCode({
 });
 
 async function loadChangePassword() {
-  changePwForm.reset();
-  setMsg(changePwError, '');
+  
   setMsg(changePwPhoneMsg, '');
   resetChangePwSendCode();
+  
+  }
+  //已完成
   // 【Thymeleaf 串接】手機號碼改由 HTML 的 th:text 顯示（見 member_modals.html 的 changePwPhone），
   //   下面這兩行直接刪掉。
   //   另外 Controller 回報 changePwError 時，這個函式開頭的 changePwForm.reset() 和
   //   setMsg(changePwError, '') 會把錯誤訊息清掉，所以那兩行也要一起刪掉
-  const profile = await memberApi.getProfile();
-  $('changePwPhone').textContent = profile.phone;
-}
 
-changePwForm.addEventListener('submit', async e => {
+
+changePwForm.addEventListener('submit',  e => {
   e.preventDefault();
   setMsg(changePwError, '');
 
   const passwordValid = isChangePasswordValid();
   const code = changePwForm.code.value.trim();
+  
   if (code === '') { setMsg(changePwError, '※請輸入驗證碼', 'error'); return; }
+  
+  // 驗證碼尚未通過即時驗證
+  if (!changePwCodeVerified) {setMsg(changePwCodeMsg, '※請先完成驗證碼驗證', 'error');return;}
   if (!passwordValid) return;
+  
+  // 驗證通過，正式送到 Controller
+    changePwForm.submit();
+  });
 
   // 【Thymeleaf 串接】會員中心更改密碼
   //   上面的欄位檢查保留。從這裡到函式結尾整段換成一行：
@@ -849,18 +943,7 @@ changePwForm.addEventListener('submit', async e => {
   //   Controller 會收到 code、password、password2，手機請從 session 的 loginMember 取得
   //     成功：帶 startTab="profile"、toastMsg="修改成功" 後 redirect 回頁面
   //     失敗：帶 changePwError="※驗證碼錯誤請重新輸入" 和 startTab="password" 回到頁面
-  const result = await withSubmitLock(changePwForm, () => memberApi.changePassword({
-    code, password: changePwForm.password.value
-  }));
-  if (!result.ok) {
-    setMsg(changePwError, result.message || '修改失敗！請重新操作', 'error');
-    return;
-  }
 
-  // 修改成功：回到個人資料頁面
-  showMemberTab('profile');
-  showToast('修改成功');
-});
 
 // ---------- 歷史訂單 ----------
 const ordersList = $('ordersList');

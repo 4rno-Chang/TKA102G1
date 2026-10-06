@@ -12,6 +12,7 @@ import com.bistroops.member.model.MemberService;
 import com.bistroops.member.model.MemberVO;
 import java.time.LocalDate;
 
+import java.util.Random;
 import jakarta.servlet.http.HttpSession;
 
 @Controller
@@ -103,6 +104,114 @@ public class MemberController {
 			        return "OK";
 			    }
 			}
+			
+			// 發送手機驗證碼
+			@PostMapping("/member/sendCode")
+			@ResponseBody
+			public String sendCode(
+			        @RequestParam(required = false) String phone,
+			        @RequestParam String purpose,
+			        HttpSession session) {
+
+			    // 更改密碼：手機號碼不從前端取得，而是從登入中的會員取得
+			    if ("change".equals(purpose)) {
+
+			        MemberVO member =
+			                (MemberVO) session.getAttribute("member");
+
+			        // 沒有登入
+			        if (member == null) {
+			            return "請先登入";
+			        }
+
+			        phone = member.getMemTel();
+			    }
+
+			    // 手機號碼格式檢查
+			    if (phone == null || !phone.matches("^09\\d{8}$")) {
+			        return "手機號碼格式錯誤";
+			    }
+
+			    // 忘記密碼：手機必須已經註冊
+			    if ("forgot".equals(purpose)) {
+			        if (!memberService.isTelRegistered(phone)) {
+			            return "NOT_REGISTERED";
+			        }
+			    }
+
+			    // 註冊：手機不能已經註冊
+			    if ("register".equals(purpose)) {
+			        if (memberService.isTelRegistered(phone)) {
+			            return "☒ 手機號碼已被註冊";
+			        }
+			    }
+
+			    // ===== 開發測試用驗證碼 =====
+			    Random random = new Random();
+			    String code = String.format("%06d", random.nextInt(1000000));
+
+			    // 把驗證碼與對應手機暫存在 Session
+			    session.setAttribute("smsCode", code);
+			    session.setAttribute("smsPhone", phone);
+
+			    // 先印在 Eclipse Console，方便測試
+			    System.out.println("驗證碼發送至：" + phone);
+			    System.out.println("測試驗證碼：" + code);
+
+			    return "OK";
+			}
+			
+			// 驗證手機驗證碼
+			@PostMapping("/member/verifyCode")
+			@ResponseBody
+			public String verifyCode(@RequestParam String code, HttpSession session) {
+
+			    // 取得 Session 裡真正的驗證碼
+			    String smsCode = (String) session.getAttribute("smsCode");
+
+			    // 尚未發送驗證碼
+			    if (smsCode == null) {
+			        return "NO_CODE";
+			    }
+
+			    // 驗證碼正確
+			    if (smsCode.equals(code)) {
+			        return "OK";
+			    }
+
+			    // 驗證碼錯誤
+			    return "ERROR";
+			}
+			
+			// 忘記密碼－即時驗證手機與驗證碼
+			@PostMapping("/member/verifyForgotCode")
+			@ResponseBody
+			public String verifyForgotCode(@RequestParam String phone, @RequestParam String code, HttpSession session) {
+
+			    // Session 裡剛才發送的驗證碼、手機
+			    String smsCode = (String) session.getAttribute("smsCode");
+			    String smsPhone = (String) session.getAttribute("smsPhone");
+
+			    // 還沒發送驗證碼
+			    if (smsCode == null || smsPhone == null) {
+			        return "NO_CODE";
+			    }
+
+			    // 手機不一致
+			    if (!smsPhone.equals(phone)) {
+			        return "ERROR";
+			    }
+
+			    // 驗證碼錯誤
+			    if (!smsCode.equals(code)) {
+			        return "ERROR";
+			    }
+
+			    // 驗證成功，記住等等要重設密碼的手機
+			    session.setAttribute("resetPhone", phone);
+
+			    return "OK";
+			}
 
 	
 	//會員登入
@@ -127,9 +236,7 @@ public class MemberController {
 	
 	// 會員登出
 	@GetMapping("/member/logout")
-	public String logout(
-	        HttpSession session,
-	        RedirectAttributes redirectAttributes) {
+	public String logout(HttpSession session, RedirectAttributes redirectAttributes) {
 
 	    // 移除 Session 中的會員資料
 	    session.removeAttribute("member");
@@ -146,7 +253,7 @@ public class MemberController {
 	
 
 	//取得目前登入會員資料
-	@GetMapping("/member/profile")  
+	@GetMapping("/member/profile")
 	@ResponseBody
 	public MemberVO getProfile(HttpSession session) {
 
@@ -164,8 +271,7 @@ public class MemberController {
 	
 	//會員修改個人資料
 	@PostMapping("/member/update")
-	public String updateMember(
-	        @RequestParam String name,
+	public String updateMember(@RequestParam String name,
 	        @RequestParam String email,
 //	        @RequestParam String memBarcode,
 //	        @RequestParam String memTag,
@@ -224,34 +330,209 @@ public class MemberController {
 	    return "redirect:/bistroops";
 	    
 	}
-	
-	//會員修改密碼
-	@PostMapping("/member/changePassword")
-	@ResponseBody
-	public String changePassword(
-	        @RequestParam String oldPassword,
-	        @RequestParam String newPassword,
-	        HttpSession session) {
 
-	    //取得目前登入會員
+	// 會員修改密碼
+	@PostMapping("/member/changePassword")
+	public String changePassword(@RequestParam String code, @RequestParam String password, @RequestParam String password2, HttpSession session, RedirectAttributes redirectAttributes) {
+
+	    // 取得目前登入會員
 	    MemberVO member = (MemberVO) session.getAttribute("member");
 
-	    //沒有登入
+	    // 沒有登入
 	    if (member == null) {
-	        return "請先登入";
+	        return "redirect:/bistroops";
 	    }
 
-	    //取得目前登入會員的會員編號
+	    // 取得 Session 中的驗證碼
+	    String smsCode = (String) session.getAttribute("smsCode");
+
+	    // 驗證碼不存在或輸入錯誤
+	    if (smsCode == null || !smsCode.equals(code)) {
+
+	        redirectAttributes.addFlashAttribute(
+	                "changePwError",
+	                "※驗證碼錯誤請重新輸入"
+	        );
+
+	        redirectAttributes.addFlashAttribute(
+	                "startTab",
+	                "password"
+	        );
+
+	        return "redirect:/bistroops";
+	    }
+
+	    // 兩次密碼不一致
+	    if (!password.equals(password2)) {
+
+	        redirectAttributes.addFlashAttribute(
+	                "changePwError",
+	                "※兩次輸入的密碼不相符"
+	        );
+
+	        redirectAttributes.addFlashAttribute(
+	                "startTab",
+	                "password"
+	        );
+
+	        return "redirect:/bistroops";
+	    }
+
+	    // 取得會員編號
 	    Integer memNo = member.getMemNo();
 
-	    //呼叫 Service 修改密碼
-	    boolean result = memberService.changePassword(memNo, oldPassword, newPassword);
+	    // 修改密碼
+	    boolean result = memberService.changePassword(memNo, password);
 
-	    if (result) {
-	        return "密碼修改成功";
-	    } else {
-	        return "目前密碼錯誤，修改失敗";
+	    // 修改失敗
+	    if (!result) {
+
+	        redirectAttributes.addFlashAttribute(
+	                "changePwError",
+	                "※密碼修改失敗"
+	        );
+
+	        redirectAttributes.addFlashAttribute(
+	                "startTab",
+	                "password"
+	        );
+
+	        return "redirect:/bistroops";
 	    }
+
+	    // 驗證碼使用完就刪除
+	    session.removeAttribute("smsCode");
+	    session.removeAttribute("smsPhone");
+
+	    // 修改成功 → 回個人資料頁
+	    redirectAttributes.addFlashAttribute(
+	            "startTab",
+	            "profile"
+	    );
+
+	    redirectAttributes.addFlashAttribute(
+	            "toastMsg",
+	            "修改成功"
+	    );
+
+	    return "redirect:/bistroops";
+	}
+	
+	// 忘記密碼－驗證手機與驗證碼
+	@PostMapping("/member/forgotPassword")
+	public String forgotPassword(@RequestParam String phone, @RequestParam String code, HttpSession session, RedirectAttributes redirectAttributes) {
+
+	    // 取得剛才發送的驗證碼與手機號碼
+	    String smsCode = (String) session.getAttribute("smsCode");
+	    String smsPhone = (String) session.getAttribute("smsPhone");
+
+	    // 驗證手機與驗證碼
+	    if (smsCode == null
+	            || smsPhone == null
+	            || !smsPhone.equals(phone)
+	            || !smsCode.equals(code)) {
+
+	        redirectAttributes.addFlashAttribute(
+	                "forgotCodeError",
+	                "※驗證碼錯誤請重新輸入"
+	        );
+
+	        redirectAttributes.addFlashAttribute(
+	                "startView",
+	                "forgot"
+	        );
+
+	        return "redirect:/bistroops";
+	    }
+
+	    // 驗證成功，把要重設密碼的手機存進 Session
+	    session.setAttribute("resetPhone", phone);
+
+	    // 驗證成功後進入「設定新密碼」
+	    redirectAttributes.addFlashAttribute(
+	            "startView",
+	            "reset"
+	    );
+
+	    return "redirect:/bistroops";
+	}
+	
+	// 忘記密碼－設定新密碼
+	@PostMapping("/member/resetPassword")
+	public String resetPassword(@RequestParam String password, @RequestParam String password2, HttpSession session, RedirectAttributes redirectAttributes) {
+
+	    // 取得手機驗證成功後存在 Session 的手機號碼
+	    String resetPhone = (String) session.getAttribute("resetPhone");
+
+	    // 沒有經過手機驗證
+	    if (resetPhone == null) {
+
+	        redirectAttributes.addFlashAttribute(
+	                "resetError",
+	                "修改失敗！請重新操作"
+	        );
+
+	        redirectAttributes.addFlashAttribute(
+	                "startView",
+	                "forgot"
+	        );
+
+	        return "redirect:/bistroops";
+	    }
+
+	    // 兩次密碼不一致
+	    if (!password.equals(password2)) {
+
+	        redirectAttributes.addFlashAttribute(
+	                "resetError",
+	                "※兩次輸入的密碼不相符"
+	        );
+
+	        redirectAttributes.addFlashAttribute(
+	                "startView",
+	                "reset"
+	        );
+
+	        return "redirect:/bistroops";
+	    }
+
+	    // 呼叫 Service 重設密碼
+	    boolean result =
+	            memberService.resetPassword(resetPhone, password);
+
+	    // 修改失敗
+	    if (!result) {
+
+	        redirectAttributes.addFlashAttribute(
+	                "resetError",
+	                "修改失敗！請重新操作"
+	        );
+
+	        redirectAttributes.addFlashAttribute(
+	                "startView",
+	                "reset"
+	        );
+
+	        return "redirect:/bistroops";
+	    }
+
+	    // 修改成功，清除忘記密碼流程的 Session
+	    session.removeAttribute("resetPhone");
+	    session.removeAttribute("smsCode");
+	    session.removeAttribute("smsPhone");
+
+	    // 回到登入畫面
+	    redirectAttributes.addFlashAttribute(
+	            "startView",
+	            "login"
+	    );
+
+	    redirectAttributes.addFlashAttribute(
+	            "toastMsg",
+	            "密碼修改成功，請重新登入"
+	    );
+
+	    return "redirect:/bistroops";
 	}
 
 }
