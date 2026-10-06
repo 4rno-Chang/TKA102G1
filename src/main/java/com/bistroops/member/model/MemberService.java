@@ -109,33 +109,44 @@ public class MemberService {
 		}
 	}
 	
-	//會員修改密碼
-	public boolean changePassword(Integer memNo,String oldPassword, String newPassword) {
-		
-		//依目前登入會員的會員編號，取得會員資料
-		MemberVO member = dao.findById(memNo).orElse(null);
-		
-		//防呆:找不到會員
-		if (member == null) {
-			return false;
-		}
-		
-		//確認目前密碼是否正確
-		if (!member.getMemPassword().equals(oldPassword)) {
-			
-			//目前密碼錯誤
-			return false; 
-		}
-		
-		//將密碼修改成新密碼
-		member.setMemPassword(newPassword);
-		
-		
-		//儲存修改
-		dao.save(member);
-		
-		//修改成功
-		return true;
+	// 會員修改密碼
+	public boolean changePassword(Integer memNo, String newPassword) {
+
+	    // 依會員編號取得會員資料
+	    MemberVO member = dao.findById(memNo).orElse(null);
+
+	    // 找不到會員
+	    if (member == null) {
+	        return false;
+	    }
+
+	    // 修改成新密碼
+	    member.setMemPassword(newPassword);
+
+	    // 儲存修改
+	    dao.save(member);
+
+	    return true;
+	}
+	
+	// 忘記密碼－重設密碼
+	public boolean resetPassword(String memTel, String newPassword) {
+
+	    // 依手機號碼取得會員資料
+	    MemberVO member = dao.findByMemTel(memTel);
+
+	    // 找不到會員
+	    if (member == null) {
+	        return false;
+	    }
+
+	    // 設定新密碼
+	    member.setMemPassword(newPassword);
+
+	    // 儲存修改
+	    dao.save(member);
+
+	    return true;
 	}
 }
 

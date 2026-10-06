@@ -184,7 +184,7 @@
           2. 驗證碼錯誤那行（id="forgotCodeError"）改成：
                <p class="form-msg error" id="forgotCodeError" th:text="${forgotCodeError}" th:hidden="${forgotCodeError == null}"></p>
         -->
-        <form id="forgotForm" novalidate>
+        <form id="forgotForm" th:action="@{/member/forgotPassword}" method="post" novalidate>
           <p class="form-subtitle">身分驗證</p>
 
           <div class="field">
@@ -203,7 +203,7 @@
           <div class="field">
             <label for="forgotCode">輸入驗證碼</label>
             <input type="text" id="forgotCode" name="code" inputmode="numeric" maxlength="6" autocomplete="one-time-code">
-            <p class="form-msg error" id="forgotCodeError" hidden></p>
+            <p class="form-msg error" id="forgotCodeError" th:text="${forgotCodeError}" th:hidden="${forgotCodeError == null}"></p>
           </div>
 
           <button type="submit" class="btn-solid">送出</button>
@@ -223,7 +223,7 @@
           2. 錯誤訊息那行（id="resetError"）改成：
                <p class="form-msg error center" id="resetError" th:text="${resetError}" th:hidden="${resetError == null}"></p>
         -->
-        <form id="resetForm" novalidate>
+        <form id="resetForm" th:action="@{/member/resetPassword}" method="post" novalidate>
           <div class="field">
             <label for="resetPassword">更改新密碼</label>
             <div class="input-wrap">
@@ -249,7 +249,7 @@
             <p class="form-msg error" data-pw-mismatch hidden>※與密碼不相符請重新輸入</p>
           </div>
 
-          <p class="form-msg error center" id="resetError" hidden></p>
+          <p class="form-msg error center" id="resetError" th:text="${resetError}" th:hidden="${resetError == null}"></p>
 
           <button type="submit" class="btn-solid">送出</button>
         </form>
@@ -358,21 +358,24 @@
               3. 錯誤訊息那行（id="changePwError"）改成：
                    <p class="form-msg error" id="changePwError" th:text="${changePwError}" th:hidden="${changePwError == null}"></p>
             -->
-            <form id="changePwForm" novalidate>
+            <form id="changePwForm" th:action="@{/member/changePassword}" method="post" novalidate>
               <p class="form-subtitle">身分驗證</p>
 
               <div class="field">
                 <span class="field-label">電話</span>
+                
                 <div class="field-row">
-                  <span class="field-static" id="changePwPhone">09XXXXXXXX</span>
+                  <span class="field-static" id="changePwPhone" th:text="${session.member?.memTel}">09XXXXXXXX</span>
                   <button type="button" class="btn-small" id="changePwSendCode">發送驗證碼</button>
                 </div>
-                <p class="form-msg" id="changePwPhoneMsg" hidden></p>
+                
+                  <p class="form-msg" id="changePwPhoneMsg" hidden></p>
               </div>
 
               <div class="field">
                 <label for="changePwCode">輸入驗證碼</label>
                 <input type="text" id="changePwCode" name="code" inputmode="numeric" maxlength="6" autocomplete="one-time-code">
+              <p class="form-msg" id="changePwCodeMsg" hidden></p>
               </div>
 
               <div class="field">
@@ -400,7 +403,7 @@
                 <p class="form-msg error" data-pw-mismatch hidden>※與密碼不相符請重新輸入</p>
               </div>
 
-              <p class="form-msg error" id="changePwError" hidden></p>
+              <p class="form-msg error" id="changePwError" th:text="${changePwError}" th:hidden="${changePwError == null}"></p>
 
               <div class="form-actions">
                 <button type="submit" class="btn-solid">送出</button>
