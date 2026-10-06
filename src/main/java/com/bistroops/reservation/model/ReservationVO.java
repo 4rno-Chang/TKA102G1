@@ -4,7 +4,7 @@ import java.time.LocalDateTime;
 
 import com.bistroops.member.model.MemberVO;
 import com.bistroops.reservationdatetime.model.ReservationDatetimeVO;
-//import com.bistroops.seattype.model.SeatType;
+import com.bistroops.seattype.model.SeatTypeVO;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -33,9 +33,9 @@ public class ReservationVO {
 	@JoinColumn(name = "rsv_dt_no", nullable = false)
 	private ReservationDatetimeVO rsvDt;
 
-//	@ManyToOne(fetch = FetchType.LAZY, optional = false)
-//	@JoinColumn(name = "seat_type_no", nullable = false)
-//	private SeatType seatType;
+	@ManyToOne(fetch = FetchType.LAZY, optional = false)
+	@JoinColumn(name = "seat_type_no", nullable = false)
+	private SeatTypeVO seatType;
 
 	@Column(name = "rsv_create_time")
 	private LocalDateTime rsvCreateTime;
@@ -73,13 +73,13 @@ public class ReservationVO {
 		this.rsvDt = rsvDt;
 	}
 
-//	public SeatType getSeatType() {
-//		return seatType;
-//	}
-//
-//	public void setSeatType(SeatType seatType) {
-//		this.seatType = seatType;
-//	}
+	public SeatTypeVO getSeatType() {
+		return seatType;
+	}
+
+	public void setSeatType(SeatTypeVO seatType) {
+		this.seatType = seatType;
+	}
 
 	public LocalDateTime getRsvCreateTime() {
 		return rsvCreateTime;

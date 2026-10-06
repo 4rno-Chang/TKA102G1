@@ -1,8 +1,10 @@
 package com.bistroops.seattype.model;
 import java.util.Set;
+
 import com.bistroops.reservation.model.ReservationVO;
+import com.bistroops.waiting.model.WaitingVO;
+
 //import com.bistroops.seat.model.SeatVO;
-//import com.bistroops.waiting.model.WaitingVO;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -16,7 +18,7 @@ public class SeatTypeVO {
 
 	@Id
 	@Column(name = "seat_type_no",nullable=false)
-	private String seatTypeNo;
+	private Integer seatTypeNo;
 	
 	@Column(name = "seat_type_num")
 	private Integer seatTypeNum;
@@ -33,17 +35,17 @@ public class SeatTypeVO {
 	@Column(name = "seat_type_pending")
 	private Integer seatTypePending;
 	
-//	//候位
-//	@OneToMany(mappedBy="waiting")//cascade=CascadeTypr.ALL
-//	private Set<WaitingVO> waiting;
-//	
-//	//桌位
+	//候位
+	@OneToMany(mappedBy = "seatType")
+	private Set<WaitingVO> waiting;
+	
+	//桌位
 //	@OneToMany(mappedBy="seat")
 //	private Set<SeatVO> seat;
 	
 	
 	//預約明細
-	@OneToMany(mappedBy="reservation")
+	@OneToMany(mappedBy = "seatType")
 	private Set<ReservationVO> reservation;
 	
 	
@@ -53,12 +55,12 @@ public class SeatTypeVO {
 		// TODO Auto-generated constructor stub
 	}
 
-	public String getSeatTypeNo() {
+	public Integer getSeatTypeNo() {
 		return seatTypeNo;
 	}
 
 
-	public void setSeatTypeNo(String seatTypeNo) {
+	public void setSeatTypeNo(Integer seatTypeNo) {
 		this.seatTypeNo = seatTypeNo;
 	}
 
@@ -113,21 +115,21 @@ public class SeatTypeVO {
 	}
 
 
-//	public Set<WaitingVO> getWaiting() {
-//		return waiting;
-//	}
-//
-//
-//	public void setWaiting(Set<WaitingVO> waiting) {
-//		this.waiting = waiting;
-//	}
-//
-//
+	public Set<WaitingVO> getWaiting() {
+		return waiting;
+	}
+
+
+	public void setWaiting(Set<WaitingVO> waiting) {
+		this.waiting = waiting;
+	}
+
+
 //	public Set<SeatVO> getSeat() {
 //		return seat;
 //	}
-//
-//
+
+
 //	public void setSeat(Set<SeatVO> seat) {
 //		this.seat = seat;
 //	}
