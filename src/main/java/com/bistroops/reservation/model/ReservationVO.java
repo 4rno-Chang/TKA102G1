@@ -33,8 +33,8 @@ public class ReservationVO {
 	@JoinColumn(name = "rsv_dt_no", nullable = false)
 	private ReservationDatetimeVO rsvDt;
 
-	@ManyToOne(fetch = FetchType.LAZY, optional = false)
-	@JoinColumn(name = "seat_type_no", nullable = false)
+//	@ManyToOne(fetch = FetchType.LAZY, optional = false)
+//	@JoinColumn(name = "seat_type_no", nullable = false)
 //	private SeatType seatType;
 
 	@Column(name = "rsv_create_time")

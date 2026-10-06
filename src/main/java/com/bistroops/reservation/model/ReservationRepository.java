@@ -17,7 +17,7 @@ public interface ReservationRepository extends JpaRepository<ReservationVO, Long
 	@EntityGraph(attributePaths = { "member", "rsvDt", "seatType" })
 	@Query("""
 			SELECT r
-			FROM Rsv r
+			FROM ReservationVO r
 			JOIN r.rsvDt dt
 			WHERE (:startTime IS NULL
 			       OR dt.rsvDtDatetime >= :startTime)
