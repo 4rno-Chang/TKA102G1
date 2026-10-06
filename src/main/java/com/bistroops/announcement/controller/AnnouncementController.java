@@ -19,7 +19,7 @@ import com.bistroops.announcement.model.AnnouncementService;
 import com.bistroops.announcement.model.AnnouncementVO;
 
 @Controller
-@RequestMapping("/announcement")
+@RequestMapping("/staff/announcement")
 public class AnnouncementController {
 
 	@Autowired
