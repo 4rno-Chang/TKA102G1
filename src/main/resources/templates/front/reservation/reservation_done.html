@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="zh-Hant" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bistroops｜訂位成功</title>
+  <link rel="icon" th:href="@{/images/logo-mark.svg}" type="image/svg+xml">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Noto+Sans+TC:wght@300;400;500;700&family=Noto+Serif+TC:wght@500;600&display=swap">
+  <link rel="stylesheet" th:href="@{/css/front/style.css}" />
+  <link rel="stylesheet" th:href="@{/css/front/member.css}" />
+  <link rel="stylesheet" th:href="@{/css/front/reservation.css}" />
+  <script th:src="@{/js/front/member.js}" defer></script>
+  <script th:src="@{/js/front/reservation.js}" defer></script>
+</head>
+
+<!--
+  預約訂位 步驟三：訂位成功
+  網址：/bistroops/reservation/done
+
+  ※ 目前是假資料：訂位編號和下面的內容，是 reservation.js 暫存在瀏覽器裡帶過來的（見 reservation.js 第 6 區）。
+
+  【Thymeleaf 串接】接上資料庫後，Controller 把訂位資料放進 Model
+  （用 RedirectAttributes 從送出的方法帶過來，或用訂位編號從資料庫查），HTML 改用 th:text 顯示：
+    <strong id="doneNo" th:text="${reservationNo}">BR000123</strong>
+    日期       th:text="${dateText}"
+    桌型       th:text="|${tableType} 人桌|"
+    時段       th:text="${time}"
+    聯絡人姓名  th:text="${name}"
+    連絡電話    th:text="${phone}"
+    電子郵件    th:text="${email != null and !email.isEmpty()} ? ${email} : '未填寫'"
+    備註       th:text="${note != null and !note.isEmpty()} ? ${note} : '無'"
+  也就是在下面每個有 id 的 strong／dd 上加對應的 th:text 即可，id 可以留著。
+-->
+
+<body>
+  <div th:replace="~{front/member/member_modals :: modals}"></div>
+  <header th:replace="~{front/front_layout :: header('reservation')}"></header>
+
+  <main class="booking">
+    <div class="container">
+
+      <header class="booking-head">
+        <p class="eyebrow">Reservation</p>
+        <h1 class="booking-title">預約訂位</h1>
+        <p class="booking-lead">感謝您的預約，期待您的光臨。</p>
+      </header>
+
+      <!-- 三個步驟：全部完成 -->
+      <ol class="booking-steps">
+        <li class="done"><span class="step-no">1</span>選擇日期與桌型</li>
+        <li class="done"><span class="step-no">2</span>填寫聯絡資料</li>
+        <li class="active"><span class="step-no">3</span>確認訂位</li>
+      </ol>
+
+      <!-- 內容由 reservation.js 填入 -->
+      <section class="booking-result" id="resvDone">
+        <p class="result-mark" aria-hidden="true">✓</p>
+        <h2 class="result-title">訂位成功</h2>
+        <p class="result-no">訂位編號 <strong id="doneNo"></strong></p>
+
+        <dl class="summary-list">
+          <div><dt>日期</dt><dd id="doneDate"></dd></div>
+          <div><dt>桌型</dt><dd id="doneTable"></dd></div>
+          <div><dt>時段</dt><dd id="doneTime"></dd></div>
+          <div><dt>聯絡人姓名</dt><dd id="doneName"></dd></div>
+          <div><dt>連絡電話</dt><dd id="donePhone"></dd></div>
+          <div><dt>電子郵件</dt><dd id="doneEmail"></dd></div>
+          <div><dt>備註</dt><dd id="doneNote"></dd></div>
+        </dl>
+
+        <p class="result-notice">到店請告知工作人員訂位電話，以便協助帶位。</p>
+
+        <a class="btn-outline" th:href="@{/bistroops}">返回首頁</a>
+      </section>
+
+    </div>
+  </main>
+
+  <footer th:replace="~{front/front_layout :: footer}"></footer>
+  <button th:replace="~{front/front_layout :: backToTop}"></button>
+</body>
+
+</html>

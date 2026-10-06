@@ -39,7 +39,6 @@ function renderList() {
     return `
       <div class="checkout-row${order.id === selectedId ? ' selected' : ''}">
         <span class="badge badge-table">${escapeHtml(order.table)}</span>
-        <span class="badge">${escapeHtml(order.people)} 人</span>
         <span class="checkout-row-info">
           <span class="checkout-row-id">${escapeHtml(order.id)}</span>
           <span class="tag ${status.className}">${status.text}</span>
@@ -65,7 +64,6 @@ function renderReceipt() {
   }
 
   $('receiptTable').textContent = order.table;
-  $('receiptPeople').textContent = `${order.people} 人`;
   $('receiptId').textContent = order.id;
   $('receiptTime').textContent = order.time;
 
