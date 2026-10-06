@@ -13,7 +13,7 @@ const viewButtons = document.querySelectorAll('[data-board-view]');
 
 // 三個畫面的說明文字
 const VIEWS = {
-  kitchen: { hint: '餐點做好後，點一下該道餐點的「出餐」，通知外場送餐。' },
+  kitchen: { hint: '餐點做好後，點一下該道餐點的「出餐」，通知外場送餐。未送達之餐點，再次點擊可退回製作中。' },
   floor:   { hint: '黃框的餐點已經做好，送到桌上後點一下「確認送達」。' },
   done:    { hint: '餐點已全部送達、尚未結帳的桌子。右側是每道餐點的送達時間。' }
 };
@@ -29,12 +29,12 @@ const collapsedIds = new Set();    // 被「縮小」的訂單編號
        <article class="table-card" th:each="order : ${orders}">
          ...
          <li th:each="item : ${order.items}">
-           內場：item.status 是 COOKING 時，按鈕包在小表單裡
+           內場：item.status 是 製作中 時，按鈕包在小表單裡
              <form th:action="@{/staff/workboard/toServe}" method="post">
                <input type="hidden" name="itemId" th:value="${item.id}">
                <button type="submit" class="dish">...出餐</button>
              </form>
-           外場：item.status 是 TO_SERVE 時，表單送到 /staff/workboard/served
+           外場：item.status 是 等待送餐 時，表單送到 /staff/workboard/served
          </li>
        </article>
 
@@ -48,21 +48,22 @@ const collapsedIds = new Set();    // 被「縮小」的訂單編號
 // 一道餐點右側的狀態文字，以及這道餐點在目前的畫面能不能點
 function dishState(item) {
   // 被刪除的餐點：三個畫面都顯示「已取消」，讓內場知道不用做了
-  if (item.cancelled) {
+  if (item.status === '已取消') {
     return { label: '✕ 已取消', className: 'is-cancelled', clickable: false };
   }
   if (currentView === 'done') {
     return { label: `${item.servedAt} 送達`, className: 'is-served-time', clickable: false };
   }
-  if (item.status === 'SERVED') {
+  if (item.status === '已送達') {
     return { label: '✓ 已送達', className: 'is-served', clickable: false };
   }
-  if (item.status === 'TO_SERVE') {
+  if (item.status === '等待送餐') {
+    // 內場：誤觸出餐時可以再點一次退回製作中，所以也是可以點的；sub 是狀態下面的小字提示
     return currentView === 'kitchen'
-      ? { label: '● 等待送餐', className: 'is-to-serve', clickable: false }
+      ? { label: '● 等待送餐', className: 'is-to-serve', clickable: true }
       : { label: '確認送達 →', className: 'is-to-serve', clickable: true };
   }
-  // 剩下的是 COOKING
+  // 剩下的是 製作中
   return currentView === 'kitchen'
     ? { label: '出餐 →', className: 'is-cooking', clickable: true }
     : { label: '製作中', className: 'is-cooking', clickable: false };
@@ -73,12 +74,14 @@ function dishHtml(item, index) {
   const qty = item.qty > 1 ? ` <span class="dish-qty">× ${escapeHtml(item.qty)}</span>` : '';
   // 這道餐點的備註（有填才顯示，在品名下面一行）
   const note = item.note ? `<small class="dish-note">${escapeHtml(item.note)}</small>` : '';
+  // 狀態下面的小字提示（目前只有內場的「等待送餐」有）
+  const sub = state.sub ? `<small class="dish-sub">${escapeHtml(state.sub)}</small>` : '';
   return `
     <li>
       <button type="button" class="dish ${state.className}" data-item="${index}" ${state.clickable ? '' : 'disabled'}>
-        <span class="dish-tag">${escapeHtml(item.category)}</span>
+        <span class="dish-tag">${escapeHtml(item.mealtype)}</span>
         <span class="dish-name">${escapeHtml(item.name)}${qty}${note}</span>
-        <span class="dish-state">${escapeHtml(state.label)}</span>
+        <span class="dish-state">${escapeHtml(state.label)}${sub}</span>
       </button>
     </li>`;
 }
@@ -87,27 +90,23 @@ function cardHtml(order) {
   const collapsed = collapsedIds.has(order.id);
   // 進度只算沒有被刪除的餐點
   const activeItems = StaffStore.activeItems(order);
-  const servedCount = activeItems.filter(item => item.status === 'SERVED').length;
+  const servedCount = activeItems.filter(item => item.status === '已送達').length;
 
   // 卡片最下面的按鈕：只有內場有，可以編輯訂單（填備註、刪除訂單，見第 4 區）
   let footer = '';
   if (currentView === 'kitchen') {
     footer = `<button type="button" class="card-link" data-edit-order>編輯訂單</button>`;
   }
-  // 整桌的備註（有填才顯示，在餐點清單上面）
-  const orderNote = order.note ? `<p class="table-note">${escapeHtml(order.note)}</p>` : '';
 
   return `
     <article class="table-card${collapsed ? ' collapsed' : ''}" data-order="${escapeHtml(order.id)}">
       <button type="button" class="table-card-head" data-toggle-card aria-expanded="${!collapsed}">
         <strong class="table-name">${escapeHtml(order.table)} 桌</strong>
-        <span>${escapeHtml(order.people)} 人</span>
         <span>${escapeHtml(order.time)}</span>
         <span class="table-progress">${servedCount}/${activeItems.length} 已送達</span>
         <span class="table-toggle">${collapsed ? '▼ 展開' : '▲ 縮小'}</span>
       </button>
       <div class="table-card-body">
-        ${orderNote}
         <ul class="dish-list">${order.items.map(dishHtml).join('')}</ul>
         ${footer ? `<div class="table-card-foot">${footer}</div>` : ''}
       </div>
@@ -155,6 +154,11 @@ function render() {
    【Thymeleaf 串接】接上資料庫後，這一區大部分可以刪掉：
      切換畫面        → 三顆按鈕變成連結（/staff/workboard?view=...），下面 viewButtons 那段刪掉
      出餐、確認送達  → 餐點按鈕變成小表單直接送到 Controller，下面 StaffStore.setItemStatus 那段刪掉
+     退回製作中      → 內場「等待送餐」的餐點也是小表單，送到 /staff/workboard/backToCooking。
+                       退回前的確認視窗要保留，改成寫在表單的 submit 事件裡：
+                         if (!confirm('要退回製作中嗎？')) e.preventDefault();   // 按「取消」就不送出
+                       Controller 要先確認這道餐點現在仍然是 等待送餐 才退回；
+                       如果外場已經按了「確認送達」（變成 已送達），就不要動它
      編輯訂單        → 變成連結（/staff/workboard/edit?orderId=...），下面 openEdit 那段刪掉
      縮小／展開      → 和資料無關，要保留。但畫面不再由 render() 產生，所以改成直接切換 class：
                          card.classList.toggle('collapsed');
@@ -193,11 +197,24 @@ boardCards.addEventListener('click', e => {
   const itemIndex = Number(dish.dataset.item);
 
   if (currentView === 'kitchen') {
-    // 內場：製作中 → 等待送餐
-    StaffStore.setItemStatus(orderId, itemIndex, 'TO_SERVE');
+    // 先查出這道餐點現在的狀態，才知道這一下是「出餐」還是「退回」
+    const current = StaffStore.getOrders().find(o => o.id === orderId);
+    const item = current && current.items[itemIndex];
+    if (!item) return;
+
+    if (item.status === '製作中') {
+      // 內場：製作中 → 等待送餐（點一下就生效）
+      StaffStore.setItemStatus(orderId, itemIndex, '等待送餐');
+    } else if (item.status === '等待送餐') {
+      // 內場：等待送餐 → 退回製作中（誤觸出餐時使用）。
+      // 多一個確認，避免不小心連點兩下，剛出餐又被退回去
+      if (!confirm(`要把「${item.name}」退回製作中嗎？`)) return;
+      StaffStore.setItemStatus(orderId, itemIndex, '製作中');
+      staffToast(`「${item.name}」已退回製作中`);
+    }
   } else if (currentView === 'floor') {
     // 外場：等待送餐 → 已送達
-    StaffStore.setItemStatus(orderId, itemIndex, 'SERVED');
+    StaffStore.setItemStatus(orderId, itemIndex, '已送達');
     const order = StaffStore.getOrders().find(o => o.id === orderId);
     if (order && StaffStore.isAllServed(order)) {
       staffToast(`${order.table} 桌的餐點已全部送達`);
@@ -237,25 +254,23 @@ window.addEventListener('resize', updateArrows);        // 平板轉向、視窗
 
 /* ========== 4. 編輯訂單（填寫備註、刪除單一道餐點、刪除整筆訂單） ==========
    對話框有兩個畫面：
-     畫面一「填寫備註」：整桌備註 + 每道餐點的備註與「刪除」按鈕，按「儲存變更」才會存起來
-     畫面二「確認刪除」：按了「刪除訂單」才出現，要先選原因才能按「確認刪除」
+     畫面一「填寫備註」：每道餐點的備註與「刪除」按鈕，按「儲存變更」才會存起來
+     畫面二「確認刪除」：按了「刪除訂單」才出現，再按一次「確認刪除」才會真的刪除
 
    【Thymeleaf 串接】
      儲存備註：把畫面一包成一個表單送到 Controller，例如
          <form th:action="@{/staff/workboard/notes}" method="post">
            <input type="hidden" name="orderId" ...>
-           <input name="orderNote" ...>
            每道餐點的輸入框都取同一個名字 name="itemNotes"，
            Controller 用 @RequestParam List<String> itemNotes 就能依順序收到全部。
            要刪除的餐點：在那一列放 <input type="hidden" name="cancelledItemIds" th:value="${item.id}">，
            沒有要刪除的列就不要放（或用 JS 把它 disabled），Controller 收到的就是要刪除的餐點編號
          </form>
-     刪除訂單：另一個表單送到 /staff/workboard/cancel，帶 orderId 和 reason。
-       建議和這裡一樣不要真的從資料庫刪掉，而是把訂單的狀態改成「已取消」並記下原因，
-       之後才查得到是誰、為什麼刪的。
+     刪除訂單：另一個表單送到 /staff/workboard/cancel，帶 orderId。
+       和這裡一樣不要真的從資料庫刪掉，而是把這筆訂單所有訂單明細的狀態（od_status）都改成「已取消」，
+       訂單 orders 本身不用動。之後才查得到這筆訂單。
      下面「打開／關閉對話框」「常用備註」「切換兩個畫面」的程式和資料無關，可以保留。 */
 const editModal = document.getElementById('editModal');
-const editOrderNote = document.getElementById('editOrderNote');
 const editItems = document.getElementById('editItems');
 const editNotesView = document.getElementById('editNotesView');
 const editNotesFoot = document.getElementById('editNotesFoot');
@@ -263,11 +278,9 @@ const editDeleteView = document.getElementById('editDeleteView');
 const editDeleteFoot = document.getElementById('editDeleteFoot');
 const editAskDelete = document.getElementById('editAskDelete');
 const editConfirmDelete = document.getElementById('editConfirmDelete');
-const deleteReasonButtons = document.querySelectorAll('[data-delete-reason]');
 
 let editingId = null;        // 正在編輯的訂單編號
 let noteTarget = null;       // 最後點到的備註欄位，「常用備註」會加到這個欄位
-let deleteReason = '';       // 選到的刪除原因
 
 // 切換畫面一（填寫備註）和畫面二（確認刪除）
 function showDeleteView(show) {
@@ -283,19 +296,18 @@ function openEdit(orderId) {
   editingId = orderId;
 
   document.getElementById('editTitle').textContent = `${order.table} 桌`;
-  document.getElementById('editMeta').textContent = `${order.people} 人　${order.time} 下單　訂單編號 ${order.id}`;
+  document.getElementById('editMeta').textContent = `${order.time} 下單　訂單編號 ${order.id}`;
 
-  editOrderNote.value = order.note || '';
   // 每道餐點一列：品名、備註輸入框、刪除按鈕。
   // 被刪除的那一列會加上 is-removed 這個 class（品名劃線、輸入框鎖住、按鈕變成「復原」）
   editItems.innerHTML = order.items.map((item, index) => {
-    const removed = Boolean(item.cancelled);
+    const removed = item.status === '已取消';
     // 已經送到客人桌上的餐點不能刪除
-    const served = item.status === 'SERVED' && !removed;
+    const served = item.status === '已送達' && !removed;
     return `
     <li class="edit-item${removed ? ' is-removed' : ''}">
       <span class="edit-item-name">
-        <span class="dish-tag">${escapeHtml(item.category)}</span>
+        <span class="dish-tag">${escapeHtml(item.mealtype)}</span>
         ${escapeHtml(item.name)}${item.qty > 1 ? ` <span class="dish-qty">× ${escapeHtml(item.qty)}</span>` : ''}
       </span>
       <input type="text" class="staff-input edit-input" data-item-note="${index}" maxlength="20"
@@ -307,17 +319,13 @@ function openEdit(orderId) {
     </li>`;
   }).join('');
 
-  // 刪除畫面：回到還沒選原因的狀態
-  deleteReason = '';
-  deleteReasonButtons.forEach(btn => btn.classList.remove('active'));
-  editConfirmDelete.disabled = true;
-  // 「刪除訂單」只有在每一道餐點都還沒出餐（都是 COOKING）時才顯示；
+  // 「刪除訂單」只有在每一道餐點都還沒出餐（都是 製作中）時才顯示；
   // 只要有一道已經出餐或送達，就不能刪除整筆訂單
-  const nothingStarted = StaffStore.activeItems(order).every(item => item.status === 'COOKING');
+  const nothingStarted = StaffStore.activeItems(order).every(item => item.status === '製作中');
   editAskDelete.hidden = !nothingStarted;
 
   showDeleteView(false);
-  noteTarget = editOrderNote;   // 一開始「常用備註」預設加到整桌備註
+  noteTarget = null;   // 還沒點任何備註欄位；要先點一道餐點的備註欄位，「常用備註」才知道要加到哪裡
   editModal.hidden = false;
 }
 
@@ -376,7 +384,7 @@ document.getElementById('editSave').addEventListener('click', () => {
     return;
   }
 
-  StaffStore.saveEdits(editingId, editOrderNote.value.trim(), itemNotes, itemCancelled);
+  StaffStore.saveEdits(editingId, itemNotes, itemCancelled);
   closeEdit();
   render();
   staffToast('已儲存變更');
@@ -386,22 +394,14 @@ document.getElementById('editSave').addEventListener('click', () => {
 editAskDelete.addEventListener('click', () => showDeleteView(true));
 document.getElementById('editBackToNotes').addEventListener('click', () => showDeleteView(false));
 
-// 選刪除原因：選了之後「確認刪除」才能按
-deleteReasonButtons.forEach(btn => {
-  btn.addEventListener('click', () => {
-    deleteReason = btn.dataset.deleteReason;
-    deleteReasonButtons.forEach(b => b.classList.toggle('active', b === btn));
-    editConfirmDelete.disabled = false;
-  });
-});
-
+// 確認刪除：把這筆訂單所有餐點的狀態都改成「已取消」
 editConfirmDelete.addEventListener('click', () => {
   const order = StaffStore.getOrders().find(o => o.id === editingId);
-  if (!order || !deleteReason) return;
-  StaffStore.cancelOrder(order.id, deleteReason);
+  if (!order) return;
+  StaffStore.cancelOrder(order.id);
   closeEdit();
   render();
-  staffToast(`已刪除 ${order.table} 桌的訂單（${deleteReason}）`);
+  staffToast(`已刪除 ${order.table} 桌的訂單`);
 });
 
 

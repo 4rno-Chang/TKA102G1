@@ -2,163 +2,109 @@
 <html lang="zh-Hant" xmlns:th="http://www.thymeleaf.org">
 
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Bistroops｜首頁</title>
-  <link rel="icon" th:href="@{/images/logo-mark.svg}" type="image/svg+xml">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bistroops｜首頁</title>
+<link rel="icon" th:href="@{/images/logo-mark.svg}" type="image/svg+xml">
 
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet"
-    href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Noto+Sans+TC:wght@300;400;500;700&family=Noto+Serif+TC:wght@500;600&display=swap">
-  <link rel="stylesheet" th:href="@{/css/style.css}" />
-  <script th:src="@{/js/main.js}" defer></script>
-  <link rel="stylesheet" th:href="@{/css/member.css}" />
-  <script th:src="@{/js/member.js}" defer></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet"
+	href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Noto+Sans+TC:wght@300;400;500;700&family=Noto+Serif+TC:wght@500;600&display=swap">
+<link rel="stylesheet" th:href="@{/css/front/style.css}" />
+<script th:src="@{/js/front/main.js}" defer></script>
+<link rel="stylesheet" th:href="@{/css/front/member.css}" />
+<script th:src="@{/js/front/member.js}" defer></script>
 </head>
 
 <body>
-  <div th:replace="~{front/member/member_modals :: modals}"></div>
-  <!-- ========== Header ========== -->
-  <header class="site-header" id="siteHeader">
-    <div class="header-inner">
-      <a href="#" class="logo">
-        <img th:src="@{/images/logo-dark.svg}" alt="bistroops">
-      </a>
+	<div th:replace="~{front/member/member_modals :: modals}"></div>
+	<!-- ========== Header ========== -->
+	<header th:replace="~{front/front_layout :: header('')}"></header>
+	<main>
+		<!-- ========== Hero ========== -->
+		<section class="hero">
+			<div class="hero-text">
+				<p class="eyebrow">Bistro · Table · Wine</p>
+				<h1>Bistroops！</h1>
+				<p>副標題</p>
+				<a href="#" class="btn-outline">立即訂位</a>
+			</div>
 
-      <button class="menu-toggle" id="menuToggle" aria-label="開啟選單" aria-expanded="false"><span></span></button>
+			<div class="carousel" id="carousel">
+				<div class="carousel-track">
+					<div class="slide">
+						<img th:src="@{/images/promo-lunch.svg}" alt="平日午間套餐 85 折">
+					</div>
+					<div class="slide">
+						<img th:src="@{/images/promo-birthday.svg}" alt="壽星當月招待甜點">
+					</div>
+					<div class="slide">
+						<img th:src="@{/images/promo-reservation.svg}" alt="線上預約訂位現正開放">
+					</div>
+				</div>
+				<button class="carousel-arrow prev" aria-label="上一張">‹</button>
+				<button class="carousel-arrow next" aria-label="下一張">›</button>
+				<div class="carousel-dots"></div>
+			</div>
+		</section>
 
-      <nav class="nav" id="mainNav">
-        <ul class="nav-list">
-          <li><a href="#">最新消息</a></li>
-          <li><a href="#">預約訂位</a></li>
-          <li><a href="#">候位狀況</a></li>
-          <li><a href="#menu">瀏覽菜單</a></li>
-          <li><a href="#about">關於我們</a></li>
-          <li><a href="#faq">常見問題</a></li>
-        </ul>
-   	 <!-- 未登入 -->
-	  <button type="button" class="btn-login" data-open-auth th:if="${session.member == null}">
-	    登入 / 註冊
-	  </button>
+		<!-- ========== 精選菜單 ========== -->
+		<section class="section reveal" id="menu">
+			<div class="container">
+				<p class="eyebrow">Our Menu</p>
+				<h2 class="section-title">精選菜單</h2>
+				<div class="menu-grid">
+					<a href="#" class="menu-card placeholder"
+						th:style="|background-image: url('@{/images/dish-appetizer.svg}')|"><span
+						class="menu-card-text">開胃菜<small>Appetizer</small></span></a> <a
+						href="#" class="menu-card placeholder"
+						th:style="|background-image: url('@{/images/dish-main.svg}')|"><span
+						class="menu-card-text">主餐<small>main course</small></span></a> <a
+						href="#" class="menu-card placeholder"
+						th:style="|background-image: url('@{/images/dish-dessert.svg}')|"><span
+						class="menu-card-text">甜點<small>dessert</small></span></a>
+				</div>
+				<div class="btn-center">
+					<a href="#" class="btn-outline">查看完整菜單</a>
+				</div>
+			</div>
+		</section>
 
-	<!-- 已登入 -->
-	 <button type="button" class="member-menu-toggle" data-member-tab="profile" th:if="${session.member != null}">
+		<!-- ========== 常見問題 ========== -->
+		<section class="section reveal" id="faq">
+			<div class="container">
+				<p class="eyebrow">FAQ</p>
+				<h2 class="section-title">常見問題</h2>
+				<!-- 內容由下方 JS 的 faqData 產生；之後可改成從後端（Servlet / AJAX）取得 -->
+				<div class="faq-list" id="faqList"></div>
+				<div class="btn-center">
+					<a href="#" class="btn-outline">more→</a>
+				</div>
+			</div>
+		</section>
 
-	    <span th:text="${session.member.memName != null and !session.member.memName.isBlank() ? session.member.memName : session.member.memTel}">
-	        09XXXXXXXX
-	    </span>
-
-    	會員，你好
-	 </button>
-
-      </nav>
-    </div>
-  </header>
-
-  <main>
-    <!-- ========== Hero ========== -->
-    <section class="hero">
-      <div class="hero-text">
-        <p class="eyebrow">Bistro · Table · Wine</p>
-        <h1>Bistroops！</h1>
-        <p>副標題</p>
-        <a href="#" class="btn-outline">立即訂位</a>
-      </div>
-
-      <div class="carousel" id="carousel">
-        <div class="carousel-track">
-          <div class="slide"><img th:src="@{/images/promo-lunch.svg}" alt="平日午間套餐 85 折"></div>
-          <div class="slide"><img th:src="@{/images/promo-birthday.svg}" alt="壽星當月招待甜點"></div>
-          <div class="slide"><img th:src="@{/images/promo-reservation.svg}" alt="線上預約訂位現正開放"></div>
-        </div>
-        <button class="carousel-arrow prev" aria-label="上一張">‹</button>
-        <button class="carousel-arrow next" aria-label="下一張">›</button>
-        <div class="carousel-dots"></div>
-      </div>
-    </section>
-
-    <!-- ========== 精選菜單 ========== -->
-    <section class="section reveal" id="menu">
-      <div class="container">
-        <p class="eyebrow">Our Menu</p>
-        <h2 class="section-title">精選菜單</h2>
-        <div class="menu-grid">
-          <a href="#" class="menu-card placeholder"
-            th:style="|background-image: url('@{/images/dish-appetizer.svg}')|"><span
-              class="menu-card-text">開胃菜<small>Appetizer</small></span></a>
-          <a href="#" class="menu-card placeholder" th:style="|background-image: url('@{/images/dish-main.svg}')|"><span
-              class="menu-card-text">主餐<small>main course</small></span></a>
-          <a href="#" class="menu-card placeholder"
-            th:style="|background-image: url('@{/images/dish-dessert.svg}')|"><span
-              class="menu-card-text">甜點<small>dessert</small></span></a>
-        </div>
-        <div class="btn-center"><a href="#" class="btn-outline">查看完整菜單</a></div>
-      </div>
-    </section>
-
-    <!-- ========== 常見問題 ========== -->
-    <section class="section reveal" id="faq">
-      <div class="container">
-        <p class="eyebrow">FAQ</p>
-        <h2 class="section-title">常見問題</h2>
-        <!-- 內容由下方 JS 的 faqData 產生；之後可改成從後端（Servlet / AJAX）取得 -->
-        <div class="faq-list" id="faqList"></div>
-        <div class="btn-center"><a href="#" class="btn-outline">more→</a></div>
-      </div>
-    </section>
-
-    <!-- ========== 關於我們 ========== -->
-    <section class="section reveal" id="about">
-      <div class="container">
-        <!-- 滑鼠移入或點擊後，會蓋上半透明白底並顯示理念文字（效果在 style.css「8. 關於我們」、點擊在 main.js 第 7 區）
+		<!-- ========== 關於我們 ========== -->
+		<section class="section reveal" id="about">
+			<div class="container">
+				<!-- 滑鼠移入或點擊後，會蓋上半透明白底並顯示理念文字（效果在 style.css「8. 關於我們」、點擊在 main.js 第 7 區）
              之後要放背景圖：在下面這個 div 加上
                th:style="|background-image: url('@{/images/圖片檔名}')|" -->
-        <div class="about-box placeholder" id="aboutBox" role="button" tabindex="0" aria-expanded="false">
-          <span class="about-title">關於我們</span>
-          <p class="about-overlay">
-            Bistroops 相信，好的料理不必拘謹。<br>
-            我們挑選當季食材，用心對待每一道菜，<br>
-            再配上一杯好酒，讓每一次相聚都自在而難忘。
-          </p>
-        </div>
-      </div>
-    </section>
-  </main>
+				<div class="about-box placeholder" id="aboutBox" role="button"
+					tabindex="0" aria-expanded="false">
+					<span class="about-title">關於我們</span>
+					<p class="about-overlay">
+						Bistroops 相信，好的料理不必拘謹。<br> 我們挑選當季食材，用心對待每一道菜，<br>
+						再配上一杯好酒，讓每一次相聚都自在而難忘。
+					</p>
+				</div>
+			</div>
+		</section>
+	</main>
 
-  <!-- ========== Footer ========== -->
-  <footer class="site-footer">
-    <div class="footer-grid">
-      <div>
-        <h4>一起面對有限公司</h4>
-      </div>
-
-      <div>
-        <h4>Navigation</h4>
-        <ul class="footer-links">
-          <li><a href="#">最新消息</a></li>
-          <li><a href="#menu">瀏覽菜單</a></li>
-          <li><a href="#">預約訂位</a></li>
-          <li><a href="#about">關於我們</a></li>
-          <li><a href="#">候位狀況</a></li>
-          <li><a href="#faq">常見問題</a></li>
-        </ul>
-      </div>
-
-      <div class="footer-contact">
-        <h4>Contact</h4>
-        <p>組別：TKA102G1</p>
-        <p>成員：</p>
-      </div>
-
-      <div>
-        <h4>Follow Us</h4>
-      </div>
-    </div>
-    <p class="copyright">© <span id="year"></span> Bistroops. All rights reserved.</p>
-  </footer>
-
-  <button class="back-to-top" id="backToTop" aria-label="回到頂端">↑</button>
+	<!-- ========== Footer ========== -->
+	<footer th:replace="~{front/front_layout :: footer}"></footer>
+	<button th:replace="~{front/front_layout :: backToTop}"></button>
 
 </body>
 

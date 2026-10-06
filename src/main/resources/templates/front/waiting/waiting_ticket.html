@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="zh-Hant" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bistroops｜您的號碼牌</title>
+  <link rel="icon" th:href="@{/images/logo-mark.svg}" type="image/svg+xml">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Noto+Sans+TC:wght@300;400;500;700&family=Noto+Serif+TC:wght@500;600&display=swap">
+  <link rel="stylesheet" th:href="@{/css/front/style.css}" />
+  <link rel="stylesheet" th:href="@{/css/front/member.css}" />
+  <link rel="stylesheet" th:href="@{/css/front/waiting.css}" />
+  <script th:src="@{/js/front/member.js}" defer></script>
+  <script th:src="@{/js/front/waiting.js}" defer></script>
+</head>
+
+<!--
+  號碼牌（取號成功）
+  網址：/bistroops/waiting/ticket
+
+  ※ 目前是假資料：號碼和下面的內容，是 waiting.js 暫存在瀏覽器裡帶過來的（見 waiting.js 第 6 區）。
+    「前面還有幾組」是取號當下的數字，不會自己更新。
+
+  【Thymeleaf 串接】接上資料庫後，Controller 把號碼牌的資料放進 Model，HTML 改用 th:text 顯示。
+  在下面每個有 id 的元素上加對應的 th:text 即可，id 可以留著：
+    ticketLabel     th:text="|${tableType} 人桌　您的號碼|"
+    ticketNo        th:text="${ticketNo}"
+    ticketAhead     th:text="${ahead}"
+    ticketEstimate  th:text="${estimate}"
+    ticketTime      th:text="${takenTime}"
+    ticketName      th:text="${name}"
+    ticketPhone     th:text="${phone}"
+    ticketNote      th:text="${note != null and !note.isEmpty()} ? ${note} : '無'"
+  客人很可能會重新整理或關掉再打開這一頁，所以建議 Controller 用網址上的手機或號碼
+  （例如 /bistroops/waiting/ticket?phone=09...）每次都從資料庫查最新的資料；
+  並在 <head> 加上 <meta http-equiv="refresh" content="60">，「前面還有幾組」就會每分鐘自動更新。
+-->
+
+<body>
+  <div th:replace="~{front/member/member_modals :: modals}"></div>
+  <header th:replace="~{front/front_layout :: header('')}"></header>
+
+  <main class="booking">
+    <div class="container">
+
+      <header class="booking-head">
+        <p class="eyebrow">Waiting List</p>
+        <h1 class="booking-title">現場取號</h1>
+        <p class="booking-lead">取號完成，請留意現場叫號。</p>
+      </header>
+
+      <ol class="booking-steps">
+        <li class="done"><span class="step-no">1</span>選擇桌型與填寫資料</li>
+        <li class="active"><span class="step-no">2</span>領取號碼牌</li>
+      </ol>
+
+      <!-- 內容由 waiting.js 填入 -->
+      <section class="booking-result ticket" id="ticketBox">
+        <p class="ticket-label" id="ticketLabel">您的號碼</p>
+        <p class="ticket-no" id="ticketNo"></p>
+
+        <dl class="summary-list">
+          <div><dt>前面還有</dt><dd><strong id="ticketAhead"></strong> 組</dd></div>
+          <div><dt>預估等候</dt><dd id="ticketEstimate"></dd></div>
+          <div><dt>取號時間</dt><dd id="ticketTime"></dd></div>
+          <div><dt>聯絡人姓名</dt><dd id="ticketName"></dd></div>
+          <div><dt>手機號碼</dt><dd id="ticketPhone"></dd></div>
+          <div><dt>備註</dt><dd id="ticketNote"></dd></div>
+        </dl>
+
+        <p class="result-notice">
+          到號後請於 10 分鐘內向現場人員報到，逾時視為過號。<br>
+          建議將這個畫面截圖保存。
+        </p>
+
+        <a class="btn-outline" th:href="@{/bistroops/waiting}">查看候位狀況</a>
+      </section>
+
+    </div>
+  </main>
+
+  <footer th:replace="~{front/front_layout :: footer}"></footer>
+  <button th:replace="~{front/front_layout :: backToTop}"></button>
+</body>
+
+</html>

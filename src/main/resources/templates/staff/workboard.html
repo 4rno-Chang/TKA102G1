@@ -11,9 +11,9 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet"
     href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;700&display=swap">
-  <link rel="stylesheet" th:href="@{/css/staff.css}" />
-  <script th:src="@{/js/staff.js}" defer></script>
-  <script th:src="@{/js/staff-workboard.js}" defer></script>
+  <link rel="stylesheet" th:href="@{/css/staff/staff.css}" />
+  <script th:src="@{/js/staff/staff.js}" defer></script>
+  <script th:src="@{/js/staff/staff-workboard.js}" defer></script>
 </head>
 
 <!--
@@ -21,11 +21,12 @@
   左邊的「內場／外場／已完成訂單」三顆按鈕是切換畫面用的，三個畫面用的是同一份訂單資料：
 
     狀態        外觀        內場畫面            外場畫面
-    COOKING     一般        可按「出餐」        顯示「製作中」
-    TO_SERVE    黃框        顯示「等待送餐」    可按「確認送達」
-    SERVED      劃線變淡    顯示「已送達」      顯示「已送達」
+    製作中     一般        可按「出餐」        顯示「製作中」
+    等待送餐    黃框        顯示「等待送餐」    可按「確認送達」
+                            （誤觸出餐時，再點一次可以退回 製作中）
+    已送達      劃線變淡    顯示「已送達」      顯示「已送達」
 
-  一桌的餐點全部 SERVED 後，那一桌會從內場、外場消失，改出現在「已完成訂單(未結帳)」。
+  一桌的餐點全部 已送達 後，那一桌會從內場、外場消失，改出現在「已完成訂單(未結帳)」。
   卡片的內容由 staff-workboard.js 產生。
 
   【Thymeleaf 串接】這一頁接上資料庫後要改的地方（往下搜尋「Thymeleaf 串接」可以一個一個找到）：
@@ -87,25 +88,25 @@
           <article class="table-card" th:each="order : ${orders}">
             <button type="button" class="table-card-head" data-toggle-card>
               <strong class="table-name" th:text="|${order.table} 桌|">A1 桌</strong>
-              <span th:text="|${order.people} 人|">2 人</span>
               <span th:text="${order.time}">12:30</span>
               <span class="table-progress" th:text="|${order.servedCount}/${order.activeCount} 已送達|">1/4 已送達</span>
               <span class="table-toggle">▲ 縮小</span>
             </button>
 
             <div class="table-card-body">
-              <p class="table-note" th:if="${order.note}" th:text="${order.note}">整桌備註</p>
-
               <ul class="dish-list">
                 <li th:each="item : ${order.items}">
 
                   （1）可以按的餐點：包在小表單裡，按下去就送到 Controller。
-                       內場是 COOKING 的餐點送到 toServe，外場是 TO_SERVE 的餐點送到 served
-                  <form th:if="${view == 'kitchen' and item.status == 'COOKING' and !item.cancelled}"
+                       內場是 製作中 的餐點送到 toServe，外場是 等待送餐 的餐點送到 served。
+                       內場是 等待送餐 的餐點也可以按（誤觸出餐時退回製作中），表單送到 backToCooking，
+                       最右邊的文字是「● 等待送餐」，下面加一行小字
+                         <small class="dish-sub">再點一次可退回</small>
+                  <form th:if="${view == 'kitchen' and item.status == '製作中'}"
                         th:action="@{/staff/workboard/toServe}" method="post">
                     <input type="hidden" name="itemId" th:value="${item.id}">
                     <button type="submit" class="dish is-cooking">
-                      <span class="dish-tag" th:text="${item.category}">主菜</span>
+                      <span class="dish-tag" th:text="${item.mealtype}">主菜</span>
                       <span class="dish-name">
                         <span th:text="${item.name}">品名</span>
                         <small class="dish-note" th:if="${item.note}" th:text="${item.note}">備註</small>
@@ -117,7 +118,7 @@
                   （2）不能按的餐點：不用表單，直接是一顆 disabled 的按鈕，class 依狀態決定
                        is-to-serve 等待送餐／is-served 已送達／is-cancelled 已取消
                   <button type="button" class="dish" disabled
-                          th:classappend="${item.cancelled} ? 'is-cancelled' : (${item.status == 'SERVED'} ? 'is-served' : '')">
+                          th:classappend="${item.status == '已取消'} ? 'is-cancelled' : (${item.status == '已送達'} ? 'is-served' : '')">
                     ...內容同上，最右邊的文字換成「● 等待送餐」「✓ 已送達」「✕ 已取消」
                        已完成訂單的畫面則顯示送達時間 th:text="|${item.servedAt} 送達|"
                   </button>
@@ -140,7 +141,7 @@
 
   <!-- =====================================================
        編輯訂單的對話框（內場卡片下方的「編輯訂單」會打開它）
-       可以做三件事：1. 填寫備註（整桌的、每道餐點的）　2. 刪除單一道餐點　3. 刪除整筆訂單
+       可以做三件事：1. 填寫每道餐點的備註　2. 刪除單一道餐點　3. 刪除整筆訂單
        開關與內容由 staff-workboard.js 的第 4 區控制
        ===================================================== -->
   <!-- 【Thymeleaf 串接】對話框接上資料庫後的做法
@@ -148,12 +149,11 @@
           Controller 把那筆訂單放進 Model（名稱 editOrder）後回傳這一頁。
           下面那行 div 的 hidden 改成 th:hidden="${editOrder == null}"，有 editOrder 時對話框就會是打開的。
        2. 關閉：背景、右上角的 ×、「取消」都改成連結 <a th:href="@{/staff/workboard}">，回到沒有對話框的頁面。
-       3. 標題與內容：桌號、人數、整桌備註用 th:text／th:value 顯示 editOrder 的資料，
+       3. 標題與內容：桌號用 th:text 顯示 editOrder 的資料，
           餐點那幾列用 th:each="item : ${editOrder.items}" 產生。
        4. 儲存變更：把「畫面一」和它下面的 footer 一起包在一個表單裡
             <form th:action="@{/staff/workboard/notes}" method="post">
               <input type="hidden" name="orderId" th:value="${editOrder.id}">
-              整桌備註的輸入框加上 name="orderNote"
               每道餐點的備註輸入框都加上 name="itemNotes"（同一個名字，Controller 用 List<String> 依順序收）
               「儲存變更」改成 <button type="submit">
             </form>
@@ -164,13 +164,14 @@
        5. 刪除訂單：「畫面二」和它下面的 footer 包在另一個表單裡
             <form th:action="@{/staff/workboard/cancel}" method="post">
               <input type="hidden" name="orderId" th:value="${editOrder.id}">
-              <input type="hidden" name="reason" id="deleteReasonInput">
               「確認刪除」改成 <button type="submit">
             </form>
-          選刪除原因時，用 JS 把選到的文字填進 deleteReasonInput。
+          Controller 把這筆訂單所有訂單明細的狀態（od_status）都改成「已取消」，訂單 orders 本身不用動。
           「刪除訂單」按鈕只在餐點都還沒出餐時顯示，可以由 Controller 算好放進 Model（例如 canCancel），
           按鈕加上 th:if="${canCancel}"。
-       6. 訂單與餐點都不要真的從資料庫刪掉，改成標記「已取消」並記下原因與時間，之後才查得到。 -->
+       6. 訂單與餐點都不要真的從資料庫刪掉：刪除餐點是把那一筆訂單明細的狀態改成「已取消」，
+          刪除訂單是把它所有訂單明細的狀態都改成「已取消」。這樣之後才查得到。
+          被取消的餐點復原時，狀態改回「製作中」。 -->
   <div class="edit-modal" id="editModal" hidden>
     <!-- 半透明的背景，點一下會關閉對話框 -->
     <div class="edit-backdrop" data-edit-close></div>
@@ -183,7 +184,7 @@
             <span id="editTitle">A1 桌</span>
             <span class="edit-title-sub">訂單修改</span>
           </h2>
-          <!-- 人數、下單時間、訂單編號 -->
+          <!-- 下單時間、訂單編號 -->
           <p class="edit-meta" id="editMeta"></p>
         </div>
         <button type="button" class="edit-close" data-edit-close aria-label="關閉">×</button>
@@ -209,12 +210,6 @@
         </div>
 
         <div class="edit-section">
-          <label class="edit-label" for="editOrderNote">整桌備註</label>
-          <input type="text" class="staff-input edit-input" id="editOrderNote" maxlength="40"
-            placeholder="例如：客人趕時間、有小朋友" autocomplete="off">
-        </div>
-
-        <div class="edit-section">
           <h3 class="edit-label">餐點 <small>可以填備註，或刪除單一道餐點；按「儲存變更」後才會生效</small></h3>
           <!-- 每一道餐點一列：品名、備註的輸入框、刪除按鈕；由 staff-workboard.js 產生 -->
           <ul class="edit-items" id="editItems"></ul>
@@ -233,26 +228,14 @@
       <div class="edit-body" id="editDeleteView" hidden>
         <div class="delete-warn">
           <p class="delete-warn-title">確定要刪除這筆訂單嗎？</p>
-          <p>刪除後這一桌會從內場、外場和結帳消失，之後只能在「訂單管理」的「已取消」查到。</p>
-        </div>
-
-        <div class="edit-section">
-          <h3 class="edit-label">刪除原因 <small>必選</small></h3>
-          <div class="chips" id="deleteReasons">
-            <button type="button" class="chip" data-delete-reason="客人取消">客人取消</button>
-            <button type="button" class="chip" data-delete-reason="重複下單">重複下單</button>
-            <button type="button" class="chip" data-delete-reason="點錯桌號">點錯桌號</button>
-            <button type="button" class="chip" data-delete-reason="食材售完">食材售完</button>
-            <button type="button" class="chip" data-delete-reason="其他">其他</button>
-          </div>
+          <p>刪除後這一桌的餐點會全部標記成「已取消」，並從內場、外場和結帳消失，之後只能在「訂單管理」的「已取消」查到。</p>
         </div>
       </div>
 
       <footer class="edit-foot" id="editDeleteFoot" hidden>
         <button type="button" class="staff-btn" id="editBackToNotes">← 返回</button>
         <span class="edit-foot-space"></span>
-        <!-- 選了原因之後才能按 -->
-        <button type="button" class="staff-btn btn-danger" id="editConfirmDelete" disabled>確認刪除</button>
+        <button type="button" class="staff-btn btn-danger" id="editConfirmDelete">確認刪除</button>
       </footer>
     </section>
   </div>

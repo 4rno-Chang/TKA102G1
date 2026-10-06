@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="zh-Hant" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bistroops｜預約訂位</title>
+  <link rel="icon" th:href="@{/images/logo-mark.svg}" type="image/svg+xml">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Noto+Sans+TC:wght@300;400;500;700&family=Noto+Serif+TC:wght@500;600&display=swap">
+  <link rel="stylesheet" th:href="@{/css/front/style.css}" />
+  <link rel="stylesheet" th:href="@{/css/front/member.css}" />
+  <link rel="stylesheet" th:href="@{/css/front/reservation.css}" />
+  <script th:src="@{/js/front/member.js}" defer></script>
+  <script th:src="@{/js/front/reservation.js}" defer></script>
+</head>
+
+<!--
+  預約訂位 步驟一：選擇日期、桌型、時段
+  網址：/bistroops/reservation
+
+  ※ 目前是假資料：可預約的日期、時段都來自 reservation.js 第 1 區，畫面由 reservation.js 第 4 區產生。
+
+  【Thymeleaf 串接】這一頁接上資料庫後的運作方式（不用 JSON）：
+    1. 客人在月曆點日期，或換了桌型 → 表單用 GET 送回同一個網址，頁面重新載入，
+       Controller 查出那一天、那個桌型可以選的時段再顯示出來。
+    2. 客人選好時段，按「下一步」→ 同一個表單改用 POST 送到 /bistroops/reservation/contact。
+  Controller 要放進 Model 的值：
+    openDates   可以預約的日期，用逗號接起來的文字（例如 2026-10-07,2026-10-08）
+    minDate／maxDate   月曆可以翻到的最早與最晚日期
+    tableType   目前選的桌型（2、4、6）
+    date        目前選的日期（2026-10-03）；還沒選是 null
+    dateText    顯示用的日期（2026/10/03）
+    slots       那一天的時段清單，每一個有：
+                  rsvDtNo 時段編號／timeText 顯示用的時間（17:00）／full 是否額滿（true／false）
+    rsvDtNo     目前選的時段編號；還沒選是 null
+  資料來源（資料表與欄位見 reservation.js 第 1 區開頭的「對應的資料表」）：
+    可預約的日期、每天的時段都來自「訂位時段 reservation_datetime」；
+    是否額滿要用「訂位 reservation」的筆數和「桌型 seat_type」的開放訂位桌數比較。
+  要改的地方往下搜尋「Thymeleaf 串接」，共 6 處（第 6 處是最下面的「查詢訂位」對話框）。
+-->
+
+<body>
+  <div th:replace="~{front/member/member_modals :: modals}"></div>
+  <header th:replace="~{front/front_layout :: header('reservation')}"></header>
+
+  <main class="booking">
+    <div class="container">
+
+      <header class="booking-head">
+        <p class="eyebrow">Reservation</p>
+        <h1 class="booking-title">預約訂位</h1>
+        <p class="booking-lead">選擇用餐日期、桌型與時段，安排你的下一次聚餐。</p>
+        <!-- 查詢訂位：點了會打開這一頁最下面的對話框（data-open-lookup 填的是對話框的 id） -->
+        <p class="booking-head-action">
+          <button type="button" class="btn-outline btn-lookup" data-open-lookup="resvLookup">查詢訂位</button>
+        </p>
+      </header>
+
+      <!-- 三個步驟：目前在第一步 -->
+      <ol class="booking-steps">
+        <li class="active"><span class="step-no">1</span>選擇日期與桌型</li>
+        <li><span class="step-no">2</span>填寫聯絡資料</li>
+        <li><span class="step-no">3</span>確認訂位</li>
+      </ol>
+
+      <div class="booking-layout">
+
+        <!-- ========== 左：選擇日期、桌型、時段 ========== -->
+        <section class="booking-card">
+          <h2 class="booking-card-title">選擇日期與桌型</h2>
+
+          <!-- 【Thymeleaf 串接 1】表單
+               下面那行 form 換成：
+                 <form id="resvForm" th:action="@{/bistroops/reservation}" method="get">
+               並在表單裡加一個隱藏欄位存選到的日期（reservation.js 點月曆時把日期填進去，再送出表單）：
+                 <input type="hidden" name="date" id="resvDate" th:value="${date}"> -->
+          <form id="resvForm">
+
+            <!-- ===== 用餐日期 ===== -->
+            <div class="booking-block">
+              <h3 class="booking-label">用餐日期 <small>可預約三個月內的日期</small></h3>
+
+              <!-- 已經選了日期時才顯示這一列（左邊日期、右邊「開啟日曆」），由 reservation.js 控制。
+                   【Thymeleaf 串接 2】把 hidden 換成 th:if="${date != null}"，
+                   日期那個 span 加上 th:text="${dateText}" -->
+              <button type="button" class="date-field" id="calendarToggle" aria-expanded="false" hidden>
+                <span class="date-field-value"></span>
+                <span class="date-field-action">開啟日曆 ▾</span>
+              </button>
+
+              <!-- 月曆：內容由 reservation.js 產生。還沒選日期時展開；選了之後收起來，按上面的按鈕再打開。
+                   只有可以預約的日期能點，其他日期是灰色的。
+                   【Thymeleaf 串接 3】可以預約的日期改由 Controller 查資料庫決定，再交給 JS 畫出來。
+                   把下面那行 div 換成：
+                     <div class="calendar" id="calendar"
+                          th:classappend="${date != null} ? 'is-collapsed'"
+                          th:attr="data-open-dates=${openDates}, data-min=${minDate}, data-max=${maxDate}, data-selected=${date}">
+                     </div>
+                   reservation.js 再改成從這四個 data- 屬性讀資料（例如 calendar.dataset.openDates），
+                   取代現在呼叫 ReservationDemo.openDates() 的地方。 -->
+              <div class="calendar" id="calendar"></div>
+
+              <p class="calendar-legend">
+                <span class="legend-dot legend-open"></span>可預約
+                <span class="legend-dot legend-closed"></span>公休或已額滿
+              </p>
+            </div>
+
+            <!-- ===== 桌型 ===== -->
+            <div class="booking-block">
+              <h3 class="booking-label">選擇桌型 <small>預設為 1 桌，若有多人用餐的需求請來電預約</small></h3>
+              <!-- 每個桌型一個選項。input 藏起來，看得到的是後面的 choice-box。
+                   【Thymeleaf 串接 4】每個 input 的 checked 改由 Controller 決定：
+                   拿掉第一個選項寫死的 checked，三個 input 分別加上
+                     th:checked="${tableType == 2}"、th:checked="${tableType == 4}"、th:checked="${tableType == 6}" -->
+              <div class="choice-row">
+                <label class="choice">
+                  <input type="radio" name="tableType" value="2" checked>
+                  <span class="choice-box">2 人桌</span>
+                </label>
+                <label class="choice">
+                  <input type="radio" name="tableType" value="4">
+                  <span class="choice-box">4 人桌</span>
+                </label>
+                <label class="choice">
+                  <input type="radio" name="tableType" value="6">
+                  <span class="choice-box">6 人桌</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- ===== 用餐時段 ===== -->
+            <div class="booking-block">
+              <h3 class="booking-label">用餐時段</h3>
+
+              <!-- 還沒選日期時顯示這一行；選了日期後，reservation.js 會把時段產生在下面的 slotGrid 裡。
+                   【Thymeleaf 串接 5】時段改由 Controller 查資料庫後，用 th:each 產生。
+                   把下面的 p 和 div 換成：
+
+                     <p class="booking-empty" th:if="${date == null}">請先選擇日期，以查看可預約的時段。</p>
+
+                     <div class="slot-grid" th:if="${date != null}">
+                       <label class="slot" th:each="slot : ${slots}">
+                         <input type="radio" name="rsvDtNo" th:value="${slot.rsvDtNo}"
+                                th:checked="${slot.rsvDtNo == rsvDtNo}"
+                                th:disabled="${slot.full}"
+                                th:attr="data-time=${slot.timeText}">
+                         <span class="slot-box">
+                           <span class="slot-time" th:text="${slot.timeText}">17:00</span>
+                           <span class="slot-state" th:text="${slot.full} ? '已額滿' : ''"></span>
+                         </span>
+                       </label>
+                     </div>
+
+                   送出的值是時段編號 rsvDtNo（存進 reservation 的 rsv_dt_no），不是時間的文字；
+                   data-time 是給 reservation.js 更新右邊摘要用的（選到時顯示 17:00）。
+                   每一個時段就是「訂位時段 reservation_datetime」的一列。
+
+                   「下一步」的按鈕換成（formaction 和 formmethod 會讓這顆按鈕改用 POST 送到步驟二）：
+                     <button type="submit" class="btn-solid" id="resvNext"
+                             th:formaction="@{/bistroops/reservation/contact}" formmethod="post"
+                             th:disabled="${date == null or rsvDtNo == null}">下一步：填寫聯絡資料</button>
+                   右邊摘要的日期、桌型兩個 dd 也可以加上 th:text 顯示 dateText、tableType。 -->
+              <p class="booking-empty" id="slotEmpty">請先選擇日期，以查看可預約的時段。</p>
+              <div class="slot-grid" id="slotGrid" hidden></div>
+            </div>
+
+            <!-- 下一步：日期和時段都選好才能按，由 reservation.js 控制 -->
+            <button type="button" class="btn-solid" id="resvNext" disabled>下一步：填寫聯絡資料</button>
+          </form>
+        </section>
+
+        <!-- ========== 右：訂位摘要（內容由 reservation.js 跟著選到的項目更新） ========== -->
+        <aside class="booking-summary">
+          <h2 class="booking-card-title">訂位摘要</h2>
+          <dl class="summary-list">
+            <div><dt>日期</dt><dd id="sumDate">尚未選擇</dd></div>
+            <div><dt>桌型</dt><dd id="sumTable">2 人桌</dd></div>
+            <div><dt>時段</dt><dd id="sumTime">尚未選擇</dd></div>
+          </dl>
+          <p class="summary-status">目前尚未完成訂位</p>
+          <p class="summary-hint">下一步填寫資料並送出確認。</p>
+        </aside>
+
+      </div>
+
+      <!-- ========== 訂位須知 ========== -->
+      <section class="booking-rules">
+        <h2 class="booking-rules-title">訂位須知</h2>
+        <ul>
+          <li>請先選擇日期與桌型，以查看可預約的時段。</li>
+          <li>線上訂位開放預約三個月內的日期，每次限訂 1 桌；多桌或包場請來電洽詢。</li>
+          <li>訂位將為您保留 10 分鐘，逾時座位將開放給現場候位的客人。</li>
+          <li>如需更改或取消訂位，請於用餐前一日來電告知。</li>
+        </ul>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- =====================================================
+       查詢訂位的對話框（標題下方的「查詢訂位」按鈕會打開它）
+       輸入手機 → 列出那支手機今天以後的所有訂位 → 每一筆可以取消，不能修改
+       不需要登入會員。有登入時，手機會自動帶入（這部分不是假資料）。
+
+       ※ 目前是假資料：查到的訂位來自 reservation.js 第 1 區，清單由 reservation.js 第 7 區產生。
+         示範手機 0912345678 已經有兩筆訂位可以查。
+
+       【Thymeleaf 串接 6】接上資料庫後（不用 JSON）：
+       1. 查詢：下面的 form 換成用 GET 把手機送回同一頁
+            <form class="lookup-form" id="resvLookupForm" th:action="@{/bistroops/reservation}" method="get" novalidate>
+          手機的輸入框 name 改成 lookupPhone，th:value 改成 "${lookupPhone} ?: ${session.member?.memTel}"
+          Controller 收到 lookupPhone 時，查出那支手機今天以後的訂位放進 Model（名稱 lookupList），
+          並把 lookupPhone 也放回 Model。
+          查法：訂位 reservation 沒有電話欄位，要先用手機查會員（mem_tel）拿到 mem_no，再查那個 mem_no 的訂位；
+                清單裡的姓名 r.name 用會員的 mem_name。查不到會員就當作沒有訂位。
+       2. 對話框：最外層 div 的 hidden 換成 th:hidden="${lookupPhone == null}"，
+          這樣查詢後頁面重新載入，對話框會直接是打開的。
+       3. 清單：id="resvLookupList" 的 div 換成
+            <div class="lookup-list" id="resvLookupList" th:if="${lookupPhone != null}">
+              <p class="lookup-empty" th:if="${#lists.isEmpty(lookupList)}">查無這支手機的訂位紀錄。</p>
+              <article class="lookup-item" th:each="r : ${lookupList}" th:classappend="${r.cancelled} ? 'is-cancelled'">
+                <div class="lookup-item-main">
+                  <p class="lookup-item-title" th:text="|${r.dateText} ${r.time}|">2026/10/10（六）17:00</p>
+                  <p class="lookup-item-info" th:text="|${r.tableType} 人桌　訂位編號 ${r.reservationNo}　${r.name}|">2 人桌　訂位編號 BR000121　陳小姐</p>
+                </div>
+                <span class="lookup-tag" th:if="${r.cancelled}">已取消</span>
+                <form th:unless="${r.cancelled}" th:action="@{/bistroops/reservation/cancel}" method="post">
+                  <input type="hidden" name="reservationNo" th:value="${r.reservationNo}">
+                  <input type="hidden" name="phone" th:value="${lookupPhone}">
+                  <button type="submit" class="btn-small danger">取消訂位</button>
+                </form>
+              </article>
+            </div>
+       4. 取消：Controller 收到 reservationNo 和 phone 後，一定要先確認「這筆訂位的手機和送來的 phone 相同」
+          才取消（不然改一下編號就能取消別人的訂位），取消後
+            return "redirect:/bistroops/reservation?lookupPhone=" + phone;
+       5. 只用手機就能查到並取消訂位，代表知道別人手機的人也做得到。
+          如果之後想更安全，可以多要求輸入訂位編號，或改成傳簡訊驗證碼。
+       ===================================================== -->
+  <div class="lookup-modal" id="resvLookup" hidden>
+    <!-- 半透明的背景，點一下會關閉對話框 -->
+    <div class="lookup-backdrop" data-lookup-close></div>
+
+    <section class="lookup-dialog" role="dialog" aria-modal="true" aria-labelledby="resvLookupTitle">
+      <button type="button" class="lookup-close" data-lookup-close aria-label="關閉">×</button>
+
+      <p class="eyebrow">My Reservation</p>
+      <h2 class="lookup-title" id="resvLookupTitle">查詢訂位</h2>
+
+      <form class="lookup-form" id="resvLookupForm" novalidate>
+        <div class="field">
+          <label for="resvLookupPhone">訂位時填寫的手機號碼</label>
+          <div class="field-row">
+            <input type="tel" id="resvLookupPhone" name="phone" inputmode="numeric" maxlength="10"
+                   placeholder="09XXXXXXXX" autocomplete="tel" th:value="${session.member?.memTel}">
+            <button type="submit" class="btn-small">查詢</button>
+          </div>
+        </div>
+        <p class="form-msg error" id="resvLookupError" hidden></p>
+      </form>
+
+      <!-- 查詢結果：每一筆訂位一列，由 reservation.js 產生 -->
+      <div class="lookup-list" id="resvLookupList"></div>
+
+      <p class="lookup-note">訂位內容無法線上修改。如需更改日期、時段或桌型，請取消後重新訂位，或來電洽詢。</p>
+    </section>
+  </div>
+
+  <footer th:replace="~{front/front_layout :: footer}"></footer>
+  <button th:replace="~{front/front_layout :: backToTop}"></button>
+</body>
+
+</html>
