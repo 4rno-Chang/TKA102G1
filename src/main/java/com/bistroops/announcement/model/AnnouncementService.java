@@ -20,6 +20,20 @@ public class AnnouncementService {
 		return dao.findById(annNo).orElse(null);
 	}
 
+	// 前台：只取已開始的公告，新的在前
+	public List<AnnouncementVO> getPublished() {
+		return dao.findByAnnBeginLessThanEqualOrderByAnnBeginDesc(LocalDateTime.now());
+	}
+
+	// 前台：查單筆公告，尚未開始的視同查無資料
+	public AnnouncementVO getPublishedByNo(Integer annNo) {
+		AnnouncementVO ann = getAnnNoQuery(annNo);
+		if (ann == null || ann.getAnnBegin() == null || ann.getAnnBegin().isAfter(LocalDateTime.now())) {
+			return null;
+		}
+		return ann;
+	}
+
 	public void insertAnn(String annTitle, LocalDateTime annBegin, byte[] annImg, String annText) {
 		AnnouncementVO ann = new AnnouncementVO();
 

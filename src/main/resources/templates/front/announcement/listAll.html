@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="zh-Hant" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bistroops｜最新消息</title>
+  <link rel="icon" th:href="@{/images/logo-mark.svg}" type="image/svg+xml">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Noto+Sans+TC:wght@300;400;500;700&family=Noto+Serif+TC:wght@500;600&display=swap">
+  <!-- style.css：顏色、字型變數與前台共用的 header、footer；announcement.css：公告頁自己的版面 -->
+  <link rel="stylesheet" th:href="@{/css/front/style.css}" />
+  <link rel="stylesheet" th:href="@{/css/front/member.css}" />
+  <link rel="stylesheet" th:href="@{/css/front/announcement.css}" />
+  <!-- 不載入 main.js：它會抓首頁才有的輪播、FAQ 等元素，在這頁會出錯；版型需要的功能寫在 announcement.js -->
+  <script th:src="@{/js/front/member.js}" defer></script>
+  <script th:src="@{/js/front/announcement.js}" defer></script>
+</head>
+
+<body>
+  <div th:replace="~{front/member/member_modals :: modals}"></div>
+
+  <!-- ========== Header（共用 front_layout.html，括號內的 announcement 讓「最新消息」顯示為選取中） ========== -->
+  <header th:replace="~{front/front_layout :: header('announcement')}"></header>
+
+  <!-- ========== 公告列表 ==========
+       annList：FrontAnnouncementController 放入，只有「已開始」的公告，新的在前 -->
+  <main class="ann-page section">
+    <div class="container">
+      <p class="eyebrow">News</p>
+      <h1 class="section-title">最新消息</h1>
+
+      <ul class="ann-grid" th:unless="${#lists.isEmpty(annList)}">
+        <li th:each="ann : ${annList}">
+          <a class="ann-card" th:href="@{/bistroops/announcement/{no}(no=${ann.annNo})}">
+            <div class="ann-thumb">
+              <!-- 有圖片才輸出 img；沒有圖片顯示 logo 佔位 -->
+              <img th:if="${ann.annImg != null}" loading="lazy"
+                th:src="@{/bistroops/announcement/image/{no}(no=${ann.annNo})}" th:alt="${ann.annTitle}">
+              <div class="ann-thumb-empty" th:if="${ann.annImg == null}">
+                <img th:src="@{/images/logo-mark.svg}" alt="">
+              </div>
+            </div>
+            <div class="ann-card-body">
+              <time class="ann-date" th:datetime="${ann.annBegin}"
+                th:text="${#temporals.format(ann.annBegin, 'yyyy.MM.dd')}">2026.01.01</time>
+              <h2 class="ann-title" th:text="${ann.annTitle}">公告標題</h2>
+              <p class="ann-summary"
+                th:text="${ann.annText != null ? #strings.abbreviate(ann.annText, 70) : ''}">公告摘要</p>
+              <span class="ann-more">閱讀更多 <span aria-hidden="true">→</span></span>
+            </div>
+          </a>
+        </li>
+      </ul>
+
+      <!-- 沒有任何公告時 -->
+      <div class="ann-empty" th:if="${#lists.isEmpty(annList)}">
+        <p>目前沒有最新消息，敬請期待。</p>
+        <a class="btn-outline" th:href="@{/bistroops}">回首頁</a>
+      </div>
+    </div>
+  </main>
+
+  <!-- ========== Footer（共用 front_layout.html） ========== -->
+  <footer th:replace="~{front/front_layout :: footer}"></footer>
+
+  <button th:replace="~{front/front_layout :: backToTop}"></button>
+</body>
+
+</html>

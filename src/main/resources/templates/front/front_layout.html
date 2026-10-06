@@ -39,12 +39,12 @@
 
     <nav class="nav" id="mainNav">
       <ul class="nav-list">
-        <li><a href="#">最新消息</a></li>
+        <li><a th:href="@{/bistroops/announcement}">最新消息</a></li>
         <li><a th:href="@{/bistroops/reservation}" th:classappend="${active == 'reservation'} ? 'active'">預約訂位</a></li>
         <li><a th:href="@{/bistroops/waiting}" th:classappend="${active == 'waiting'} ? 'active'">候位狀況</a></li>
         <li><a th:href="@{/bistroops} + '#menu'">瀏覽菜單</a></li>
-        <li><a th:href="@{/bistroops} + '#about'">關於我們</a></li>
         <li><a th:href="@{/bistroops} + '#faq'">常見問題</a></li>
+        <li><a th:href="@{/bistroops} + '#about'">關於我們</a></li>
       </ul>
 
       <!-- 未登入 -->
@@ -73,7 +73,7 @@
     <div>
       <h4>Navigation</h4>
       <ul class="footer-links">
-        <li><a href="#">最新消息</a></li>
+        <li><a th:href="@{/bistroops/announcement}">最新消息</a></li>
         <li><a th:href="@{/bistroops} + '#menu'">瀏覽菜單</a></li>
         <li><a th:href="@{/bistroops/reservation}">預約訂位</a></li>
         <li><a th:href="@{/bistroops} + '#about'">關於我們</a></li>
