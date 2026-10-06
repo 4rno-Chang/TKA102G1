@@ -1,6 +1,6 @@
 package com.bistroops.announcement.controller;
 
-import java.time.LocalDateTime; 
+import java.time.LocalDateTime;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
@@ -86,7 +86,7 @@ public class AnnouncementController {
 			return "staff/announcement/index";
 		}
 
-		return "redirect:/announcement";
+		return "redirect:/staff/announcement";
 	}
 
 	@GetMapping("/update/{annNo}")
@@ -117,13 +117,13 @@ public class AnnouncementController {
 			return "staff/announcement/index";
 		}
 
-		return "redirect:/announcement";
+		return "redirect:/staff/announcement";
 	}
 
 	@PostMapping("/delete/{annNo}")
 	public String delete(@PathVariable Integer annNo) {
 		annService.deleteAnn(annNo);
-		return "redirect:/announcement";
+		return "redirect:/staff/announcement";
 	}
 
 	@GetMapping("/image/{annNo}")

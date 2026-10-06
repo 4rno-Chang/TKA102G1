@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="zh-Hant" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title th:text="|Bistroops｜${ann.annTitle}|">Bistroops｜最新消息</title>
+  <link rel="icon" th:href="@{/images/logo-mark.svg}" type="image/svg+xml">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Noto+Sans+TC:wght@300;400;500;700&family=Noto+Serif+TC:wght@500;600&display=swap">
+  <!-- style.css：顏色、字型變數與前台共用的 header、footer；announcement.css：公告頁自己的版面 -->
+  <link rel="stylesheet" th:href="@{/css/front/style.css}" />
+  <link rel="stylesheet" th:href="@{/css/front/member.css}" />
+  <link rel="stylesheet" th:href="@{/css/front/announcement.css}" />
+  <!-- 不載入 main.js：它會抓首頁才有的輪播、FAQ 等元素，在這頁會出錯；版型需要的功能寫在 announcement.js -->
+  <script th:src="@{/js/front/member.js}" defer></script>
+  <script th:src="@{/js/front/announcement.js}" defer></script>
+</head>
+
+<body>
+  <div th:replace="~{front/member/member_modals :: modals}"></div>
+
+  <!-- ========== Header（共用 front_layout.html，括號內的 announcement 讓「最新消息」顯示為選取中） ========== -->
+  <header th:replace="~{front/front_layout :: header('announcement')}"></header>
+
+  <!-- ========== 公告內文 ==========
+       ann：FrontAnnouncementController 放入；查無資料或尚未開始時 Controller 會導回列表 -->
+  <main class="ann-page section">
+    <article class="container ann-article">
+      <a class="ann-back" th:href="@{/bistroops/announcement}">‹ 返回最新消息</a>
+
+      <header class="ann-article-head">
+        <time class="ann-date" th:datetime="${ann.annBegin}"
+          th:text="${#temporals.format(ann.annBegin, 'yyyy.MM.dd')}">2026.01.01</time>
+        <h1 class="ann-article-title" th:text="${ann.annTitle}">公告標題</h1>
+      </header>
+
+      <figure class="ann-article-img" th:if="${ann.annImg != null}">
+        <img th:src="@{/bistroops/announcement/image/{no}(no=${ann.annNo})}" th:alt="${ann.annTitle}">
+      </figure>
+
+      <!-- 用 th:text（不是 th:utext），內文的換行由 CSS 的 white-space: pre-line 保留 -->
+      <div class="ann-article-body" th:text="${ann.annText}">公告內文</div>
+
+      <div class="btn-center">
+        <a class="btn-outline" th:href="@{/bistroops/announcement}">返回列表</a>
+      </div>
+    </article>
+  </main>
+
+  <!-- ========== Footer（共用 front_layout.html） ========== -->
+  <footer th:replace="~{front/front_layout :: footer}"></footer>
+
+  <button th:replace="~{front/front_layout :: backToTop}"></button>
+</body>
+
+</html>

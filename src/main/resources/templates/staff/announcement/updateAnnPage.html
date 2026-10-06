@@ -1,46 +1,76 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html lang="zh-Hant" xmlns:th="http://www.thymeleaf.org">
+
 <head>
-<meta charset="UTF-8">
-<title>修改公告</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bistroops 後台｜修改公告</title>
+  <link rel="icon" th:href="@{/images/logo-mark.svg}" type="image/svg+xml">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;700&display=swap">
+  <link rel="stylesheet" th:href="@{/css/staff/staff.css}" />
+  <link rel="stylesheet" th:href="@{/css/staff/staff-announcement.css}" />
+  <script th:src="@{/js/staff/staff.js}" defer></script>
 </head>
-<body>
-	<h1>修改公告</h1>
-	<form th:action="@{/announcement/update}" method="post" enctype="multipart/form-data">
-		<input type="hidden" name="annNo" th:value="${ann.annNo}">
 
-		<div>
-			<label for="annTitle">公告標題：</label>
-			<input type="text" id="annTitle" name="annTitle" th:value="${ann.annTitle}" required>
-		</div>
+<!-- 修改公告（/staff/announcement/update/{annNo}）
+     ann：AnnouncementController 放入的那一則公告。
+     送出到 POST /staff/announcement/update，欄位：annNo（隱藏）、annTitle、annBegin、annImg、annText。
+     沒有選新圖片時，AnnouncementService.updateAnn 會保留原本的圖片 -->
+<body class="staff-layout">
+  <nav th:replace="~{staff/staff_sidebar :: sidebar('announcement')}"></nav>
 
-		<div>
-			<label for="annBegin">公告開始時間：</label>
-			<input type="datetime-local" id="annBegin" name="annBegin"
-				th:value="${#temporals.format(ann.annBegin, 'yyyy-MM-dd''T''HH:mm')}" required>
-		</div>
+  <main class="staff-main">
+    <header class="staff-header">
+      <div>
+        <a class="ann-back" th:href="@{/staff/announcement/list}">‹ 公告列表</a>
+        <h1 class="staff-title" th:text="|修改公告 #${ann.annNo}|">修改公告</h1>
+      </div>
+      <p class="staff-clock" id="staffClock"></p>
+    </header>
 
-		<div>
-			<label>目前公告圖片：</label>
-			<img th:if="${ann.annImg != null}" th:src="@{/announcement/image/{no}(no=${ann.annNo})}"
-				th:alt="${ann.annTitle}" width="200">
-		</div>
-		<br>
-		<div>
-			<label for="annImg">更換公告圖片：</label>
-			<input type="file" id="annImg" name="annImg" accept="image/*">
-		</div>
-		<div>
-			<label for="annText">公告內容：</label>
-			<textarea id="annText" name="annText" rows="8" cols="50" th:text="${ann.annText}" required></textarea>
-		</div>
+    <section class="staff-card">
+      <form class="ann-form" th:action="@{/staff/announcement/update}" method="post" enctype="multipart/form-data">
+        <input type="hidden" name="annNo" th:value="${ann.annNo}">
 
-		<button type="submit">確認修改</button>
-	</form>
-	<br>
-	<br>
-	<br>
+        <div class="ann-field">
+          <label class="ann-label" for="annTitle">公告標題</label>
+          <input type="text" class="staff-input" id="annTitle" name="annTitle" th:value="${ann.annTitle}" required>
+        </div>
 
-	<a th:href="@{/announcement}">回首頁</a>
+        <div class="ann-field">
+          <label class="ann-label" for="annBegin">公告開始時間 <small>到了這個時間，前台才會顯示</small></label>
+          <input type="datetime-local" class="staff-input" id="annBegin" name="annBegin"
+                 th:value="${#temporals.format(ann.annBegin, 'yyyy-MM-dd''T''HH:mm')}" required>
+        </div>
+
+        <div class="ann-field" th:if="${ann.annImg != null}">
+          <span class="ann-label">目前的圖片</span>
+          <img class="ann-current-img" th:src="@{/staff/announcement/image/{no}(no=${ann.annNo})}" th:alt="${ann.annTitle}">
+        </div>
+
+        <div class="ann-field">
+          <label class="ann-label" for="annImg">更換圖片 <small>不選擇就保留目前的圖片，大小 5MB 以內</small></label>
+          <input type="file" class="staff-input ann-file" id="annImg" name="annImg" accept="image/*">
+        </div>
+
+        <div class="ann-field">
+          <label class="ann-label" for="annText">公告內容</label>
+          <textarea class="staff-input" id="annText" name="annText" rows="8" th:text="${ann.annText}" required></textarea>
+        </div>
+
+        <div class="ann-form-foot">
+          <a class="staff-btn" th:href="@{/staff/announcement/list}">取消</a>
+          <button type="submit" class="staff-btn btn-pay">確認修改</button>
+        </div>
+      </form>
+    </section>
+  </main>
+
+  <div class="staff-toast" id="staffToast" role="status" aria-live="polite"></div>
 </body>
+
 </html>
