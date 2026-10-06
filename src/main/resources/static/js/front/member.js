@@ -670,17 +670,15 @@ function setLoggedOut() {
   document.body.classList.remove('is-logged-in');
 }
 
-// 【Thymeleaf 串接】登出
+// 【Thymeleaf 串接】登出  已完成
 //   把 if 那行以下的四行換成一行，直接連到 Controller：
 //     location.href = '/member/logout';
 //   Controller 要做的事：session.removeAttribute("loginMember")（或 session.invalidate()），
 //   帶 toastMsg="您已登出" 後 redirect 回頁面。改完後 setLoggedOut() 用不到了，可以刪掉
 document.addEventListener('click', async e => {
   if (!e.target.closest('[data-logout]')) return;
-  await memberApi.logout();
-  closeModal(memberModal);
-  setLoggedOut();
-  showToast('您已登出');
+  
+location.href = '/member/logout';
 });
 
 // 【Thymeleaf 串接】判斷是否已登入

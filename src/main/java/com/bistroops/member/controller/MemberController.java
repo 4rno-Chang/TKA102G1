@@ -125,20 +125,28 @@ public class MemberController {
 	    }
 	}
 	
-	//會員登出
-	@PostMapping("/member/logout")
-	@ResponseBody
-	public String logout(HttpSession session) {
-		
-	    // 移除Session中的會員資料
+	// 會員登出
+	@GetMapping("/member/logout")
+	public String logout(
+	        HttpSession session,
+	        RedirectAttributes redirectAttributes) {
+
+	    // 移除 Session 中的會員資料
 	    session.removeAttribute("member");
-	    
-	    return "登出成功";
+
+	    // 登出後顯示提示
+	    redirectAttributes.addFlashAttribute(
+	            "toastMsg",
+	            "您已登出"
+	    );
+
+	    // 回到前台首頁
+	    return "redirect:/bistroops";
 	}
 	
 
 	//取得目前登入會員資料
-	@GetMapping("/member/profile")
+	@GetMapping("/member/profile")  
 	@ResponseBody
 	public MemberVO getProfile(HttpSession session) {
 
