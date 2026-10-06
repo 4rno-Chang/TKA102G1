@@ -2,20 +2,20 @@
 <html lang="zh-Hant" xmlns:th="http://www.thymeleaf.org">
 
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Bistroops｜您的號碼牌</title>
-  <link rel="icon" th:href="@{/images/logo-mark.svg}" type="image/svg+xml">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bistroops｜您的號碼牌</title>
+<link rel="icon" th:href="@{/images/logo-mark.svg}" type="image/svg+xml">
 
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet"
-    href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Noto+Sans+TC:wght@300;400;500;700&family=Noto+Serif+TC:wght@500;600&display=swap">
-  <link rel="stylesheet" th:href="@{/css/front/style.css}" />
-  <link rel="stylesheet" th:href="@{/css/front/member.css}" />
-  <link rel="stylesheet" th:href="@{/css/front/waiting.css}" />
-  <script th:src="@{/js/front/member.js}" defer></script>
-  <script th:src="@{/js/front/waiting.js}" defer></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet"
+	href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Noto+Sans+TC:wght@300;400;500;700&family=Noto+Serif+TC:wght@500;600&display=swap">
+<link rel="stylesheet" th:href="@{/css/front/style.css}" />
+<link rel="stylesheet" th:href="@{/css/front/member.css}" />
+<link rel="stylesheet" th:href="@{/css/front/waiting.css}" />
+<script th:src="@{/js/front/member.js}" defer></script>
+<script th:src="@{/js/front/waiting.js}" defer></script>
 </head>
 
 <!--
@@ -41,50 +41,74 @@
 -->
 
 <body>
-  <div th:replace="~{front/member/member_modals :: modals}"></div>
-  <header th:replace="~{front/front_layout :: header('')}"></header>
+	<div th:replace="~{front/member/member_modals :: modals}"></div>
+	<header th:replace="~{front/front_layout :: header('')}"></header>
 
-  <main class="booking">
-    <div class="container">
+	<main class="booking">
+		<div class="container">
 
-      <header class="booking-head">
-        <p class="eyebrow">Waiting List</p>
-        <h1 class="booking-title">現場取號</h1>
-        <p class="booking-lead">取號完成，請留意現場叫號。</p>
-      </header>
+			<header class="booking-head">
+				<p class="eyebrow">Waiting List</p>
+				<h1 class="booking-title">現場取號</h1>
+				<p class="booking-lead">取號完成，請留意現場叫號。</p>
+			</header>
 
-      <ol class="booking-steps">
-        <li class="done"><span class="step-no">1</span>選擇桌型與填寫資料</li>
-        <li class="active"><span class="step-no">2</span>領取號碼牌</li>
-      </ol>
+			<ol class="booking-steps">
+				<li class="done"><span class="step-no">1</span>選擇桌型與填寫資料</li>
+				<li class="active"><span class="step-no">2</span>領取號碼牌</li>
+			</ol>
 
-      <!-- 內容由 waiting.js 填入 -->
-      <section class="booking-result ticket" id="ticketBox">
-        <p class="ticket-label" id="ticketLabel">您的號碼</p>
-        <p class="ticket-no" id="ticketNo"></p>
+			<!-- 內容由 waiting.js 填入 -->
+			<section class="booking-result ticket" id="ticketBox">
+				<p class="ticket-label"
+					th:text="|${waiting.seatType.seatTypeNo} 人桌　您的號碼|"></p>
 
-        <dl class="summary-list">
-          <div><dt>前面還有</dt><dd><strong id="ticketAhead"></strong> 組</dd></div>
-          <div><dt>預估等候</dt><dd id="ticketEstimate"></dd></div>
-          <div><dt>取號時間</dt><dd id="ticketTime"></dd></div>
-          <div><dt>聯絡人姓名</dt><dd id="ticketName"></dd></div>
-          <div><dt>手機號碼</dt><dd id="ticketPhone"></dd></div>
-          <div><dt>備註</dt><dd id="ticketNote"></dd></div>
-        </dl>
+				<p class="ticket-no" th:text="${waiting.waitingNo}"></p>
 
-        <p class="result-notice">
-          到號後請於 10 分鐘內向現場人員報到，逾時視為過號。<br>
-          建議將這個畫面截圖保存。
-        </p>
+				<dl class="summary-list">
+					<div>
+						<dt>狀態</dt>
+						<dd th:text="${waiting.waitingStatus}"></dd>
+					</div>
 
-        <a class="btn-outline" th:href="@{/bistroops/waiting}">查看候位狀況</a>
-      </section>
+					<div th:if="${active}">
+						<dt>前面還有</dt>
+						<dd>
+							<strong th:text="${ahead}"></strong> 組
+						</dd>
+					</div>
 
-    </div>
-  </main>
+					<div>
+						<dt>預估等候</dt>
+						<dd>請洽現場人員</dd>
+					</div>
 
-  <footer th:replace="~{front/front_layout :: footer}"></footer>
-  <button th:replace="~{front/front_layout :: backToTop}"></button>
+					<div>
+						<dt>聯絡人姓名</dt>
+						<dd th:text="${waiting.waitingName}"></dd>
+					</div>
+
+					<div>
+						<dt>手機號碼</dt>
+						<dd th:text="${waiting.waitingTel}"></dd>
+					</div>
+
+					<div>
+						<dt>備註</dt>
+						<dd
+							th:text="${#strings.isEmpty(waiting.waitingComment)
+                ? '無' : waiting.waitingComment}"></dd>
+					</div>
+				</dl>
+
+				<p class="result-notice">請留意現場叫號，建議將這個畫面截圖保存。</p>
+			</section>
+
+		</div>
+	</main>
+
+	<footer th:replace="~{front/front_layout :: footer}"></footer>
+	<button th:replace="~{front/front_layout :: backToTop}"></button>
 </body>
 
 </html>
