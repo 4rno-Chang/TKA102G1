@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="zh-Hant" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bistroops 後台｜活動管理</title>
+  <link rel="icon" th:href="@{/images/logo-mark.svg}" type="image/svg+xml">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;700&display=swap">
+  <!-- staff.css：後台共用；promote.css：這一頁自己的樣式（要寫在 staff.css 後面） -->
+  <link rel="stylesheet" th:href="@{/css/staff/staff.css}" />
+  <link rel="stylesheet" th:href="@{/css/staff/promote.css}" />
+  <script th:src="@{/js/staff/staff.js}" defer></script>
+  <script th:src="@{/js/staff/promote.js}" defer></script>
+</head>
+
+<!--
+  活動管理：查詢、新增、修改活動。每個活動是一張卡片：上面是滿版的 16:9 圖片，下面是活動名稱、活動期間，
+  最下面一排是狀態和「詳細」按鈕。按「詳細」先看全部的資訊，在詳細的下方再按「修改」。對應資料表「活動 promote」，VO 是 com.bistroops.promote.model.PromoteVO。
+
+    資料表欄位        VO 的屬性        說明
+    promote_no        promoteNo        活動編號（資料庫自動產生）
+    promote_name      promoteName      活動名稱（最多 10 個字）
+    promote_begin     promoteBegin     開始時間（LocalDateTime）
+    promote_end       promoteEnd       結束時間（LocalDateTime）
+    （活動狀態）      沒有這個欄位     ★ 狀態「不存在資料庫」，是用開始、結束時間和現在的時間比出來的：
+                                         現在 早於 開始時間 → 未開始
+                                         現在 晚於 結束時間 → 已結束
+                                         其他（在開始和結束之間）→ 進行中
+                                       這一頁沒有用到 promoteStatus。
+                                       ★ 資料表已經沒有 promote_status 了，PromoteVO 的 promoteStatus 也要拿掉，
+                                         不然查詢活動時會出錯（Unknown column 'promote_status'）。
+    promote_content   promoteContent   活動內容
+    promote_img       promoteImg       活動圖片。會顯示在首頁的輪播。
+                                       ★ 存進資料庫、從資料庫取出來的都是使用者上傳的「原本的圖片」，不會被改動。
+                                         只有「顯示」的時候用 CSS 拉成 16:9（object-fit: fill）：首頁輪播、這一頁的
+                                         活動詳細、新增／修改的預覽，三個地方都一樣。其他比例的圖片會變形，不留白、不裁切。
+
+  這一頁的畫面有「兩份」，上下排在一起，各自有自己的工具列、卡片和對話框：
+    【資料庫資料】用 Thymeleaf 寫好的版本。Controller 還沒把資料放進 Model 時，這一塊不會出現。
+    【假資料】    promote.js 用假資料產生的版本，目前看到的就是這一塊。
+
+  【Thymeleaf 串接】步驟
+    1. 在 StaffPageController 的 promote 方法把 promotes（「這一頁」的活動，最多 8 筆）放進 Model，
+       以及工具列和分頁需要的 status、keyword、page、totalPages。
+       ★ 搜尋、狀態篩選、分頁、排序全部由 Java 去資料庫查，一次只查一頁（8 筆），不要先把全部的活動查出來。
+         畫面上按「搜尋」、換狀態、換頁，都是帶著條件重新連到 /staff/promote，由 Controller 查好再顯示。
+       只要 promotes 不是 null，【資料庫資料】就會出現在【假資料】的上面，兩邊可以對照著看。
+       （兩份同時出現時，各自上方會多一個「資料庫資料」「假資料」的小標籤）
+       查不到資料時請放「空的清單」而不是 null（空的清單會顯示「沒有符合條件的活動」，null 會讓整塊不出現）。
+    2. 【資料庫資料】裡 ${...} 用的是 PromoteVO 現在的屬性名稱（p.promoteName 等）。
+       之後如果 VO 的屬性改了名字，這裡也要跟著改；兩邊對不上的話頁面會出現錯誤。
+       Model 的名稱（promotes、promoteForm 等）可以自己改，Controller 放進去的名稱和這裡寫的相同就好。
+    ★ 「套用已有活動」（新增活動時，從已結束的活動帶入名稱、內容、圖片）請放到最後：
+       等下面 1～4 的串接都完成、確認沒問題之後再做。做法寫在【資料庫資料】新增／修改表單裡，
+       用 ▼▼▼▲▲▲ 框起來的「最後再做」那一段；在那之前，資料庫那一份的按鈕只會跳出「尚未開放」。
+    3. 詳細、新增、修改、圖片：照下面【資料庫資料】兩個對話框上方的說明，
+       在 Controller 加上 detail、add、edit、save、img 五個方法（img 是輸出圖片用的）。
+       ★ 動手之前先看 StaffPageController.java 裡 promote 方法上方的「寫 Java 之前先看：容易出錯的地方」，
+         尤其是第 (1) 點：PromoteVO 要先拿掉 promoteStatus，不然活動的資料完全查不出來。
+    4. 確認資料庫的版本沒問題後，刪除假資料：
+         a. 這個檔案裡標示【假資料】的兩塊（工具列與卡片、對話框）
+         b. promote.js 的「B. 假資料」整區（從 ▼▼▼ 刪除範圍 開始，到 ▲▲▲ 刪除範圍 結束）
+       刪掉之後，小標籤 <p class="source-line">...</p> 和 <span class="source-tag ...">...</span> 也可以一起拿掉。
+  Controller 要準備哪些資料與網址，列在 StaffPageController.java 開頭的總覽。
+-->
+<body class="staff-layout">
+  <!-- 左邊選單（共用），括號內是目前所在的頁面 -->
+  <nav th:replace="~{staff/staff_sidebar :: sidebar('promote')}"></nav>
+
+  <main class="staff-main">
+    <header class="staff-header">
+      <div>
+        <p class="staff-eyebrow">Promote</p>
+        <h1 class="staff-title">活動管理</h1>
+      </div>
+      <p class="staff-clock" id="staffClock"></p>
+    </header>
+
+
+    <!-- ================================================================
+         【資料庫資料】Thymeleaf 串接：工具列與活動的卡片
+         Controller（GET /staff/promote）放進 Model：
+           promotes    「這一頁」要顯示的活動（List<PromoteVO>），一頁最多 8 筆，
+                       依結束時間排序（結束時間晚的排前面）。
+                       ★ 不要把全部的活動查出來再挑 8 筆：請用分頁的查詢，讓資料庫只回傳這一頁的 8 筆
+                         （Spring Data 的 Pageable，寫法在 StaffPageController.java）。
+           status      目前要看的狀態：空字串（全部）／未開始／進行中／已結束。
+                       狀態不存在資料庫，所以查詢時要換成「時間的條件」：
+                         未開始 → 開始時間 晚於 現在        （promote_begin > 現在）
+                         進行中 → 開始時間 不晚於 現在，而且 結束時間 不早於 現在
+                         已結束 → 結束時間 早於 現在        （promote_end < 現在）
+                       「現在」用 LocalDateTime.now() 取得。
+           keyword     搜尋的文字（活動名稱裡有這些字）。按「搜尋」時才會送出，由 Java 去資料庫查。
+           page        目前是第幾頁（從 1 開始）。網址沒有帶 page 就是第 1 頁。
+           totalPages  符合條件的活動總共有幾頁（沒有任何活動時請放 1，畫面才會顯示「第 1 / 1 頁」）。
+           total       （可以不放）符合條件的活動總共有幾筆，有放的話會顯示在頁數旁邊。
+           message   （可以不放）操作完成的訊息，例如「已新增活動」。
+                     save 之後用 RedirectAttributes 的 addFlashAttribute("message", "...") 帶過來就會顯示。
+         ================================================================ -->
+    <!-- th:with="now=..."：先把「現在的時間」取出來放進變數 now，下面每一張卡片都用它來判斷狀態。
+         #temporals.createNow() 是 Thymeleaf 提供的工具，會回傳現在的 LocalDateTime。 -->
+    <div class="source-block" th:if="${promotes != null}" th:with="now=${#temporals.createNow()}">
+      <p class="source-line"><span class="source-tag source-db">資料庫資料</span></p>
+
+      <!-- 操作完成的訊息 -->
+      <p class="promote-alert promote-alert-ok" th:if="${message != null}" th:text="${message}">已新增活動</p>
+
+      <!-- 工具列：條件都帶在網址上，例如 /staff/promote?status=進行中&keyword=節&page=2
+           每一次換狀態、按搜尋、換頁，都是連到這個網址，由 Controller 去資料庫查那一頁的資料（不是在瀏覽器裡篩選）。
+             狀態的按鈕：連結，網址帶著目前的關鍵字；沒有帶 page，所以換狀態會回到第 1 頁。
+             搜尋      ：關鍵字在 method="get" 的表單裡，按「搜尋」或在搜尋框按 Enter 就會送出；
+                         表單裡藏了一個 status，送出時帶著目前的狀態；沒有帶 page，所以搜尋會回到第 1 頁。
+             分頁      ：在卡片下面的右下角（見卡片後面的說明）。 -->
+      <form class="promote-tools" th:action="@{/staff/promote}" method="get">
+        <input type="hidden" name="status" th:value="${status}">
+
+        <div class="chips">
+          <a class="chip" th:href="@{/staff/promote(keyword=${keyword})}"
+             th:classappend="${status == null or status == ''} ? 'active'">全部</a>
+          <a class="chip" th:href="@{/staff/promote(status='未開始', keyword=${keyword})}"
+             th:classappend="${status == '未開始'} ? 'active'">未開始</a>
+          <a class="chip" th:href="@{/staff/promote(status='進行中', keyword=${keyword})}"
+             th:classappend="${status == '進行中'} ? 'active'">進行中</a>
+          <a class="chip" th:href="@{/staff/promote(status='已結束', keyword=${keyword})}"
+             th:classappend="${status == '已結束'} ? 'active'">已結束</a>
+        </div>
+
+        <!-- 搜尋框和「搜尋」按鈕 -->
+        <div class="promote-search">
+          <input type="search" class="staff-input" name="keyword" th:value="${keyword}"
+                 placeholder="搜尋活動名稱" aria-label="搜尋活動">
+          <button type="submit" class="staff-btn">搜尋</button>
+        </div>
+
+        <!-- 新增：連到 /staff/promote/add，Controller 回傳同一頁並多放 promoteForm，對話框就會打開。
+             網址帶著目前的狀態、關鍵字、頁數，Controller 才知道對話框後面要顯示哪一頁的卡片，關閉時也回得到原本那一頁 -->
+        <a class="staff-btn btn-pay" th:href="@{/staff/promote/add(status=${status}, keyword=${keyword}, page=${page})}">＋ 新增活動</a>
+      </form>
+
+      <!-- 每個活動一張卡片（th:each）。一張卡片由上到下：
+             圖片：滿版、固定 16:9，圖片用 CSS 拉開填滿（和「活動詳細」、首頁輪播的設定相同）。
+                   有圖片（promoteImg 不是 null）就用 <img> 顯示，沒有就顯示「尚無圖片」。
+                   <img> 的網址是 /staff/promote/img?promoteNo=編號，就是 Controller 那個輸出圖片的方法；
+                   那個方法沒寫的話，有圖片的活動這裡會顯示成破圖。
+             名稱：活動名稱，旁邊小字是活動編號。
+             期間：用 #temporals.format 把 LocalDateTime 轉成想要的文字格式。
+             最下面一排：左邊狀態的標籤，右邊「詳細」。
+             詳細：連到 /staff/promote/detail?promoteNo=編號（同時帶著目前的 status、keyword、page），
+                   Controller 回傳同一頁並多放 promoteDetail，
+                   「活動詳細」的對話框就會打開；要修改的話，在那個對話框的下方按「修改」。
+           卡片上不顯示活動內容（內容在「詳細」裡看）。
+
+           ★ 狀態的判斷式（寫在 article 的 th:with 裡，算出來的文字放進變數 statusText）：
+               現在 早於 開始時間（now.isBefore(p.promoteBegin)）→ '未開始'
+               否則，現在 晚於 結束時間（now.isAfter(p.promoteEnd)）→ '已結束'
+               兩個都不是 → '進行中'
+             寫法是「條件 ? 成立時的值 : 不成立時的值」，第二個判斷包在括號裡接在冒號後面。
+             前面的「p.promoteBegin != null and」是保險：萬一資料庫裡的時間是空的，不會讓頁面出錯。
+             下面的狀態標籤就用 statusText 顯示文字、決定顏色（進行中綠色、未開始黃色、已結束灰色）。
+             想改成在 Java 判斷也可以：在 PromoteVO 加一個不對應資料表欄位的方法
+             （加上 @Transient 的 getStatusText()），那這裡的 th:with 就能拿掉，下面改用 p.statusText。 -->
+      <div class="promote-cards">
+        <p class="staff-empty" th:if="${#lists.isEmpty(promotes)}">沒有符合條件的活動</p>
+
+        <article class="promote-card" th:each="p : ${promotes}"
+                 th:with="statusText=${p.promoteBegin != null and now.isBefore(p.promoteBegin)} ? '未開始' : (${p.promoteEnd != null and now.isAfter(p.promoteEnd)} ? '已結束' : '進行中')">
+          <div class="promote-card-img">
+            <img th:if="${p.promoteImg != null}" th:src="@{/staff/promote/img(promoteNo=${p.promoteNo})}" alt="">
+            <th:block th:if="${p.promoteImg == null}">尚無圖片</th:block>
+          </div>
+          <div class="promote-card-body">
+            <h3 class="promote-card-name">
+              <span th:text="${p.promoteName}">活動名稱</span><span class="promote-card-no" th:text="|編號 ${p.promoteNo}|">編號 1</span>
+            </h3>
+            <p class="promote-card-period">
+              <span th:text="${#temporals.format(p.promoteBegin, 'yyyy/MM/dd HH:mm')}">2026/10/01 10:00</span> <small>起</small><br>
+              <span th:text="${#temporals.format(p.promoteEnd, 'yyyy/MM/dd HH:mm')}">2026/10/10 22:00</span> <small>止</small>
+            </p>
+            <div class="promote-card-foot">
+              <span class="tag"
+                    th:classappend="${statusText == '進行中'} ? 'tag-green' : (${statusText == '未開始'} ? 'tag-yellow' : 'tag-gray')"
+                    th:text="${statusText}">進行中</span>
+              <a class="staff-btn" th:href="@{/staff/promote/detail(promoteNo=${p.promoteNo}, status=${status}, keyword=${keyword}, page=${page})}">詳細</a>
+            </div>
+          </div>
+        </article>
+      </div>
+
+      <!-- 分頁：在卡片下面的右下角。「第 幾 / 共幾 頁」，左右兩邊是上一頁、下一頁。
+           上一頁、下一頁是連結，網址帶著目前的狀態和關鍵字，page 換成前一頁或後一頁，由 Controller 查那一頁的 8 筆。
+           已經是第 1 頁時「上一頁」不能點、最後一頁時「下一頁」不能點（顯示成淡色的 span，不是連結）。
+           Controller 要放 page（目前第幾頁，從 1 開始）和 totalPages（總共幾頁）；兩個都有放，這一塊才會出現。
+           total（總共幾筆）有放的話會顯示在最左邊，沒放就不顯示。 -->
+      <div class="promote-pager" th:if="${page != null and totalPages != null}">
+        <span class="promote-pager-total" th:if="${total != null}" th:text="|共 ${total} 筆|">共 12 筆</span>
+
+        <a class="promote-pager-btn" th:if="${page > 1}" aria-label="上一頁"
+           th:href="@{/staff/promote(status=${status}, keyword=${keyword}, page=${page - 1})}">‹</a>
+        <span class="promote-pager-btn is-disabled" th:unless="${page > 1}">‹</span>
+
+        <span class="promote-pager-text" th:text="|第 ${page} / ${totalPages} 頁|">第 1 / 2 頁</span>
+
+        <a class="promote-pager-btn" th:if="${page < totalPages}" aria-label="下一頁"
+           th:href="@{/staff/promote(status=${status}, keyword=${keyword}, page=${page + 1})}">›</a>
+        <span class="promote-pager-btn is-disabled" th:unless="${page < totalPages}">›</span>
+      </div>
+    </div>
+
+
+    <!-- ================================================================
+         【假資料】由 promote.js 的「B. 假資料」產生與控制。
+         資料庫的版本確認沒問題後，這個 div 整個刪掉（到它結尾的 </div> 為止）。
+         假資料沒有後端，所以由 promote.js 模擬「去資料庫查」：按了「搜尋」才會查（打字的時候不會），
+         一次只拿一頁（8 筆），依結束時間排序。規則和資料庫的版本相同，可以當作寫 Service 的參考。
+         ================================================================ -->
+    <div class="source-block">
+      <p class="source-line" th:if="${promotes != null}"><span class="source-tag">假資料</span></p>
+
+      <div class="promote-tools">
+        <div class="chips" id="promoteFilters">
+          <button type="button" class="chip active" data-filter="">全部</button>
+          <button type="button" class="chip" data-filter="未開始">未開始</button>
+          <button type="button" class="chip" data-filter="進行中">進行中</button>
+          <button type="button" class="chip" data-filter="已結束">已結束</button>
+        </div>
+
+        <!-- 搜尋框和「搜尋」按鈕：按按鈕或在搜尋框按 Enter 才會查 -->
+        <form class="promote-search" id="promoteSearchForm">
+          <input type="search" class="staff-input" id="promoteSearch" placeholder="搜尋活動名稱" aria-label="搜尋活動">
+          <button type="submit" class="staff-btn">搜尋</button>
+        </form>
+
+        <button type="button" class="staff-btn btn-pay" id="promoteAdd">＋ 新增活動</button>
+      </div>
+
+      <!-- 每個活動一張卡片，由 promote.js 產生（卡片的結構和上面【資料庫資料】的相同） -->
+      <div class="promote-cards" id="promoteList"></div>
+
+      <!-- 分頁：在卡片下面的右下角，文字和按鈕的狀態由 promote.js 控制 -->
+      <div class="promote-pager">
+        <span class="promote-pager-total" id="promoteTotal"></span>
+        <button type="button" class="promote-pager-btn" id="promotePrev" aria-label="上一頁">‹</button>
+        <span class="promote-pager-text" id="promotePageText"></span>
+        <button type="button" class="promote-pager-btn" id="promoteNext" aria-label="下一頁">›</button>
+      </div>
+    </div>
+  </main>
+
+
+  <!-- ================================================================
+       【資料庫資料】Thymeleaf 串接：活動詳細的對話框
+       卡片上的「詳細」會打開它：先顯示這筆活動全部的資訊，最下面才是「修改」。
+
+       打開：GET /staff/promote/detail?promoteNo=1
+             Controller 用 promoteNo 查出那一筆，放進 Model（名稱 promoteDetail），下面的 th:if 成立，對話框就出現。
+             也要放 promotes、status、keyword、page、totalPages（和 /staff/promote 一樣），後面的卡片和分頁才會在。
+             「詳細」的網址帶著目前的 status、keyword、page，Controller 用它們查同一頁的卡片。
+             查不到那一筆（例如網址被改過）就 return "redirect:/staff/promote";
+       關閉：背景、右上角的 ×、「關閉」都是連結，回到沒有對話框的 /staff/promote，
+             網址帶著 status、keyword、page，所以會回到原本看的那一頁。
+       修改：下方的「修改」連到 /staff/promote/edit?promoteNo=編號，會換成下面那個「修改活動」的對話框。
+       狀態：和卡片一樣用時間判斷（th:with 裡的 detailStatus），不是從資料庫拿的。
+       圖片：有圖片（promoteImg 不是 null）就用 <img> 顯示，沒有就顯示「尚無圖片」。
+             ★ <img> 的網址是 /staff/promote/img?promoteNo=編號，Controller 要寫這個「輸出圖片」的方法，
+               不然圖片會顯示不出來（寫法見 StaffPageController.java 的說明）。
+             這個框固定 16:9，圖片用 CSS 拉開填滿（promote.css 的 object-fit: fill），和首頁輪播的設定相同，
+             所以這裡看到的就是它在首頁上的樣子：不是 16:9 的圖片會變形。圖片檔案本身沒有被改動。
+       ================================================================ -->
+  <div class="promote-modal" th:if="${promoteDetail != null}"
+       th:with="now=${#temporals.createNow()},
+                detailStatus=${promoteDetail.promoteBegin != null and now.isBefore(promoteDetail.promoteBegin)} ? '未開始' : (${promoteDetail.promoteEnd != null and now.isAfter(promoteDetail.promoteEnd)} ? '已結束' : '進行中')">
+    <!-- 半透明的背景，點一下會關閉對話框 -->
+    <a class="promote-backdrop" th:href="@{/staff/promote(status=${status}, keyword=${keyword}, page=${page})}" aria-label="關閉"></a>
+
+    <section class="promote-dialog" role="dialog" aria-modal="true" aria-labelledby="dbDetailHeading">
+      <header class="promote-head">
+        <h2 class="promote-title" id="dbDetailHeading">
+          活動詳細
+          <span class="source-tag source-db">資料庫</span>
+        </h2>
+        <a class="promote-close" th:href="@{/staff/promote(status=${status}, keyword=${keyword}, page=${page})}" aria-label="關閉">×</a>
+      </header>
+
+      <div class="promote-view">
+        <div class="promote-body">
+          <dl class="promote-detail">
+            <div><dt>活動編號</dt><dd th:text="${promoteDetail.promoteNo}">1</dd></div>
+            <div><dt>活動名稱</dt><dd class="promote-detail-name" th:text="${promoteDetail.promoteName}">活動名稱</dd></div>
+            <div>
+              <dt>活動狀態</dt>
+              <dd>
+                <span class="tag"
+                      th:classappend="${detailStatus == '進行中'} ? 'tag-green' : (${detailStatus == '未開始'} ? 'tag-yellow' : 'tag-gray')"
+                      th:text="${detailStatus}">進行中</span>
+              </dd>
+            </div>
+            <div><dt>開始時間</dt><dd th:text="${#temporals.format(promoteDetail.promoteBegin, 'yyyy/MM/dd HH:mm')}">2026/10/01 10:00</dd></div>
+            <div><dt>結束時間</dt><dd th:text="${#temporals.format(promoteDetail.promoteEnd, 'yyyy/MM/dd HH:mm')}">2026/10/10 22:00</dd></div>
+            <div><dt>活動內容</dt><dd class="promote-detail-content" th:text="${promoteDetail.promoteContent}">活動內容</dd></div>
+            <div>
+              <dt>活動圖片</dt>
+              <dd>
+                <div class="promote-detail-img">
+                  <img th:if="${promoteDetail.promoteImg != null}"
+                       th:src="@{/staff/promote/img(promoteNo=${promoteDetail.promoteNo})}" alt="活動圖片">
+                  <th:block th:if="${promoteDetail.promoteImg == null}">尚無圖片</th:block>
+                </div>
+                <small class="promote-hint">圖片固定用 16:9 顯示，和首頁的輪播相同；不是 16:9 的圖片會被拉成 16:9（會變形）。</small>
+              </dd>
+            </div>
+          </dl>
+        </div>
+
+        <footer class="promote-foot">
+          <a class="staff-btn btn-pay" th:href="@{/staff/promote/edit(promoteNo=${promoteDetail.promoteNo}, status=${status}, keyword=${keyword}, page=${page})}">修改</a>
+          <a class="staff-btn" th:href="@{/staff/promote(status=${status}, keyword=${keyword}, page=${page})}">關閉</a>
+        </footer>
+      </div>
+    </section>
+  </div>
+
+
+  <!-- ================================================================
+       【資料庫資料】Thymeleaf 串接：新增／修改活動的對話框
+       新增和修改用同一個對話框、同一個表單。
+
+       打開：Controller 把要填的活動放進 Model（名稱 promoteForm），下面的 th:if 成立，對話框就出現。
+             新增 GET /staff/promote/add                放一個空的活動：model.addAttribute("promoteForm", new PromoteVO());
+             修改 GET /staff/promote/edit?promoteNo=1   放從資料庫查出來的那一筆（從「活動詳細」下方的「修改」連過來）
+             兩個方法也都要放 promotes、status、keyword、page、totalPages（和 /staff/promote 一樣），後面的卡片和分頁才會在。
+             兩個連結的網址都帶著目前的 status、keyword、page。
+       關閉：背景、右上角的 ×、「取消」都是連結，回到沒有對話框的 /staff/promote（帶著 status、keyword、page，回到原本那一頁）。
+       儲存：表單送到 POST /staff/promote/save，Controller 會收到（名稱和 PromoteVO 的屬性相同）：
+             promoteNo        活動編號。新增的時候是空的 → 新增一筆；有值 → 修改那一筆
+                              （參數請用 Integer，並加上 required = false）
+             promoteName      活動名稱（必填，最多 10 個字，資料表是 VARCHAR(10)）
+             promoteBegin     開始時間、promoteEnd 結束時間。
+                              送過來的文字長這樣：2026-10-01T10:00（日期和時間中間是英文字母 T）。
+                              參數要用 LocalDateTime 接的話，前面加上
+                                @DateTimeFormat(pattern = "yyyy-MM-dd'T'HH:mm")
+                              （用 PromoteVO 當參數直接接整個表單時，這個註解改加在 VO 的 promoteBegin、promoteEnd 上）
+             （沒有活動狀態：狀態是用時間判斷的，不用存，表單也不會送）
+             promoteContent   活動內容
+             upImg            圖片檔案（MultipartFile；說明在下面的「圖片」）
+           存檔前請在 Controller 再檢查一次（名稱不能空白、結束時間要比開始時間晚）。
+           頁面上的檢查（必填、promote.js 的 A-1）只是方便使用者，可以被跳過，不能只靠它。
+           成功：用 RedirectAttributes 帶 message（例如「已新增活動」）後 return "redirect:/staff/promote";
+           失敗：把錯誤訊息放進 Model（名稱 errorMsg），把使用者填的內容放回 promoteForm，
+                 連同 promotes、status、keyword、page、totalPages 一起回傳 "staff/promote"，對話框會再打開並顯示錯誤訊息。
+                 （儲存的表單沒有送 status、keyword、page，所以這時後面顯示第 1 頁就可以了）
+                 這時使用者剛剛選的圖片檔案會不見（瀏覽器不能幫忙填回檔案欄位），要請他重選。
+       圖片：表單有一個選擇檔案的欄位（name="upImg"），所以 <form> 加了 enctype="multipart/form-data"。
+             ★ 送到 Controller 的是使用者選的「原本的圖片」，沒有經過任何處理。
+               Controller 的 save 多一個參數 @RequestParam("upImg") MultipartFile upImg：
+                 有選檔案（!upImg.isEmpty()）→ 用 upImg.getBytes() 存進 promoteImg
+                 沒有選檔案 → 新增時 promoteImg 是 null；修改時保留資料庫原本的圖片，不要清掉
+             預覽框：一開始顯示的是「目前的圖片」（修改時），網址是 /staff/promote/img?promoteNo=編號，
+               和「活動詳細」用的是同一個輸出圖片的方法。
+               選了新的圖片後，promote.js（A-2）會把預覽換成新選的那一張（只是顯示，檔案沒有被改動）。
+               預覽框固定 16:9、圖片用 CSS 拉開填滿，所以其他比例的圖片在預覽裡會變形，和它在首頁上的樣子相同。
+             檔案大小：application.properties 裡 multipart 的設定目前是註解掉的，所以單一檔案最多 1MB，超過會出錯。
+               照片常常超過 1MB，建議把那兩行的 # 拿掉並改成 max-file-size=5MB、max-request-size=10MB
+               （資料表的 MEDIUMBLOB 最多可以存 16MB）。
+       ================================================================ -->
+  <div class="promote-modal" th:if="${promoteForm != null}">
+    <!-- 半透明的背景，點一下會關閉對話框 -->
+    <a class="promote-backdrop" th:href="@{/staff/promote(status=${status}, keyword=${keyword}, page=${page})}" aria-label="關閉"></a>
+
+    <section class="promote-dialog" role="dialog" aria-modal="true" aria-labelledby="dbPromoteHeading">
+      <header class="promote-head">
+        <!-- promoteNo 是 null 代表新增，有值代表修改 -->
+        <h2 class="promote-title" id="dbPromoteHeading">
+          <span th:text="${promoteForm.promoteNo == null} ? '新增活動' : '修改活動'">新增活動</span>
+          <span class="source-tag source-db">資料庫</span>
+        </h2>
+        <a class="promote-close" th:href="@{/staff/promote(status=${status}, keyword=${keyword}, page=${page})}" aria-label="關閉">×</a>
+      </header>
+
+      <form class="promote-form" id="dbPromoteForm" th:action="@{/staff/promote/save}" method="post" enctype="multipart/form-data">
+        <input type="hidden" name="promoteNo" th:value="${promoteForm.promoteNo}">
+
+        <div class="promote-body">
+          <!-- Controller 檢查不通過時的錯誤訊息 -->
+          <p class="promote-alert" th:if="${errorMsg != null}" th:text="${errorMsg}">錯誤訊息</p>
+          <!-- 送出前 JS 檢查不通過時的錯誤訊息（promote.js 的 A 區填入） -->
+          <p class="promote-alert" data-form-error hidden></p>
+
+          <div class="promote-field" th:if="${promoteForm.promoteNo != null}">
+            <span class="promote-label">活動編號</span>
+            <span th:text="${promoteForm.promoteNo}">1</span>
+          </div>
+
+          <div class="promote-field">
+            <label class="promote-label" for="dbPromoteName">活動名稱 <b>*</b><small>最多 10 個字</small></label>
+            <input type="text" class="staff-input" id="dbPromoteName" name="promoteName" maxlength="10" required
+                   th:value="${promoteForm.promoteName}" placeholder="例如：雙十節活動" autocomplete="off">
+          </div>
+
+          <!-- datetime-local 的 value 一定要是 2026-10-01T10:00 這種格式，所以用 #temporals.format 轉。
+               格式裡的 ''T'' 是「在文字裡放一個英文字母 T」的寫法（兩個單引號代表一個單引號）。
+               promoteBegin 是 null（新增）時 #temporals.format 會回傳空的，欄位就是空白。 -->
+          <div class="promote-field-row">
+            <div class="promote-field">
+              <label class="promote-label" for="dbPromoteBegin">開始時間 <b>*</b></label>
+              <input type="datetime-local" class="staff-input" id="dbPromoteBegin" name="promoteBegin" required
+                     th:value="${#temporals.format(promoteForm.promoteBegin, 'yyyy-MM-dd''T''HH:mm')}">
+            </div>
+            <div class="promote-field">
+              <label class="promote-label" for="dbPromoteEnd">結束時間 <b>*</b></label>
+              <input type="datetime-local" class="staff-input" id="dbPromoteEnd" name="promoteEnd" required
+                     th:value="${#temporals.format(promoteForm.promoteEnd, 'yyyy-MM-dd''T''HH:mm')}">
+            </div>
+          </div>
+
+          <!-- 修改的時候顯示「活動狀態」：不用填，會依照上面的開始、結束時間自動判斷 -->
+          <div class="promote-field" th:if="${promoteForm.promoteNo != null}">
+            <span class="promote-label">活動狀態</span>
+            <span class="promote-auto">依開始與結束時間自動判斷：還沒到開始時間是「未開始」，期間內是「進行中」，過了結束時間是「已結束」。</span>
+          </div>
+
+          <!-- ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
+               ★★【最後再做】套用已有活動：請等「其他的串接都完成、確認沒問題」之後，再回來做這一塊 ★★
+               ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
+               新增的時候顯示（promoteNo 是 null）。目前按鈕只會跳出「尚未開放」（data-coming-soon），
+               功能的樣子可以先看下面【假資料】的版本：按鈕 → 搜尋已結束的活動 → 按「套用」。
+
+               功能：按「套用已有活動」→ 出現搜尋的畫面（一開始不列出任何活動）
+                     → 輸入活動名稱按「搜尋」→ 顯示符合的「已經結束」的活動（活動名稱和結束時間）
+                     → 按某一筆的「套用」→ 回到新增的表單，活動名稱、活動內容、活動圖片都帶進來，
+                     使用者再填開始、結束時間就可以儲存。編號是新的，不會改到原本那個活動。
+
+               【Thymeleaf 串接】不用 JSON 的做法（每一步都是連結或表單，由 Controller 回傳同一頁）：
+
+               1. 按鈕換成連結，連到「挑選」的畫面：
+                    <a class="staff-btn" th:href="@{/staff/promote/add(pick='yes')}">套用已有活動</a>
+                  Controller 的 add 方法多收兩個參數（都是 required = false）：
+                    pick         有值代表要顯示挑選的清單
+                    pickKeyword  在挑選的清單裡搜尋的活動名稱
+                  有 pick 的時候，Model 一定要放 pickList 和 pickKeyword（挑選的畫面靠 pickList 不是 null 才會出現）：
+                    pickKeyword 是空的（剛打開、還沒搜尋）→ pickList 放「空的清單」，不要去查資料庫。
+                                                            ★ 不要一打開就把已結束的活動全部列出來。
+                    pickKeyword 有內容                      → 查出「已經結束」而且名稱裡有 pickKeyword 的活動放進 pickList。
+                  查詢可以用步驟 1 寫好的那個「已結束」的方法：
+                    findByPromoteNameContainingAndPromoteEndBefore(pickKeyword, LocalDateTime.now(), pageable)
+                  一次列太多不好找，建議一樣用 PageRequest 只拿前幾筆（例如 PageRequest.of(0, 20, Sort.by("promoteEnd").descending())）。
+
+               2. 挑選的畫面：在這個表單的「外面」（下面 </form> 的後面、</section> 的前面）加一塊，
+                  並在這個 <form> 加上 th:hidden="${pickList != null}"（挑選的時候把表單藏起來）：
+
+                    <div class="promote-view" th:if="${pickList != null}">
+                      <div class="promote-body">
+                        <form class="promote-search" th:action="@{/staff/promote/add}" method="get">
+                          <input type="hidden" name="pick" value="yes">
+                          <input type="search" class="staff-input" name="pickKeyword" th:value="${pickKeyword}" placeholder="搜尋活動名稱">
+                          <button type="submit" class="staff-btn">搜尋</button>
+                        </form>
+                        <p class="staff-empty" th:if="${pickKeyword == null or pickKeyword == ''}">請輸入活動名稱，按「搜尋」後才會列出已結束的活動</p>
+                        <p class="staff-empty" th:if="${pickKeyword != null and pickKeyword != '' and #lists.isEmpty(pickList)}">沒有符合條件的已結束活動</p>
+                        <ul class="promote-pick-list">
+                          <li class="promote-pick-item" th:each="p : ${pickList}">
+                            <span class="promote-pick-name" th:text="${p.promoteName}">活動名稱</span>
+                            <span class="promote-pick-end" th:text="|${#temporals.format(p.promoteEnd, 'yyyy/MM/dd HH:mm')} 結束|">2026/09/30 22:00 結束</span>
+                            <a class="staff-btn" th:href="@{/staff/promote/add(copyFrom=${p.promoteNo})}">套用</a>
+                          </li>
+                        </ul>
+                      </div>
+                      <footer class="promote-foot">
+                        <a class="staff-btn" th:href="@{/staff/promote/add}">← 返回</a>
+                      </footer>
+                    </div>
+
+                  （promote-pick-list 這幾個 class 的樣式已經寫在 promote.css，假資料的版本也在用）
+
+               3. 按「套用」：連到 /staff/promote/add?copyFrom=活動編號。
+                  Controller 的 add 方法再多收一個 copyFrom（Integer，required = false）。有值的時候：
+                    用 copyFrom 查出那個活動（查不到就當作沒有 copyFrom）；
+                    new 一個新的 PromoteVO，只放「活動名稱」和「活動內容」（不要放編號、開始、結束時間），當作 promoteForm；
+                    另外把 copyFrom 放進 Model（名稱 copyFrom），圖片要用。
+
+               4. 圖片：瀏覽器不能替使用者把檔案放進「選擇檔案」的欄位，所以圖片不是用上傳的，
+                  而是「記住要從哪一個活動複製」，儲存的時候由 Java 複製。這個表單要加兩個地方：
+                    (a) 在最前面的隱藏欄位旁邊多一個：
+                          <input type="hidden" name="copyFrom" th:value="${copyFrom}">
+                    (b) 預覽框裡多一種情況，顯示要套用的那張圖片：
+                          <img th:if="${copyFrom != null}" th:src="@{/staff/promote/img(promoteNo=${copyFrom})}" alt="套用的活動圖片">
+                        （原本那兩行的條件要跟著加上「而且 copyFrom 是 null」，才不會同時出現兩個）
+                  save 方法多收 copyFrom（Integer，required = false），決定圖片的順序是：
+                    有上傳新的檔案（!upImg.isEmpty()）       → 用上傳的
+                    沒有上傳，但 copyFrom 有值（而且是新增）→ 查出那個活動，把它的 promoteImg 複製過來
+                    都沒有                                    → 沒有圖片（修改時是保留原本的）
+
+               5. 要注意：
+                    ・去挑選、按套用都會重新載入頁面，使用者在那之前已經填的內容（例如時間）會不見，
+                      所以畫面上請使用者「先套用、再填時間」（下面的說明文字已經這樣寫了）。
+                    ・只能套用「已經結束」的活動：copyFrom 是從網址來的，可以被改，
+                      Controller 查出來之後要再確認一次它的結束時間真的早於現在，不是的話就不要套用。
+                    ・檢查不通過、回到表單時，記得把 copyFrom 也放回 Model，不然套用的圖片會不見。 -->
+          <div class="promote-field" th:if="${promoteForm.promoteNo == null}">
+            <span class="promote-label">套用已有活動</span>
+            <div class="promote-apply">
+              <button type="button" class="staff-btn" data-coming-soon="套用已有活動">套用已有活動</button>
+              <span class="promote-auto">可從已經結束的活動套用其活動名稱、活動內容和活動圖片。請先套用，再填寫時間。</span>
+            </div>
+          </div>
+
+          <div class="promote-field">
+            <label class="promote-label" for="dbPromoteContent">活動內容</label>
+            <textarea class="staff-input" id="dbPromoteContent" name="promoteContent" rows="4"
+                      th:text="${promoteForm.promoteContent}" placeholder="活動的說明文字"></textarea>
+          </div>
+
+          <div class="promote-field">
+            <label class="promote-label" for="dbPromoteImg">活動圖片</label>
+            <!-- 預覽框（data-img-preview）：一開始是目前的圖片；選了新的圖片後，promote.js 會換成新選的那一張。
+                 框固定 16:9，圖片用 CSS 拉開填滿，所以其他比例的圖片在這裡看起來會變形 -->
+            <div class="promote-img-box" data-img-preview>
+              <img th:if="${promoteForm.promoteImg != null}"
+                   th:src="@{/staff/promote/img(promoteNo=${promoteForm.promoteNo})}" alt="目前的活動圖片">
+              <th:block th:if="${promoteForm.promoteImg == null}">尚無圖片</th:block>
+            </div>
+            <!-- 選擇圖片的欄位（data-img-input）：選了之後由 promote.js 的 A-2 處理 -->
+            <input type="file" class="staff-input" id="dbPromoteImg" name="upImg" accept="image/*" data-img-input>
+            <small class="promote-hint">這張圖會顯示在首頁的輪播，建議使用 16:9 的圖片（例如 1600×900）。其他比例的圖片顯示時會被拉成 16:9（會變形），不留白、不裁切；上面的預覽就是它在首頁上的樣子。</small>
+          </div>
+        </div>
+
+        <footer class="promote-foot">
+          <a class="staff-btn" th:href="@{/staff/promote(status=${status}, keyword=${keyword}, page=${page})}">取消</a>
+          <button type="submit" class="staff-btn btn-pay">儲存</button>
+        </footer>
+      </form>
+    </section>
+  </div>
+
+
+  <!-- ================================================================
+       【假資料】活動的對話框（假資料的「＋ 新增活動」「詳細」會打開它）
+       裡面有三個畫面，一次只顯示一個：
+         畫面一「活動詳細」：按卡片上的「詳細」時顯示，下方有「修改」
+         畫面二「新增／修改的表單」：按「＋ 新增活動」，或在畫面一按「修改」時顯示
+         畫面三「套用已有活動」：在新增的表單按「套用已有活動」時顯示，挑好之後回到畫面二
+       開關、切換與內容由 promote.js 的「B. 假資料」控制。
+       資料庫的版本確認沒問題後，這個 div 整個刪掉（到它結尾的 </div> 為止）。
+       ================================================================ -->
+  <div class="promote-modal" id="promoteModal" hidden>
+    <!-- 半透明的背景，點一下會關閉對話框 -->
+    <div class="promote-backdrop" data-promote-close></div>
+
+    <section class="promote-dialog" role="dialog" aria-modal="true" aria-labelledby="promoteHeading">
+      <header class="promote-head">
+        <h2 class="promote-title" id="promoteHeading">
+          <!-- 「活動詳細」「新增活動」「修改活動」或「套用已有活動」，由 promote.js 填入 -->
+          <span id="promoteModalTitle"></span>
+          <span class="source-tag" th:if="${promotes != null}">假資料</span>
+        </h2>
+        <button type="button" class="promote-close" data-promote-close aria-label="關閉">×</button>
+      </header>
+
+      <!-- ========== 畫面一：活動詳細（內容由 promote.js 填入） ========== -->
+      <div class="promote-view" id="promoteDetailView" hidden>
+        <div class="promote-body">
+          <dl class="promote-detail">
+            <div><dt>活動編號</dt><dd id="detailNo"></dd></div>
+            <div><dt>活動名稱</dt><dd class="promote-detail-name" id="detailName"></dd></div>
+            <div><dt>活動狀態</dt><dd><span class="tag" id="detailStatus"></span></dd></div>
+            <div><dt>開始時間</dt><dd id="detailBegin"></dd></div>
+            <div><dt>結束時間</dt><dd id="detailEnd"></dd></div>
+            <div><dt>活動內容</dt><dd class="promote-detail-content" id="detailContent"></dd></div>
+            <div>
+              <dt>活動圖片</dt>
+              <dd>
+                <!-- 圖片或「尚無圖片」，由 promote.js 填入 -->
+                <div class="promote-detail-img" id="detailImg"></div>
+                <small class="promote-hint">圖片固定用 16:9 顯示，和首頁的輪播相同；不是 16:9 的圖片會被拉成 16:9（會變形）。</small>
+              </dd>
+            </div>
+          </dl>
+        </div>
+
+        <footer class="promote-foot">
+          <button type="button" class="staff-btn btn-pay" id="promoteToEdit">修改</button>
+          <button type="button" class="staff-btn" data-promote-close>關閉</button>
+        </footer>
+      </div>
+
+      <!-- ========== 畫面二：新增／修改的表單 ========== -->
+      <!-- novalidate：不用瀏覽器內建的檢查，改由 promote.js 檢查並顯示中文的錯誤訊息 -->
+      <form class="promote-form" id="promoteForm" novalidate hidden>
+        <div class="promote-body">
+          <p class="promote-alert" data-form-error hidden></p>
+
+          <!-- 修改時才顯示 -->
+          <div class="promote-field" id="promoteNoField" hidden>
+            <span class="promote-label">活動編號</span>
+            <span id="promoteNoText"></span>
+          </div>
+
+          <div class="promote-field">
+            <label class="promote-label" for="promoteName">活動名稱 <b>*</b><small>最多 10 個字</small></label>
+            <input type="text" class="staff-input" id="promoteName" name="promoteName" maxlength="10"
+                   placeholder="例如：雙十節活動" autocomplete="off">
+          </div>
+
+          <div class="promote-field-row">
+            <div class="promote-field">
+              <label class="promote-label" for="promoteBegin">開始時間 <b>*</b></label>
+              <input type="datetime-local" class="staff-input" id="promoteBegin" name="promoteBegin">
+            </div>
+            <div class="promote-field">
+              <label class="promote-label" for="promoteEnd">結束時間 <b>*</b></label>
+              <input type="datetime-local" class="staff-input" id="promoteEnd" name="promoteEnd">
+            </div>
+          </div>
+
+          <!-- 修改的時候顯示「活動狀態」：不用填，會依照上面的開始、結束時間自動判斷（顯示或隱藏由 promote.js 控制） -->
+          <div class="promote-field" id="promoteStatusField">
+            <span class="promote-label">活動狀態</span>
+            <span class="promote-auto">依開始與結束時間自動判斷：還沒到開始時間是「未開始」，期間內是「進行中」，過了結束時間是「已結束」。</span>
+          </div>
+
+          <!-- 新增的時候顯示「套用已有活動」：按了會換到畫面三，挑一個已結束的活動 -->
+          <div class="promote-field" id="promoteApplyField">
+            <span class="promote-label">套用已有活動</span>
+            <div class="promote-apply">
+              <button type="button" class="staff-btn" id="promoteApplyBtn">套用已有活動</button>
+              <!-- 還沒套用時是說明文字；套用之後由 promote.js 換成「已套用「活動名稱」…」 -->
+              <span class="promote-auto" id="promoteApplyNote">可從已經結束的活動套用其活動名稱、活動內容和活動圖片。</span>
+            </div>
+          </div>
+
+          <div class="promote-field">
+            <label class="promote-label" for="promoteContent">活動內容</label>
+            <textarea class="staff-input" id="promoteContent" name="promoteContent" rows="4"
+                      placeholder="活動的說明文字"></textarea>
+          </div>
+
+          <div class="promote-field">
+            <label class="promote-label" for="promoteImgFile">活動圖片</label>
+            <!-- 預覽框：內容由 promote.js 填入；選了新的圖片後會換成新選的那一張 -->
+            <div class="promote-img-box" id="promoteImgPreview" data-img-preview></div>
+            <input type="file" class="staff-input" id="promoteImgFile" name="upImg" accept="image/*" data-img-input>
+            <small class="promote-hint">這張圖會顯示在首頁的輪播，建議使用 16:9 的圖片（例如 1600×900）。其他比例的圖片顯示時會被拉成 16:9（會變形），不留白、不裁切；上面的預覽就是它在首頁上的樣子。</small>
+          </div>
+        </div>
+
+        <footer class="promote-foot">
+          <button type="button" class="staff-btn" data-promote-close>取消</button>
+          <button type="submit" class="staff-btn btn-pay">儲存</button>
+        </footer>
+      </form>
+
+      <!-- ========== 畫面三：套用已有活動（在新增的表單按「套用已有活動」才會出現） ==========
+           一開始不會列出任何活動；輸入活動名稱按「搜尋」之後，才顯示符合的「已經結束」的活動（活動名稱、結束時間）。
+           按「套用」會回到表單，並把那個活動的名稱、內容、圖片帶進去。搜尋結果由 promote.js 產生。 -->
+      <div class="promote-view" id="promotePickView" hidden>
+        <div class="promote-body">
+          <!-- 按「搜尋」或在搜尋框按 Enter 才會查 -->
+          <form class="promote-search" id="promotePickForm">
+            <input type="search" class="staff-input" id="promotePickSearch" placeholder="搜尋活動名稱" aria-label="搜尋已結束的活動">
+            <button type="submit" class="staff-btn">搜尋</button>
+          </form>
+          <p class="promote-auto">只會搜尋已經結束的活動，結果依結束時間排序（最近結束的在最上面）。</p>
+          <!-- 搜尋結果。每一筆：活動名稱、結束時間、「套用」按鈕；還沒搜尋時是一行提示 -->
+          <ul class="promote-pick-list" id="promotePickList"></ul>
+        </div>
+
+        <footer class="promote-foot">
+          <button type="button" class="staff-btn" id="promotePickBack">← 返回</button>
+        </footer>
+      </div>
+    </section>
+  </div>
+
+  <div class="staff-toast" id="staffToast" role="status" aria-live="polite"></div>
+</body>
+
+</html>
