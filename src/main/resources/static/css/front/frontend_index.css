@@ -1,0 +1,326 @@
+/* =========================================================
+   Bistroops 前台：首頁（frontend_index.html）
+   需要先載入 front.css（使用它的變數，以及 .container、.section、.eyebrow、.section-title、.btn-outline、.placeholder）
+   內容：1. Hero（文字區與輪播）　2. 精選菜單　3. 常見問題　4. 關於我們　5～8. 平板與手機的調整
+   ========================================================= */
+
+
+/* ========== 1. Hero ========== */
+.hero {
+  display: grid;
+  grid-template-columns: 1fr 1.6fr;
+  /* 這裡不設高度：整個區塊的高度由右邊的輪播圖片決定（見下面的 .carousel），左邊的文字區會跟著一樣高 */
+  /* 文字區和輪播左右排在一起，整組放在頁面正中間：
+     max-width 是整組最寬到多少（和頁首、下面的內容區一樣是 1200px），
+     margin-inline: auto 會把左右多出來的空間平均分掉，所以會置中。
+     想讓整組寬一點，可以把 var(--max-width) 換成數字，例如 1400px。
+     畫面寬度 900px 以下會改成上下排，寫在下面的「6. Hero 改成上下排」。 */
+  max-width: var(--max-width);
+  margin-inline: auto;
+}
+/* 左側文字區：白到香檳色的漸層 */
+.hero-text {
+  display: flex; flex-direction: column; justify-content: center;
+  /* 上下的內距比較小：文字區的內容如果比圖片高，整個區塊會被文字撐高，圖片上下就會多出留白 */
+  padding: 30px 50px;
+  background: linear-gradient(135deg, var(--color-white) 0%, var(--lux-champagne) 100%);
+}
+
+/* 小標前面加一條金線 */
+.hero-text .eyebrow { display: flex; align-items: center; gap: 16px; }
+.hero-text .eyebrow::before {
+  content: "";
+  width: 44px; height: 1px;
+  background: var(--color-gold);
+}
+
+/* 大標題：金色漸層文字 */
+.hero-text h1 {
+  margin-bottom: 20px;
+  padding-bottom: 8px;   /* 避免漸層文字的下緣被裁掉 */
+  font-family: var(--font-serif);
+  font-size: clamp(52px, 6vw, 86px);
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: 2px;
+  background: linear-gradient(120deg, #86672c 0%, #c9a96a 50%, #86672c 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.hero-text > p:not(.eyebrow) {
+  max-width: 480px;
+  margin-bottom: 35px;
+  color: var(--color-text-light);
+  letter-spacing: 2px;
+}
+/* Hero 的主要按鈕：金色漸層底 + 深色字，滑過變深墨色 */
+.hero-text .btn-outline {
+  align-self: flex-start;
+  background: var(--lux-gold-gradient);
+  border-color: var(--color-gold);
+  color: var(--lux-ink);
+  font-weight: 500;
+  box-shadow: 0 10px 28px rgba(154, 122, 60, .28);
+}
+.hero-text .btn-outline:hover {
+  background: var(--lux-ink);
+  border-color: var(--lux-ink);
+  color: var(--lux-gold-light);
+}
+
+/* 輪播
+   aspect-ratio: 16 / 9 → 高度永遠是寬度的 9/16，和活動圖的比例一樣，所以圖片剛好完整放進去。
+   之後如果換成別的比例的圖片，把 16 / 9 改成那張圖的「寬 / 高」。
+   align-self: stretch → 左邊文字比圖片高的時候，輪播的框跟著拉高（圖片還是完整顯示，上下露出底色）。 */
+.carousel {
+  position: relative; overflow: hidden;
+  aspect-ratio: 16 / 9;
+  align-self: stretch;
+  background: var(--lux-champagne);
+}
+/* 內縮的金色細框，裡面再多一圈白色細線 */
+.carousel::after {
+  content: "";
+  position: absolute; inset: 25px;
+  border: 1px solid var(--lux-gold-light);
+  outline: 1px solid rgba(255, 255, 255, .45);
+  outline-offset: -8px;
+  pointer-events: none;
+}
+.carousel-track { display: flex; height: 100%; transition: transform .7s ease; }
+.slide { flex: 0 0 100%; }
+/* 圖片完整顯示、不裁切（contain）。全站的 img 預設是 cover（填滿並裁掉多的部分），這裡改掉 */
+.slide img { object-fit: contain; }
+/* 下方的短橫線：目前這張是金色 */
+.carousel-dots {
+  position: absolute; bottom: 50px; left: 50%; transform: translateX(-50%);
+  z-index: 1;
+  display: flex; gap: 10px;
+}
+.carousel-dots button {
+  width: 30px; height: 3px; padding: 0;
+  border: 0;
+  background: rgba(255, 255, 255, .55);
+  cursor: pointer;
+  transition: background var(--transition);
+}
+.carousel-dots button.active { background: var(--lux-gold-light); }
+/* 左右箭頭：方形金框 */
+.carousel-arrow {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  z-index: 1;
+  width: 44px; height: 44px;
+  border: 1px solid var(--lux-gold-light);
+  background: rgba(35, 32, 28, .35);
+  color: var(--lux-gold-light); font-size: 20px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--transition), background var(--transition);
+}
+.carousel:hover .carousel-arrow { opacity: 1; }
+.carousel-arrow:hover { background: rgba(35, 32, 28, .65); }
+.carousel-arrow.prev { left: 45px; }
+.carousel-arrow.next { right: 45px; }
+
+
+/* ========== 2. 精選菜單 ========== */
+/* 整個區塊鋪香檳色，上下各一條金色細線 */
+#menu {
+  background: linear-gradient(180deg, var(--lux-champagne) 0%, var(--color-bg) 100%);
+  border-top: 1px solid var(--lux-line);
+  border-bottom: 1px solid var(--lux-line);
+}
+
+.menu-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 30px; }
+.menu-card {
+  position: relative; overflow: hidden;
+  aspect-ratio: 4 / 3;
+  padding: 30px;
+  align-items: flex-start; justify-content: flex-end;
+  text-align: left;
+  background-size: cover; background-position: center;
+  border: 1px solid var(--color-gold);
+  box-shadow: 0 14px 34px rgba(90, 70, 30, .14);
+  transition: transform var(--transition), box-shadow var(--transition);
+}
+/* 底部深墨色漸層，讓文字看得清楚 */
+.menu-card::before {
+  content: "";
+  position: absolute; inset: 0;
+  background: linear-gradient(to top, rgba(35, 32, 28, .86), rgba(35, 32, 28, 0) 62%);
+  transition: opacity var(--transition);
+}
+/* 內縮金框，呼應 Hero；滑過時往外擴 */
+.menu-card::after {
+  content: "";
+  position: absolute; inset: 14px;
+  border: 1px solid var(--lux-gold-light);
+  pointer-events: none;
+  transition: inset var(--transition);
+}
+.menu-card:hover { transform: translateY(-10px); box-shadow: 0 28px 60px rgba(90, 70, 30, .24); }
+.menu-card:hover::before { opacity: .8; }
+.menu-card:hover::after { inset: 8px; }
+
+.menu-card-text {
+  position: relative;
+  display: flex; flex-direction: column;
+  font-family: var(--font-serif);
+  font-size: 28px; font-weight: 500; line-height: 1.2;
+  letter-spacing: 4px;
+}
+.menu-card-text small {
+  margin-top: 4px;
+  color: var(--lux-gold-light);
+  font-size: 18px; font-weight: 500; font-style: italic;
+  letter-spacing: 1px;
+}
+
+
+/* ========== 3. 常見問題 ========== */
+.faq-list { max-width: 850px; margin: 0 auto; }
+/* 每一題是一張白色卡片，左側有金色粗線 */
+.faq-item {
+  margin-bottom: 14px;
+  background: var(--color-white);
+  border: 1px solid var(--color-border);
+  border-left: 3px solid var(--color-gold);
+  box-shadow: 0 6px 20px rgba(90, 70, 30, .06);
+  transition: box-shadow var(--transition), border-color var(--transition);
+}
+.faq-item:hover,
+.faq-item.open { box-shadow: 0 14px 34px rgba(90, 70, 30, .13); }
+.faq-item.open { border-left-color: var(--lux-ink); }
+.faq-question {
+  width: 100%;
+  display: flex; align-items: center; justify-content: space-between; gap: 20px;
+  padding: 22px 26px;
+  background: none; border: 0; cursor: pointer;
+  color: var(--color-text);
+  font-family: var(--font-serif);
+  font-size: 20px; font-weight: 500;
+  letter-spacing: 1px;
+  text-align: left;
+  transition: color var(--transition);
+}
+.faq-question:hover { color: var(--color-primary); }
+/* 「+」外面有一個金色圓框 */
+.faq-icon {
+  flex: none;
+  display: grid; place-items: center;
+  width: 32px; height: 32px;
+  border: 1px solid var(--color-gold); border-radius: 50%;
+  color: var(--color-primary);
+  font-family: var(--font-sans);
+  font-size: 20px; font-weight: 300; line-height: 1;
+  transition: transform var(--transition);
+}
+.faq-item.open .faq-icon { transform: rotate(45deg); }
+.faq-answer {
+  max-height: 0; overflow: hidden;
+  transition: max-height var(--transition);
+  color: var(--color-text-light);
+  font-size: 15px;
+}
+.faq-answer p { max-width: 750px; padding: 0 26px 24px; }
+
+/* 「more→」在這裡用文字連結樣式 */
+#faq .btn-outline {
+  min-width: 0; min-height: 0;
+  padding: 0;
+  border: 0;
+  font-family: var(--font-serif);
+  font-size: 19px; font-weight: 600;
+}
+#faq .btn-outline:hover {
+  background: none;
+  color: var(--color-accent);
+  transform: translateX(4px);
+  box-shadow: none;
+}
+
+
+/* ========== 4. 關於我們 ========== */
+#about { background: var(--color-bg-light); }
+.about-box {
+  position: relative;
+  max-width: 1060px; height: 380px;
+  margin: 0 auto;
+  font-family: var(--font-serif);
+  font-size: 36px; letter-spacing: 6px;
+  /* 之後放背景圖時，讓圖片填滿整個區塊並置中 */
+  background-size: cover; background-position: center;
+}
+/* 右下錯位的金色線框 */
+.about-box::after {
+  content: "";
+  position: absolute; top: 24px; left: 24px; right: -24px; bottom: -24px;
+  border: 1px solid var(--color-gold);
+  z-index: -1;
+}
+#about .container { position: relative; z-index: 0; }
+
+/* 滑鼠移入或點擊後：蓋上 60% 白底並顯示說明文字 */
+.about-box { cursor: pointer; }
+.about-title { transition: opacity var(--transition); }
+.about-overlay {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  padding: 30px;
+  background: rgba(255, 255, 255, .6);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-size: 17px; line-height: 2.1; letter-spacing: 2px;
+  opacity: 0;
+  transition: opacity var(--transition);
+}
+.about-box.active .about-overlay,
+.about-box:focus-visible .about-overlay { opacity: 1; }
+.about-box.active .about-title,
+.about-box:focus-visible .about-title { opacity: 0; }
+/* 有滑鼠的裝置才啟用移入效果，避免手機點擊後卡在顯示狀態 */
+@media (hover: hover) {
+  .about-box:hover .about-overlay { opacity: 1; }
+  .about-box:hover .about-title { opacity: 0; }
+}
+
+
+/* ========== 5. 平板（1024px 以下） ========== */
+@media (max-width: 1024px) {
+  /* 平板：左右排時圖片比較矮，文字區的內距縮小，盡量不要比圖片高 */
+  .hero-text { padding: 20px 30px; }
+}
+
+
+/* ========== 6. Hero 改成上下排（畫面寬度 900px 以下） ==========
+   文字在上、輪播在下。輪播佔滿寬度，高度一樣跟著圖片的比例。
+   想改成別的寬度才上下排，改下面的 900px 這個數字。 */
+@media (max-width: 900px) {
+  .hero { grid-template-columns: 1fr; }
+  .hero-text { padding: 60px 40px; }
+}
+
+
+/* ========== 7. 手機（768px 以下） ========== */
+@media (max-width: 768px) {
+  .hero-text .eyebrow::before { width: 28px; }
+  .hero-text { padding: 70px 25px; }
+  .carousel::after { inset: 15px; }
+  .carousel-dots { bottom: 30px; }
+  .carousel-arrow { display: none; }
+
+  .menu-grid { grid-template-columns: 1fr; max-width: 500px; margin: 0 auto; }
+  .faq-question { font-size: 18px; padding: 18px 18px; }
+  .faq-answer p { padding: 0 18px 20px; }
+  .about-box { height: 260px; font-size: 28px; }
+  .about-overlay { padding: 20px; font-size: 14px; letter-spacing: 1px; }
+  .about-box::after { top: 14px; left: 14px; right: -14px; bottom: -14px; }
+}
+
+
+/* ========== 8. 小手機（480px 以下） ========== */
+@media (max-width: 480px) {
+  .hero-text h1 { font-size: 52px; }
+  .hero-text .btn-outline { align-self: stretch; }
+}
