@@ -1,22 +1,130 @@
 /* =========================================================
    Bistroops 員工後台：共用程式（每個後台頁面都要載入，而且要放在最前面）
-   內容：1. 示範資料 StaffStore　2. 小工具　3. 小提示　4. 尚未開放的按鈕　5. 時鐘　6. 重設示範資料
 
-   對應的 CSS：static/css/staff/staff.css
-   各頁面自己的程式：staff-workboard.js／staff-checkout.js／staff-orders.js
+   這個檔案分成兩區：
+     A. 共用程式（保留）：小工具、小提示、尚未開放的按鈕、選單的摺疊、時鐘、送出前先確認
+     B. 假資料：示範訂單 StaffStore、訂單狀態的對照表、重設示範資料、主頁訂候位的示範數字
 
-   ※ 目前畫面用的是假資料。Java 寫好後要改的地方都標了「Thymeleaf 串接」，
-     用 Ctrl+F 搜尋這幾個字就能找到。
+   對應的 CSS：static/css/staff/staff.css（共用）＋各頁自己的 CSS（checkout.css、orders.css、workboard.css、staff_index.css）
+   各頁面自己的程式：staff-workboard.js／checkout.js／orders.js
+
+   ※ 目前畫面用的是假資料。資料庫的版本已經用 Thymeleaf 寫在各頁 HTML 的【資料庫資料】，
+     Controller 把資料放進 Model 之後就會和假資料同時出現。做法見下面 B-1 開頭的總覽。
    ========================================================= */
 
 
-/* ========== 1. 示範資料 StaffStore ==========
+/* =====================================================================
+   A. 共用程式 ── 保留
+   這一區和資料無關，接上資料庫之後也要留著（公告管理等其他後台頁面也在用）。
+   ===================================================================== */
+
+/* ========== A-1. 小工具 ========== */
+// 把文字中的 < > & " ' 換掉，避免資料被當成 HTML 執行
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, ch => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]
+  ));
+}
+
+// 1310 → '$1,310'
+function formatMoney(amount) {
+  return '$' + Number(amount).toLocaleString('en-US');
+}
+
+
+/* ========== A-2. 小提示 ========== */
+let staffToastTimer = null;
+function staffToast(text) {
+  const toast = document.getElementById('staffToast');
+  if (!toast) return;
+  toast.textContent = text;
+  toast.classList.add('show');
+  clearTimeout(staffToastTimer);
+  staffToastTimer = setTimeout(() => toast.classList.remove('show'), 2400);
+}
+
+
+/* ========== A-3. 尚未開放的按鈕 ==========
+   HTML 裡寫 data-coming-soon="名稱" 的按鈕，點了都會跳出提示。
+   之後功能做好了，把按鈕上的 data-coming-soon 拿掉、換成真正的連結或動作即可。 */
+document.addEventListener('click', e => {
+  const btn = e.target.closest('[data-coming-soon]');
+  if (btn) staffToast(`「${btn.dataset.comingSoon}」功能尚未開放`);
+});
+
+
+/* ========== A-4. 選單的摺疊群組（後臺管理） ==========
+   點「後臺管理」會展開或收起下面的項目。做法是替外層的 .staff-group 加上或拿掉 open 這個 class，
+   顯示與隱藏由 staff.css 處理。
+   展開的狀態會記在 sessionStorage（這個分頁關掉前都記得），換到別的後台頁面時選單不會自己收起來。
+   這一區和資料庫無關，之後接上 Thymeleaf 也可以保留。 */
+const MENU_GROUP_KEY = 'bistroopsStaffMenuGroupOpen';
+
+function setMenuGroupOpen(group, open) {
+  group.classList.toggle('open', open);   // 第二個參數是 true 就加上、false 就拿掉
+  group.querySelector('[data-menu-group]').setAttribute('aria-expanded', open);
+}
+
+// 頁面載入時：上次是展開的，就先展開
+document.querySelectorAll('.staff-group').forEach(group => {
+  let wasOpen = false;
+  try { wasOpen = sessionStorage.getItem(MENU_GROUP_KEY) === 'yes'; } catch (e) { /* 讀不到就當作收起 */ }
+  // HTML 已經寫了 open（之後由 Thymeleaf 加上）的話也維持展開
+  setMenuGroupOpen(group, wasOpen || group.classList.contains('open'));
+});
+
+document.addEventListener('click', e => {
+  const toggle = e.target.closest('[data-menu-group]');
+  if (!toggle) return;
+  const group = toggle.closest('.staff-group');
+  const open = !group.classList.contains('open');
+  setMenuGroupOpen(group, open);
+  try { sessionStorage.setItem(MENU_GROUP_KEY, open ? 'yes' : 'no'); } catch (e) { /* 存不了就算了 */ }
+});
+
+
+/* ========== A-5. 右上角的日期與時間 ========== */
+const staffClock = document.getElementById('staffClock');
+if (staffClock) {
+  const showClock = () => {
+    const now = new Date();
+    const weekday = '日一二三四五六'[now.getDay()];
+    const time = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+    staffClock.textContent =
+      `${now.getMonth() + 1} 月 ${now.getDate()} 日（${weekday}）${time}`;
+  };
+  showClock();
+  setInterval(showClock, 30000);   // 每 30 秒更新一次
+}
+
+
+/* ========== A-6. 送出前先確認 ==========
+   表單寫了 data-confirm="要顯示的問句" 的話，送出前會先跳出確認視窗，按「取消」就不送出。
+   用在資料庫版本的表單，例如結帳（checkout.html）、把餐點退回製作中（workboard.html）：
+     <form th:action="..." method="post" data-confirm="確定結帳嗎？"> */
+document.addEventListener('submit', e => {
+  const question = e.target.dataset.confirm;
+  if (question && !confirm(question)) e.preventDefault();
+});
+
+
+// ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
+// ▼▼▼  【假資料・刪除範圍 開始】                                          ▼▼▼
+// ▼▼▼   串接完成、確認資料庫的畫面沒問題後，從這一行開始刪，               ▼▼▼
+// ▼▼▼   一直刪到下面 ▲▲▲ 框起來的「刪除範圍 結束」那一行（標記也一起刪掉）▼▼▼
+// ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
+/* =====================================================================
+   B. 假資料 ── 四個後台頁面的假資料都刪掉之後，從這一行到檔案最後都可以刪掉
+   在那之前要留著：各頁 JS 的 B 區都是用這裡的 StaffStore 讀寫示範訂單。
+   ===================================================================== */
+
+/* ========== B-1. 示範資料 StaffStore ==========
    所有後台頁面都透過 StaffStore 讀寫訂單，所以內場、外場、結帳、訂單管理看到的是同一份資料。
    資料暫存在瀏覽器的 localStorage（關掉分頁再打開還在，但只存在這台裝置）。
 
    【Thymeleaf 串接】總覽
      這一區是用來代替資料庫的。真正上線時，內場和外場是「不同的平板」，
-     一定要透過伺服器的資料庫才能同步，瀏覽器暫存做不到。做法和會員功能相同：
+     一定要透過伺服器的資料庫才能同步，瀏覽器暫存做不到。做法和會員功能相同，不用 JSON：
 
        顯示資料：Controller 把訂單清單放進 Model，HTML 用 th:each 產生畫面
        修改資料：每個按鈕包成一個小表單（th:action + method="post"）送到 Controller，
@@ -24,12 +132,23 @@
        保持同步：在 <head> 加上 <meta http-equiv="refresh" content="10">，
                  頁面就會每 10 秒自動重新載入一次，看到別台平板的最新操作
 
-     全部改完後，這個 StaffStore 和各頁 JS 裡「產生畫面」的程式都可以刪掉。
+     HTML 裡「資料庫的版本」都已經用 Thymeleaf 寫好了，和假資料的版本放在同一頁：
+       【資料庫資料】Controller 把資料放進 Model 之後才會出現（還沒放的時候不顯示）
+       【假資料】    這裡的 StaffStore 和各頁 JS 的 B 區產生的，目前看到的就是這一份
+     所以串接時可以一頁一頁來：Controller 放了資料，兩份就會同時出現在頁面上，方便對照；
+     確認資料庫的版本沒問題，再刪掉那一頁的假資料。
 
-     提示寫在哪裡（每個檔案用 Ctrl+F 搜尋「Thymeleaf 串接」）：
+     提示寫在哪裡（每個檔案用 Ctrl+F 搜尋「Thymeleaf 串接」或「假資料」）：
        StaffPageController.java   每個網址要準備的資料、要新增哪些 @PostMapping（先看這裡的總覽）改完後記得領回自己的java寫
-       templates/staff/*.html     每一塊畫面要換成的 th:each／th:text／表單，可以直接照著改
-       static/js/staff/staff-*.js       哪些程式之後可以刪掉、哪些要保留裡面會有寫
+       templates/staff/*.html     每一頁開頭有串接的步驟；【資料庫資料】每一塊上面寫了 Controller 要放什麼
+       static/js/staff/ 各頁的 JS A 區保留、B 區是假資料（刪除的方法寫在各檔案開頭）
+
+     四個頁面的假資料都刪掉之後，這個檔案的 B 區（從「B. 假資料」那一行到檔案最後）也整個刪掉。
+
+     ★★ 欄位名稱目前都是「範例」★★
+     下面假資料的欄位名稱（id、table、items、mealtype 等）是寫假資料時先取的；
+     HTML【資料庫資料】裡的名稱也是照這裡取的。VO 的設計和屬性名稱請負責的組員照自己的想法決定，
+     決定後把 HTML 裡 ${...} 用到的名稱改成 VO 實際的名稱即可（假資料這邊不用跟著改）。
 
      下面「一筆訂單的格式」可以當作設計資料表欄位的參考：
      訂單一張表、餐點一張表（餐點用訂單編號連回訂單），狀態存成文字或數字都可以。
@@ -317,19 +436,7 @@ const StaffStore = (() => {
 })();
 
 
-/* ========== 2. 小工具 ========== */
-// 把文字中的 < > & " ' 換掉，避免資料被當成 HTML 執行
-function escapeHtml(value) {
-  return String(value ?? '').replace(/[&<>"']/g, ch => (
-    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]
-  ));
-}
-
-// 1310 → '$1,310'
-function formatMoney(amount) {
-  return '$' + Number(amount).toLocaleString('en-US');
-}
-
+/* ========== B-2. 訂單狀態的對照表（各頁 JS 的 B 區用來顯示狀態標籤） ========== */
 // 訂單狀態對應的中文與顏色（顏色的 class 定義在 staff.css）
 const ORDER_STATUS_TEXT = {
   ACTIVE: { text: '用餐中', className: 'tag-yellow' },
@@ -339,72 +446,7 @@ const ORDER_STATUS_TEXT = {
 };
 
 
-/* ========== 3. 小提示 ========== */
-let staffToastTimer = null;
-function staffToast(text) {
-  const toast = document.getElementById('staffToast');
-  if (!toast) return;
-  toast.textContent = text;
-  toast.classList.add('show');
-  clearTimeout(staffToastTimer);
-  staffToastTimer = setTimeout(() => toast.classList.remove('show'), 2400);
-}
-
-
-/* ========== 4. 尚未開放的按鈕 ==========
-   HTML 裡寫 data-coming-soon="名稱" 的按鈕，點了都會跳出提示。
-   之後功能做好了，把按鈕上的 data-coming-soon 拿掉、換成真正的連結或動作即可。 */
-document.addEventListener('click', e => {
-  const btn = e.target.closest('[data-coming-soon]');
-  if (btn) staffToast(`「${btn.dataset.comingSoon}」功能尚未開放`);
-});
-
-
-/* ========== 4-2. 選單的摺疊群組（後臺管理） ==========
-   點「後臺管理」會展開或收起下面的項目。做法是替外層的 .staff-group 加上或拿掉 open 這個 class，
-   顯示與隱藏由 staff.css 處理。
-   展開的狀態會記在 sessionStorage（這個分頁關掉前都記得），換到別的後台頁面時選單不會自己收起來。
-   這一區和資料庫無關，之後接上 Thymeleaf 也可以保留。 */
-const MENU_GROUP_KEY = 'bistroopsStaffMenuGroupOpen';
-
-function setMenuGroupOpen(group, open) {
-  group.classList.toggle('open', open);   // 第二個參數是 true 就加上、false 就拿掉
-  group.querySelector('[data-menu-group]').setAttribute('aria-expanded', open);
-}
-
-// 頁面載入時：上次是展開的，就先展開
-document.querySelectorAll('.staff-group').forEach(group => {
-  let wasOpen = false;
-  try { wasOpen = sessionStorage.getItem(MENU_GROUP_KEY) === 'yes'; } catch (e) { /* 讀不到就當作收起 */ }
-  // HTML 已經寫了 open（之後由 Thymeleaf 加上）的話也維持展開
-  setMenuGroupOpen(group, wasOpen || group.classList.contains('open'));
-});
-
-document.addEventListener('click', e => {
-  const toggle = e.target.closest('[data-menu-group]');
-  if (!toggle) return;
-  const group = toggle.closest('.staff-group');
-  const open = !group.classList.contains('open');
-  setMenuGroupOpen(group, open);
-  try { sessionStorage.setItem(MENU_GROUP_KEY, open ? 'yes' : 'no'); } catch (e) { /* 存不了就算了 */ }
-});
-
-
-/* ========== 5. 右上角的日期與時間 ========== */
-const staffClock = document.getElementById('staffClock');
-if (staffClock) {
-  const showClock = () => {
-    const now = new Date();
-    const weekday = '日一二三四五六'[now.getDay()];
-    staffClock.textContent =
-      `${now.getMonth() + 1} 月 ${now.getDate()} 日（${weekday}）${StaffStore.nowTime()}`;
-  };
-  showClock();
-  setInterval(showClock, 30000);   // 每 30 秒更新一次
-}
-
-
-/* ========== 6. 主頁的「重設示範資料」 ========== */
+/* ========== B-3. 主頁的「重設示範資料」 ========== */
 const resetDemoBtn = document.getElementById('resetDemo');
 if (resetDemoBtn) {
   resetDemoBtn.addEventListener('click', () => {
@@ -413,3 +455,22 @@ if (resetDemoBtn) {
     staffToast('已重設示範資料');
   });
 }
+
+
+/* ========== B-4. 主頁「訂候位管理」長條的示範數字 ==========
+   staff_index.html 的【假資料】長條裡，寫了 data-demo-home="名稱" 的地方會填入下面對應的數字。
+   資料庫的版本是同一頁的【資料庫資料】長條，數字由 Controller 放進 Model（名稱和下面相同）。 */
+const HOME_DEMO = {
+  nextRoundTime: '18:00',   // 最近一輪訂位的時間
+  nextRoundCount: 6,        // 那一輪共幾組
+  waitingCount: 3,          // 目前候位幾組
+  callingNumber: 12         // 目前叫到幾號
+};
+document.querySelectorAll('[data-demo-home]').forEach(el => {
+  el.textContent = HOME_DEMO[el.dataset.demoHome];
+});
+
+// ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
+// ▲▲▲  【假資料・刪除範圍 結束】刪到這一行為止（這一行也刪掉）。           ▲▲▲
+// ▲▲▲   注意：要等「四個後台頁面」的假資料都刪掉之後，才能刪這一區。      ▲▲▲
+// ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲

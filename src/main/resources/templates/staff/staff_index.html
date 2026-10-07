@@ -11,7 +11,9 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet"
     href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;700&display=swap">
+  <!-- staff.css：後台共用；staff_index.css：這一頁自己的樣式（要寫在 staff.css 後面） -->
   <link rel="stylesheet" th:href="@{/css/staff/staff.css}" />
+  <link rel="stylesheet" th:href="@{/css/staff/staff_index.css}" />
   <script th:src="@{/js/staff/staff.js}" defer></script>
 </head>
 
@@ -50,29 +52,45 @@
 
     <!-- 訂候位管理：整個長條都可以點，點了前往訂候位的畫面。
          訂候位的頁面還沒做，所以先用 data-coming-soon（點了會跳出「尚未開放」）。
-         頁面做好後，把下面的 <button type="button" ... data-coming-soon="訂候位"> 換成
+         頁面做好後，把 <button type="button" ... data-coming-soon="訂候位"> 換成
            <a class="staff-card home-bar" th:href="@{/staff/訂候位的網址}">
          結尾的 </button> 換成 </a> 即可。
 
-         【Thymeleaf 串接】裡面的時間與組數目前是寫死的示範數字。
-         Controller 把資料放進 Model 後，在那幾個 <strong> 加上 th:text，例如
-           <strong th:text="${nextRoundTime}">18:00</strong>
-           <strong th:text="${nextRoundCount}">6</strong>
-           <strong th:text="${waitingCount}">3</strong>
-           <strong th:text="${callingNumber}">12</strong> -->
-    <button type="button" class="staff-card home-bar" data-coming-soon="訂候位">
-      <span class="home-bar-title">訂候位管理</span>
+         這個長條有「兩份」：
+           【資料庫資料】用 Thymeleaf 寫好的版本。Controller 還沒把資料放進 Model 時不會出現。
+           【假資料】    數字由 staff.js 的「B. 假資料」填入，目前看到的就是這一份。 -->
+
+    <!-- ===== 【資料庫資料】Thymeleaf 串接 =====
+         Controller（/staff 的方法）放進 Model：
+           nextRoundTime 最近一輪訂位的時間、nextRoundCount 那一輪共幾組、
+           waitingCount 目前候位幾組、callingNumber 目前叫到幾號
+         只要 nextRoundCount 不是 null，這個長條就會出現在假資料的上面。
+         ★★ 上面四個名稱目前都是「範例」★★ 要叫什麼名字請負責的組員自己決定，
+         決定後把下面 ${...} 裡的名稱（包含 th:if 裡的 nextRoundCount）改成 Controller 實際放進 Model 的名稱。 -->
+    <button type="button" class="staff-card home-bar" data-coming-soon="訂候位" th:if="${nextRoundCount != null}">
+      <span class="home-bar-title">訂候位管理<span class="source-tag source-db">資料庫</span></span>
       <span class="home-bar-stats">
-        <span class="home-bar-stat">最近一輪訂位（<strong>18:00</strong>）共 <strong class="home-bar-num">6</strong> 組</span>
-        <span class="home-bar-stat">目前候位 <strong class="home-bar-num">3</strong> 組</span>
-        <span class="home-bar-stat">目前叫號 <strong class="home-bar-num">12</strong> 號</span>
+        <span class="home-bar-stat">最近一輪訂位（<strong th:text="${nextRoundTime}">18:00</strong>）共 <strong class="home-bar-num" th:text="${nextRoundCount}">0</strong> 組</span>
+        <span class="home-bar-stat">目前候位 <strong class="home-bar-num" th:text="${waitingCount}">0</strong> 組</span>
+        <span class="home-bar-stat">目前叫號 <strong class="home-bar-num" th:text="${callingNumber}">0</strong> 號</span>
       </span>
       <span class="home-bar-arrow" aria-hidden="true">›</span>
     </button>
 
-    <!-- 示範資料的說明。
-         【Thymeleaf 串接】接上資料庫後，這整個 section 可以刪掉，
-         staff.js 最下面第 6 區「重設示範資料」的程式也一起刪掉 -->
+    <!-- ===== 【假資料】四個 <strong> 裡的數字由 staff.js 的「B. 假資料」填入（依照 data-demo-home 的名稱）。
+         資料庫的版本確認沒問題後，這個 button 整個刪掉 ===== -->
+    <button type="button" class="staff-card home-bar" data-coming-soon="訂候位">
+      <span class="home-bar-title">訂候位管理<span class="source-tag" th:if="${nextRoundCount != null}">假資料</span></span>
+      <span class="home-bar-stats">
+        <span class="home-bar-stat">最近一輪訂位（<strong data-demo-home="nextRoundTime"></strong>）共 <strong class="home-bar-num" data-demo-home="nextRoundCount"></strong> 組</span>
+        <span class="home-bar-stat">目前候位 <strong class="home-bar-num" data-demo-home="waitingCount"></strong> 組</span>
+        <span class="home-bar-stat">目前叫號 <strong class="home-bar-num" data-demo-home="callingNumber"></strong> 號</span>
+      </span>
+      <span class="home-bar-arrow" aria-hidden="true">›</span>
+    </button>
+
+    <!-- ===== 【假資料】示範資料的說明與重設按鈕。
+         假資料都刪掉之後，這個 section 也整個刪掉（按鈕的程式在 staff.js 的「B. 假資料」） ===== -->
     <section class="staff-card home-note">
       <h2 class="staff-card-title">目前使用示範資料</h2>
       <p>後台的訂單是寫在 staff.js 裡的假資料，操作結果只會暫存在這台裝置的瀏覽器。</p>

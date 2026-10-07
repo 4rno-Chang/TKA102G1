@@ -18,6 +18,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
+import jakarta.validation.constraints.DecimalMin;
 
 @Entity
 @Table(name = "meal")
@@ -42,6 +43,7 @@ public class MealVO  {
 	private String mealExp;
 	
 	@Column(name = "meal_price",nullable = false)
+	@DecimalMin(value="1",message = "價格不能小於1元")
 	private Integer mealPrice;
 	
 	@Column(name = "meal_status_en", columnDefinition = "enum('上架', '未上架')")
