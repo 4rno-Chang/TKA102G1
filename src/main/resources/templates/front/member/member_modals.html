@@ -70,9 +70,9 @@
           <div class="field">
             <label for="loginCaptcha">驗證碼</label>
             <div class="field-row">
-              <input type="text" id="loginCaptcha" name="captcha" maxlength="4" autocomplete="off">
+              <input type="text" id="loginCaptcha" name="captcha" inputmode="numeric" maxlength="4" autocomplete="off">
               <!-- 驗證圖片：目前由 member.js 產生示範文字 -->
-              <span class="captcha-img" id="captchaImg" aria-label="驗證圖片"></span>
+              <img class="captcha-img" id="captchaImg" th:src="@{/member/captcha}" alt="驗證碼">
               <button type="button" class="icon-btn" id="captchaRefresh" aria-label="重新產生驗證碼">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 4v5h-5"/></svg>
               </button>
@@ -80,7 +80,7 @@
           </div>
 
           <!-- 登入失敗提示 -->
-          <p class="form-msg error" id="loginError" hidden></p>
+          <p class="form-msg error" id="loginError" th:text="${loginError}" th:hidden="${loginError == null}"></p>
 
           <button type="submit" class="btn-solid">登入</button>
         </form>
@@ -114,7 +114,7 @@
         <p class="eyebrow">Sign Up</p>
         <h2 class="modal-title">會員註冊</h2>
 
-        <!-- 【Thymeleaf 串接】註冊
+        <!-- 【Thymeleaf 串接】註冊【已完成】
           1. form 開頭改成：
                <form id="registerForm" th:action="@{/member/register}" method="post" novalidate>
              Controller 會收到 phone、code、password、password2。
@@ -177,7 +177,7 @@
         <p class="eyebrow">Forgot Password</p>
         <h2 class="modal-title">忘記密碼</h2>
 
-        <!-- 【Thymeleaf 串接】忘記密碼步驟 1
+        <!-- 【Thymeleaf 串接】忘記密碼步驟 1【已完成】
           1. form 開頭改成：
                <form id="forgotForm" th:action="@{/member/forgot}" method="post" novalidate>
              Controller 會收到 phone、code。驗證碼正確時把手機存進 session，給步驟 2 使用。
@@ -216,7 +216,7 @@
         <p class="eyebrow">Reset Password</p>
         <h2 class="modal-title">忘記密碼</h2>
 
-        <!-- 【Thymeleaf 串接】忘記密碼步驟 2
+        <!-- 【Thymeleaf 串接】忘記密碼步驟 2【已完成】
           1. form 開頭改成：
                <form id="resetForm" th:action="@{/member/resetPassword}" method="post" novalidate>
              Controller 會收到 password、password2，手機請從 session 取出（步驟 1 存的）。
@@ -327,6 +327,12 @@
                 <input type="tel" id="profilePhone" name="phone" th:value="${session.member?.memTel}" readonly>
               </div>
 
+				<!-- 手機條碼載具 -->
+			  <div class="field">
+  				<label for="profileBarcode">手機條碼載具</label>
+  				<input type="text" id="profileBarcode" name="memBarcode" maxlength="8" placeholder="/ABC1234" th:value="${session.member?.memBarcode}">
+			  </div>
+
               <div class="field">
                 <label for="birthYear">生日</label>
                 <div class="birthday-row">
@@ -349,7 +355,7 @@
           <section class="member-panel" data-panel="password" hidden>
             <button type="button" class="back-btn" data-member-tab="profile">← 返回個人資料</button>
             <h3 class="panel-title">更改密碼</h3>
-            <!-- 【Thymeleaf 串接】會員中心更改密碼
+            <!-- 【Thymeleaf 串接】會員中心更改密碼【已完成】
               1. form 開頭改成：
                    <form id="changePwForm" th:action="@{/member/changePassword}" method="post" novalidate>
                  Controller 會收到 code、password、password2，手機從 session 的 loginMember 取得。
