@@ -463,29 +463,86 @@ const loginError = $('loginError');
 //   HTML 把 captchaImg 從 <span> 換成 <img>（見 member_modals.html），
 //   然後把函式內容換成下面這行；網址後面加時間是為了讓瀏覽器每次都重新抓圖：
 //     captchaImg.src = '/member/captcha?t=' + Date.now();
-async function refreshCaptcha() {
-  captchaImg.textContent = await memberApi.newCaptcha();
+function refreshCaptcha() {
+  
+
+  captchaImg.src = '/member/captcha?t=' + Date.now();
 }
 
 $('captchaRefresh').addEventListener('click', refreshCaptcha);
 
 
+
 // ---------- 登入送出 ----------
-loginForm.addEventListener('submit', e => {
+loginForm.addEventListener('submit', async e => {
   e.preventDefault();
 
-  const data = {
-    phone: loginForm.phone.value.trim(),
-    password: loginForm.password.value,
-    captcha: loginForm.captcha.value.trim()
-  };
+  // 先清除上一次錯誤訊息
+  setMsg(loginError, '');
 
-  if (!data.phone || !data.password || !data.captcha) {
-    setMsg(loginError, '※請完整填寫手機、密碼與驗證碼', 'error');
+  const phone = loginForm.phone.value.trim();
+  const password = loginForm.password.value;
+  const captcha = loginForm.captcha.value.trim();
+
+  // 手機格式檢查
+  if (!PHONE_RE.test(phone)) {
+    setMsg(
+      loginError,
+      '※請輸入正確的手機號碼（09 開頭共 10 碼）',
+      'error'
+    );
     return;
   }
 
-  loginForm.submit();
+  // 密碼沒輸入
+  if (password === '') {
+    setMsg(loginError, '※請輸入密碼', 'error');
+    return;  
+  }
+  
+  
+
+  // 背景送到 Controller，不重新整理頁面
+  const result = await fetch('/member/login', {
+    method: 'POST',
+	body: new URLSearchParams({phone: phone,password: password,captcha: captcha})}).then(res => res.text());
+
+  // 登入成功
+  if (result === 'OK') {
+    window.location.href = '/bistroops';
+    return;
+  }
+  
+  // 圖片驗證碼錯誤
+  if (result === 'CAPTCHA_ERROR') {
+    loginForm.captcha.value = '';
+
+    setMsg(
+      loginError,
+      '※驗證碼錯誤',
+      'error'
+    );
+
+    refreshCaptcha();
+    loginForm.captcha.focus();
+    return;
+  }
+
+  // 登入失敗：手機保留、只清密碼
+  // 帳號或密碼錯誤
+  loginForm.password.value = '';
+  loginForm.captcha.value = '';
+
+  // 重新產生新的驗證碼
+  refreshCaptcha();
+
+  setMsg(
+    loginError,
+    '※帳號或密碼錯誤',
+    'error'
+  );
+
+  loginForm.password.focus();
 });
 
 

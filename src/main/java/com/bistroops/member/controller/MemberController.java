@@ -7,7 +7,17 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+import com.bistroops.member.model.CaptchaService;
 
+import java.awt.Color;
+import java.awt.Font;
+import java.awt.Graphics2D;
+import java.awt.image.BufferedImage;
+import java.io.IOException;
+
+import javax.imageio.ImageIO;
+
+import jakarta.servlet.http.HttpServletResponse;
 import com.bistroops.member.model.MemberService;
 import com.bistroops.member.model.MemberVO;
 import java.time.LocalDate;
@@ -21,6 +31,8 @@ public class MemberController {
 	@Autowired
 	MemberService memberService;
 	
+	@Autowired
+	CaptchaService captchaService;
 
 	//會員註冊
 	@PostMapping("/member/register")
@@ -212,28 +224,78 @@ public class MemberController {
 
 			    return "OK";
 			}
+			// 產生登入圖片驗證碼
+			@GetMapping("/member/captcha")
+			public void captcha(HttpSession session,
+			                    HttpServletResponse response) throws IOException {
 
+			    // 產生 4 位數驗證碼，並存進 Redis
+			    String code = captchaService.createCaptcha(session.getId());
+
+			    // 建立透明背景的驗證碼圖片
+			    BufferedImage image =
+			            new BufferedImage(104, 46, BufferedImage.TYPE_INT_ARGB);
+
+			    Graphics2D g = image.createGraphics();
+
+			    // 驗證碼文字
+			    g.setColor(new Color(45, 40, 35));
+			    g.setFont(new Font("italic", Font.BOLD | Font.ITALIC, 22));
+
+			    // 每個數字分開畫，做出原本的字距效果
+			    int x = 18;
+
+			    for (char c : code.toCharArray()) {
+			        g.drawString(String.valueOf(c), x, 30);
+			        x += 20;
+			    }
+
+			    g.dispose();
+
+			    // 告訴瀏覽器這是一張 PNG
+			    response.setContentType("image/png");
+
+			    // 不要快取驗證碼圖片
+			    response.setHeader(
+			            "Cache-Control",
+			            "no-store, no-cache, must-revalidate"
+			    );
+
+			    // 把圖片送給瀏覽器
+			    ImageIO.write(image, "png", response.getOutputStream());
+			}		
 	
-	//會員登入
-	@PostMapping("/member/login")
-	public String login(@RequestParam String phone, @RequestParam String password, HttpSession session) {
-	    // 依手機號碼查詢會員
-	    MemberVO member = memberService.login(phone, password);
-	    
-	    if (member != null) {
-	    	
-	    	//登入成功，把會員資料存進Session
-	        session.setAttribute("member", member);
-	        
-	        return "redirect:/bistroops";
-	    	
-	    } else {
-	    	
-	    	//登入失敗
-	        return "redirect:/bistroops";
-	    }
-	}
-	
+			// 會員登入
+			@PostMapping("/member/login")
+			@ResponseBody
+			public String login(@RequestParam String phone,
+			                    @RequestParam String password,
+			                    @RequestParam String captcha,
+			                    HttpSession session) {
+
+			    // 先驗證圖片驗證碼
+			    boolean captchaCorrect =
+			            captchaService.verifyCaptcha(session.getId(), captcha);
+
+			    if (!captchaCorrect) {
+			        return "CAPTCHA_ERROR";
+			    }
+
+			    // 驗證帳號、密碼
+			    MemberVO member = memberService.login(phone, password);
+
+			    if (member != null) {
+
+			        // 登入成功，把會員資料存進 Session
+			        session.setAttribute("member", member);
+
+			        return "OK";
+			    }
+
+			    // 帳號或密碼錯誤
+			    return "ERROR";
+			}
+			
 	// 會員登出
 	@GetMapping("/member/logout")
 	public String logout(HttpSession session, RedirectAttributes redirectAttributes) {
