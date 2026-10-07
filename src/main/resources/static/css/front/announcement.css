@@ -1,6 +1,6 @@
 /* =========================================================
    Bistroops 前台：最新消息（公告列表 listAll.html、公告內文 detail.html）
-   需要先載入 /css/front/style.css：使用它的變數（--color-*、--lux-*、--font-*），
+   需要先載入 /css/front/front.css：使用它的變數（--color-*、--lux-*、--font-*），
    以及 .container、.section、.eyebrow、.section-title、.btn-outline、header、footer 的樣式。
    ========================================================= */
 

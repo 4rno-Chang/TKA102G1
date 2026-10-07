@@ -11,8 +11,10 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet"
 	href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Noto+Sans+TC:wght@300;400;500;700&family=Noto+Serif+TC:wght@500;600&display=swap">
-<link rel="stylesheet" th:href="@{/css/front/style.css}" />
-<script th:src="@{/js/front/main.js}" defer></script>
+<!-- front.css：前台共用（變數、頁首頁尾）；frontend_index.css：首頁自己的樣式（要寫在 front.css 後面） -->
+<link rel="stylesheet" th:href="@{/css/front/front.css}" />
+<link rel="stylesheet" th:href="@{/css/front/frontend_index.css}" />
+<script th:src="@{/js/front/frontend_index.js}" defer></script>
 <link rel="stylesheet" th:href="@{/css/front/member.css}" />
 <script th:src="@{/js/front/member.js}" defer></script>
 </head>
@@ -28,7 +30,7 @@
 				<p class="eyebrow">Bistro · Table · Wine</p>
 				<h1>Bistroops！</h1>
 				<p>副標題</p>
-				<a href="#" class="btn-outline">立即訂位</a>
+				<a th:href="@{/bistroops/reservation}" class="btn-outline">立即訂位</a>
 			</div>
 
 			<div class="carousel" id="carousel">
@@ -87,7 +89,7 @@
 		<!-- ========== 關於我們 ========== -->
 		<section class="section reveal" id="about">
 			<div class="container">
-				<!-- 滑鼠移入或點擊後，會蓋上半透明白底並顯示理念文字（效果在 style.css「8. 關於我們」、點擊在 main.js 第 7 區）
+				<!-- 滑鼠移入或點擊後，會蓋上半透明白底並顯示理念文字（效果在 frontend_index.css「4. 關於我們」、點擊在 main.js 第 7 區）
              之後要放背景圖：在下面這個 div 加上
                th:style="|background-image: url('@{/images/圖片檔名}')|" -->
 				<div class="about-box placeholder" id="aboutBox" role="button"

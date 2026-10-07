@@ -3,8 +3,8 @@
    對應的 HTML：templates/front/waiting/*.html
    對應的 JS  ：static/js/front/waiting.js
 
-   顏色、字型、按鈕都沿用首頁：需要先載入 style.css 和 member.css，再載入這個檔案
-     style.css   顏色變數、頁首頁尾、.container、.eyebrow、.btn-outline
+   顏色、字型、按鈕都沿用前台共用的樣式：需要先載入 front.css 和 member.css，再載入這個檔案
+     front.css   顏色變數、頁首頁尾、.container、.eyebrow、.btn-outline
      member.css  輸入框 .field、送出按鈕 .btn-solid、訊息 .form-msg、文字按鈕 .link-btn
    ========================================================= */
 
@@ -17,7 +17,7 @@
 .booking { padding: 50px 0 110px; }
 
 /* ---------- 標題與數字的字體（只影響現場候位的頁面） ----------
-   全站的標題字體是 style.css 裡的 --font-serif。這裡在 .booking（頁面內容）和 .lookup-modal（查詢的對話框）
+   全站的標題字體是 front.css 裡的 --font-serif。這裡在 .booking（頁面內容）和 .lookup-modal（查詢的對話框）
    重新指定它的值，所以只有這兩個範圍裡面會換字體；頁首、頁尾、首頁、會員對話框都不受影響。
 
    下面三種都是頁面已經載入的字體，不用另外加 Google Fonts 的連結。

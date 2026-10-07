@@ -1,0 +1,424 @@
+/* =========================================================
+   Bistroops 前台：共用樣式（前台每一頁都要載入，而且要放在最前面）
+   風格：象牙白底 + 香檳金線條與點綴 + 深墨色頁尾，襯線標題
+   字型由各頁 HTML 的 Google Fonts <link> 載入
+
+   這個檔案只放「每一頁都會用到」的東西：
+     變數（顏色、字型）、Reset、共用元件（.container、.section、.eyebrow、.section-title、.btn-outline）、
+     頁首（Header）、頁尾（Footer）、回到頂端、捲動淡入、已登入的會員按鈕，以及它們在平板、手機的調整。
+   只有某一頁才用到的樣式，寫在那一頁自己的檔案：
+     frontend_index.css  首頁（Hero 與輪播、精選菜單、常見問題、關於我們）
+     member.css          會員的登入／註冊對話框與會員中心（有頁首的頁面都要載入）
+     reservation.css     預約訂位
+     waiting.css         候位
+     announcement.css    最新消息
+
+   新增前台頁面時：HTML 先載入這個檔案，再載入那一頁自己的 CSS（順序不能反過來）
+     <link rel="stylesheet" th:href="@{/css/front/front.css}" />
+     <link rel="stylesheet" th:href="@{/css/front/頁面名稱.css}" />
+   自己的 CSS 可以直接用這裡的變數（var(--color-primary) 等）和 .container、.btn-outline 這些共用的 class。
+   ========================================================= */
+
+
+/* ========== 1. 變數 ========== */
+:root {
+  --color-bg: #fbf8f2;            /* 象牙白底 */
+  --color-bg-light: #ffffff;      /* 交錯區塊、對話框的底色（純白） */
+
+  --color-primary: #9a7a3c;       /* 香檳金：主色（小標、連結、外框按鈕） */
+  --color-primary-dark: #7d6230;  /* 深一階的金，滑過時使用 */
+
+  --color-text: #26221d;          /* 深墨色文字 */
+  --color-text-light: #766e62;
+
+  --color-accent: #7d6230;        /* 滑過連結時的深金 */
+  --color-gold: #c2a165;          /* 亮金：裝飾線框 */
+
+  --color-white: #fff;
+  --color-border: #e8e0d0;        /* 帶一點金的淺色細線 */
+  --color-placeholder: #ece5d6;   /* 尚未放圖的佔位色 */
+
+  --lux-ink: #23201c;             /* 深墨色：頁尾、會員中心標題列、滑過按鈕時 */
+  --lux-gold-light: #e6cf9c;      /* 淺金：放在深色底上的文字 */
+  --lux-champagne: #f6efe0;       /* 香檳色：區塊的底色 */
+  --lux-line: rgba(194, 161, 101, .45);   /* 金色細線 */
+  /* 金屬感的金色漸層：「立即訂位」按鈕與對話框頂端的粗線使用 */
+  --lux-gold-gradient: linear-gradient(135deg, #b8935a 0%, #e2cb96 50%, #b08a48 100%);
+
+  --font-serif: "Cormorant Garamond", "Noto Serif TC", Georgia, serif;
+  --font-sans: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+
+  --max-width: 1200px;
+  --header-h: 90px;
+  --transition: .4s cubic-bezier(.2, .7, .2, 1);
+}
+
+
+/* ========== 2. Reset ========== */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  /* 最上層：很淡的斜紋；中間：頂端的金色光暈；最底：象牙白 */
+  background:
+    repeating-linear-gradient(135deg, rgba(194, 161, 101, .045) 0 1px, transparent 1px 9px),
+    radial-gradient(1200px 600px at 50% -200px, rgba(194, 161, 101, .22), transparent 70%),
+    var(--color-bg);
+  background-attachment: fixed;
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.8;
+  -webkit-font-smoothing: antialiased;
+}
+::selection { background: var(--color-gold); color: var(--color-white); }
+a { color: inherit; text-decoration: none; }
+ul { list-style: none; }
+button { font: inherit; }
+img { display: block; width: 100%; height: 100%; object-fit: cover; }
+
+
+/* ========== 3. 共用元件 ========== */
+.container { width: min(100% - 60px, var(--max-width)); margin-inline: auto; }
+.section { padding: 120px 0; }
+
+/* 標題上方的小英文字 */
+.eyebrow {
+  margin-bottom: 8px;
+  color: var(--color-primary);
+  font-family: var(--font-serif);
+  font-size: 20px;
+  font-weight: 500;
+  letter-spacing: 6px;
+  text-transform: uppercase;
+}
+/* 區塊小標：置中，左右各一條金色短線 */
+.section .eyebrow {
+  display: flex; align-items: center; justify-content: center; gap: 16px;
+}
+.section .eyebrow::before,
+.section .eyebrow::after {
+  content: "";
+  width: 44px; height: 1px;
+  background: var(--color-gold);
+}
+
+.section-title {
+  margin-bottom: 56px;
+  text-align: center;
+  color: var(--color-text);
+  font-family: var(--font-serif);
+  font-size: clamp(34px, 4vw, 48px);
+  font-weight: 400;
+  line-height: 1.2;
+  letter-spacing: 8px;
+  text-indent: 8px;   /* 抵銷最後一個字的字距，讓標題視覺置中 */
+}
+/* 標題下方的裝飾：金線 ◆ 金線 */
+.section-title::after {
+  content: "◆";
+  display: block;
+  width: 180px;
+  margin: 22px auto 0;
+  /* 左右兩段金線，中間留空給菱形 */
+  background: linear-gradient(to right,
+      transparent 0%, var(--color-gold) 40%, transparent 40%,
+      transparent 60%, var(--color-gold) 60%, transparent 100%) center / 100% 1px no-repeat;
+  color: var(--color-gold);
+  font-family: var(--font-sans);
+  font-size: 10px; line-height: 1;
+  letter-spacing: 0; text-indent: 0;
+}
+
+/* 尚未放圖的區塊 */
+.placeholder {
+  background-color: var(--color-placeholder);
+  color: var(--color-white);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center;
+}
+
+/* 按鈕：預設為金色外框，滑過時深墨色由左往右填滿 */
+.btn-outline {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 150px; min-height: 52px;
+  padding: 12px 32px;
+  border: 1px solid var(--color-gold);
+  color: var(--color-primary);
+  /* 深墨色的背景一開始寬度 0%，所以看不到 */
+  background: linear-gradient(var(--lux-ink), var(--lux-ink)) left / 0% 100% no-repeat;
+  font-size: 15px;
+  letter-spacing: 4px; text-indent: 4px;
+  cursor: pointer;
+  transition: background-size .5s cubic-bezier(.2, .7, .2, 1), color var(--transition),
+              border-color var(--transition), transform var(--transition), box-shadow var(--transition);
+}
+.btn-outline:hover {
+  background: linear-gradient(var(--lux-ink), var(--lux-ink)) left / 100% 100% no-repeat;
+  border-color: var(--lux-ink);
+  color: var(--lux-gold-light);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 30px rgba(35, 32, 28, .22);
+}
+.btn-center { margin-top: 50px; text-align: center; }
+
+
+/* ========== 4. Header ========== */
+.site-header {
+  position: sticky; top: 0; z-index: 1000;
+  height: var(--header-h);
+  background: rgba(255, 253, 249, .9);
+  border-bottom: 1px solid var(--lux-line);
+  /* 最上方一條金色粗線（用內陰影畫，不會改變 Header 高度） */
+  box-shadow: inset 0 3px 0 var(--color-gold);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);   /* 捲動時透出後方內容的毛玻璃效果 */
+  transition: box-shadow var(--transition);
+}
+.site-header.scrolled {
+  box-shadow: inset 0 3px 0 var(--color-gold), 0 10px 36px rgba(90, 70, 30, .12);
+}
+
+.header-inner {
+  height: 100%;
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: 0 30px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.logo img { height: 52px; width: auto; }
+
+.nav { display: flex; align-items: center; gap: 40px; }
+.nav-list { display: flex; gap: 28px; }
+.nav-list a {
+  position: relative;
+  font-size: 15px;
+  letter-spacing: 2px;
+  transition: color var(--transition);
+}
+/* 滑過時底線由左往右長出來 */
+.nav-list a::after {
+  content: "";
+  position: absolute; left: 0; bottom: -7px;
+  width: 0; height: 2px;
+  background: var(--color-gold);
+  transition: width var(--transition);
+}
+.nav-list a:hover { color: var(--color-primary); }
+.nav-list a:hover::after { width: 100%; }
+
+/* 「登入 / 註冊」：金框按鈕，滑過變深墨色 */
+.btn-login {
+  padding: 9px 22px;
+  background: none;
+  border: 1px solid var(--color-gold);
+  cursor: pointer;
+  color: var(--color-primary);
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 2px;
+  white-space: nowrap;
+  transition: background-color var(--transition), color var(--transition), border-color var(--transition);
+}
+.btn-login:hover {
+  background: var(--lux-ink);
+  border-color: var(--lux-ink);
+  color: var(--lux-gold-light);
+}
+
+/* 手機版漢堡按鈕 */
+.menu-toggle {
+  display: none;
+  position: relative;
+  width: 30px; height: 22px;
+  background: none; border: 0; cursor: pointer;
+}
+.menu-toggle span,
+.menu-toggle::before,
+.menu-toggle::after {
+  content: "";
+  position: absolute; left: 0;
+  width: 100%; height: 1.5px;
+  background: var(--color-primary);
+  transition: transform var(--transition), opacity var(--transition);
+}
+.menu-toggle::before { top: 0; }
+.menu-toggle span    { top: 10px; }
+.menu-toggle::after  { bottom: 0; }
+.menu-toggle.open::before { transform: translateY(10px) rotate(45deg); }
+.menu-toggle.open span    { opacity: 0; }
+.menu-toggle.open::after  { transform: translateY(-10px) rotate(-45deg); }
+
+
+/* ========== 5. Footer ========== */
+.site-footer {
+  background: var(--lux-ink);
+  border-top: 3px solid var(--color-gold);
+  color: var(--color-white);
+}
+.footer-grid {
+  display: grid;
+  grid-template-columns: 2fr 1.2fr 1.3fr 1fr;
+  gap: 50px;
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: 80px 30px;
+}
+.footer-grid h4 {
+  margin-bottom: 20px;
+  color: var(--lux-gold-light);
+  font-family: var(--font-serif);
+  font-size: 22px; font-weight: 500;
+  letter-spacing: 1px;
+}
+/* 每個小標題下方一條金色短線 */
+.footer-grid h4::after {
+  content: "";
+  display: block;
+  width: 28px; height: 1px;
+  margin-top: 12px;
+  background: var(--color-gold);
+}
+.footer-grid > div:first-child h4 { font-size: 30px; letter-spacing: 3px; }
+.footer-links {
+  display: grid;
+  grid-template-columns: repeat(2, max-content);
+  column-gap: 36px; row-gap: 8px;
+}
+.footer-links a,
+.footer-contact p {
+  color: rgba(255, 255, 255, .7);
+  font-size: 14px;
+  transition: color var(--transition);
+}
+/* 滑過連結時變淺金並往右移一點 */
+.footer-links a { display: inline-block; transition: color var(--transition), transform var(--transition); }
+.footer-links a:hover { color: var(--lux-gold-light); transform: translateX(4px); }
+.footer-contact p { margin-bottom: 8px; }
+.copyright {
+  padding: 20px 30px;
+  border-top: 1px solid rgba(194, 161, 101, .3);
+  color: rgba(255, 255, 255, .5);
+  font-size: 13px;
+  letter-spacing: 1px;
+  text-align: center;
+}
+
+
+/* ========== 6. 回到頂端、捲動淡入 ========== */
+/* 圓形金色底 + 白色箭頭，滑過時不變色 */
+.back-to-top {
+  position: fixed; right: 24px; bottom: 24px; z-index: 900;
+  width: 46px; height: 46px;
+  border: 0; border-radius: 50%;
+  background: var(--color-primary); color: var(--color-white);
+  font-size: 18px;
+  box-shadow: 0 10px 28px rgba(154, 122, 60, .3);
+  cursor: pointer;
+  opacity: 0; pointer-events: none;
+  transition: opacity var(--transition);
+}
+.back-to-top.show { opacity: 1; pointer-events: auto; }
+
+/* 捲動淡入 */
+.reveal { opacity: 0; transform: translateY(30px); transition: opacity .8s ease, transform .8s ease; }
+.reveal.visible { opacity: 1; transform: none; }
+
+
+/* ========== 7. 已登入會員按鈕（頁首右上角） ========== */
+
+.member-menu-toggle {
+    /* 清掉 button 原生樣式 */
+    appearance: none;
+    -webkit-appearance: none;
+    border: 0;
+    padding: 0;
+    margin: 0;
+    background: none;
+
+    /* 完全比照 .nav-list a */
+    position: relative;
+    color: var(--color-text);
+    font-family: var(--font-sans);
+    font-size: 15px;
+    font-weight: 400;
+    line-height: 1.8;
+    letter-spacing: 2px;
+
+    cursor: pointer;
+    white-space: nowrap;
+
+    transition: color var(--transition);
+}
+
+
+/* 右上角會員中心CSS */
+.member-menu-toggle::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    bottom: -7px;
+
+    width: 0;
+    height: 2px;
+
+    background: var(--color-gold);
+    transition: width var(--transition);
+}
+
+
+
+.member-menu-toggle:hover {
+    color: var(--color-primary);
+}
+
+
+
+.member-menu-toggle:hover::after {
+    width: 100%;
+}
+
+
+/* ========== 8. 平板（1024px 以下） ========== */
+@media (max-width: 1024px) {
+  .menu-toggle { display: block; }
+  .nav {
+    position: absolute; top: var(--header-h); left: 0; right: 0;
+    flex-direction: column; align-items: stretch; gap: 0;
+    background: var(--color-bg);
+    border-bottom: 1px solid var(--color-border);
+    max-height: 0; overflow: hidden;
+    transition: max-height var(--transition);
+  }
+  .nav.open { max-height: 480px; }
+  .nav-list { flex-direction: column; gap: 0; }
+  .nav-list a { display: block; padding: 14px 30px; border-top: 1px solid var(--color-border); }
+  .nav-list a::after { display: none; }
+  .btn-login {
+    margin: 14px 30px 20px;
+    padding: 10px;
+    text-align: center;
+  }
+
+  .section { padding: 100px 0; }
+  .footer-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+
+/* ========== 9. 手機（768px 以下） ========== */
+@media (max-width: 768px) {
+  :root { --header-h: 72px; }
+  body { font-size: 15px; }
+
+  .container { width: min(100% - 40px, var(--max-width)); }
+  .header-inner { padding: 0 20px; }
+  .logo img { height: 42px; }
+  .nav-list a { padding-inline: 20px; }
+  .btn-login { margin-inline: 20px; }
+
+  .section { padding: 80px 0; }
+  .section-title { margin-bottom: 40px; }
+  .section .eyebrow::before,
+  .section .eyebrow::after { width: 28px; }
+
+  .footer-grid { grid-template-columns: 1fr; gap: 36px; padding: 60px 25px; }
+}
