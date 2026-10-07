@@ -52,26 +52,8 @@ goTo(0);
 start();
 
 /* ========== 3. 常見問題（手風琴） ========== */
-// 假資料：之後可改成 fetch('qa') 向 Servlet 取得 JSON
-const faqData = [
-  { q: '如何預約訂位？', a: '點選上方「預約訂位」，選擇日期、時段與人數後送出即可。' },
-  { q: '可以現場候位嗎？', a: '可以，現場候位與線上預約為兩套獨立機制，可於「候位狀況」查看目前等候組數。' },
-  { q: '訂位可以保留多久？', a: '訂位時間起保留 10 分鐘，逾時將釋出座位。' },
-  { q: '是否需要加入會員？', a: '預約訂位需登入會員，瀏覽菜單與候位狀況則不需要。' },
-  { q: '有提供素食餐點嗎？', a: '有，請參考完整菜單中的標示。' }
-];
-
+// 問答由 frontend_index.html 用 Thymeleaf 從資料庫產生，這裡只負責點擊展開／收起
 const faqList = document.getElementById('faqList');
-
-faqList.innerHTML = faqData.map(item => `
-  <div class="faq-item">
-    <button class="faq-question" aria-expanded="false">
-      <span>Q：${item.q}</span>
-      <span class="faq-icon">+</span>
-    </button>
-    <div class="faq-answer"><p>A：${item.a}</p></div>
-  </div>
-`).join('');
 
 // 事件委派：只在外層掛一個 listener
 faqList.addEventListener('click', e => {

@@ -1,6 +1,7 @@
 package com.bistroops.announcement.controller;
 
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
@@ -25,22 +26,17 @@ public class AnnouncementController {
 	@Autowired
 	private AnnouncementService annService;
 	
-	@GetMapping("")
-	public String index() {
-		return "staff/announcement/index";
-	}
-    
-    @GetMapping("/list")
+	// 公告及QA 的外殼頁，下方 include 公告列表（tab = 'announcement'）
+	@GetMapping({ "", "/list" })
 	public String list(Model model) {
-		model.addAttribute("annList", annService.getAll());
-		return "staff/announcement/listAllAnns";
-	} 
+		return showList(model);
+	}
     
 	@GetMapping("/search")
 	public String search(@RequestParam(name = "annNo", required = false) String annNoStr, Model model) {
 		if (annNoStr == null || annNoStr.trim().isEmpty()) {
 			model.addAttribute("errorMsg", "請輸入公告編號");
-			return "staff/announcement/index";
+			return showList(model);
 		}
 
 		try {
@@ -49,14 +45,14 @@ public class AnnouncementController {
 
 			if (ann == null) {
 				model.addAttribute("errorMsg", "查無此公告編號：" + annNo);
-				return "staff/announcement/index";
+				return showList(model);
 			}
 			model.addAttribute("ann", ann);
 			return "staff/announcement/listOneAnn";
 
 		} catch (NumberFormatException e) {
 			model.addAttribute("errorMsg", "公告編號格式錯誤");
-			return "staff/announcement/index";
+			return showList(model);
 		}
 	}
 
@@ -71,11 +67,27 @@ public class AnnouncementController {
 
 		if (annTitle == null || annTitle.trim().isEmpty()) {
 			model.addAttribute("errorMsg", "請輸入公告標題");
-			return "staff/announcement/index";
+			return showList(model);
+		}
+
+		LocalDateTime begin;
+		try {
+			begin = LocalDateTime.parse(annBegin);
+		} catch (Exception e) {
+			model.addAttribute("errorMsg", "公告開始時間格式錯誤");
+			return showList(model);
+		}
+
+		// 不能設定過往日期：帶著使用者剛剛填的內容回到新增頁，顯示紅字
+		if (isPast(begin)) {
+			model.addAttribute("beginError", "請勿設定過往日期");
+			model.addAttribute("annTitle", annTitle);
+			model.addAttribute("annBegin", annBegin);
+			model.addAttribute("annText", annText);
+			return "staff/announcement/insertAnnPage";
 		}
 
 		try {
-			LocalDateTime begin = LocalDateTime.parse(annBegin);
 			byte[] img = (annImg != null && !annImg.isEmpty()) ? annImg.getBytes() : null;
 
 			annService.insertAnn(annTitle.trim(), begin, img, annText);
@@ -83,7 +95,7 @@ public class AnnouncementController {
 		} catch (Exception e) {
 			e.printStackTrace();
 			model.addAttribute("errorMsg", "新增公告失敗");
-			return "staff/announcement/index";
+			return showList(model);
 		}
 
 		return "redirect:/staff/announcement";
@@ -93,6 +105,7 @@ public class AnnouncementController {
 	public String updatePage(@PathVariable Integer annNo, Model model) {
 		AnnouncementVO ann = annService.getAnnNoQuery(annNo);
 		model.addAttribute("ann", ann);
+		model.addAttribute("originalBegin", ann != null ? ann.getAnnBegin() : null);
 		return "staff/announcement/updateAnnPage";
 	}
 
@@ -102,11 +115,40 @@ public class AnnouncementController {
 
 		if (annTitle == null || annTitle.trim().isEmpty()) {
 			model.addAttribute("errorMsg", "請輸入公告標題");
-			return "staff/announcement/index";
+			return showList(model);
+		}
+
+		LocalDateTime begin;
+		try {
+			begin = LocalDateTime.parse(annBegin);
+		} catch (Exception e) {
+			model.addAttribute("errorMsg", "公告開始時間格式錯誤");
+			return showList(model);
+		}
+
+		// 不能改成過往日期；但沒動到原本的時間就放行，不然已經上架的公告會無法修改
+		AnnouncementVO original = annService.getAnnNoQuery(annNo);
+		if (original == null) {
+			model.addAttribute("errorMsg", "查無此公告編號：" + annNo);
+			return showList(model);
+		}
+		boolean unchanged = original.getAnnBegin() != null
+				&& original.getAnnBegin().truncatedTo(ChronoUnit.MINUTES).equals(begin);
+		if (!unchanged && isPast(begin)) {
+			// 另外 new 一個 VO 放使用者剛填的內容，不去改到資料庫查出來的那一筆
+			AnnouncementVO ann = new AnnouncementVO();
+			ann.setAnnNo(annNo);
+			ann.setAnnTitle(annTitle);
+			ann.setAnnBegin(begin);
+			ann.setAnnImg(original.getAnnImg());
+			ann.setAnnText(annText);
+			model.addAttribute("ann", ann);
+			model.addAttribute("originalBegin", original.getAnnBegin());
+			model.addAttribute("beginError", "請勿設定過往日期");
+			return "staff/announcement/updateAnnPage";
 		}
 
 		try {
-			LocalDateTime begin = LocalDateTime.parse(annBegin);
 			byte[] img = (annImg != null && !annImg.isEmpty()) ? annImg.getBytes() : null;
 
 			annService.updateAnn(annNo, annTitle.trim(), begin, img, annText);
@@ -114,7 +156,7 @@ public class AnnouncementController {
 		} catch (Exception e) {
 			e.printStackTrace();
 			model.addAttribute("errorMsg", "修改公告失敗");
-			return "staff/announcement/index";
+			return showList(model);
 		}
 
 		return "redirect:/staff/announcement";
@@ -137,6 +179,18 @@ public class AnnouncementController {
 
 		return ResponseEntity.ok().contentType(MediaType.IMAGE_JPEG).header(HttpHeaders.CACHE_CONTROL, "no-cache")
 				.body(img);
+	}
+
+	// 回到外殼頁的公告分頁；有 errorMsg 的話會顯示在 chip 列上方
+	private String showList(Model model) {
+		model.addAttribute("annList", annService.getAll());
+		model.addAttribute("tab", "announcement");
+		return "staff/announcement-and-qa";
+	}
+
+	// 表單只到「分」，所以和現在時間比也只比到分，現在這一分鐘還算可以
+	private boolean isPast(LocalDateTime begin) {
+		return begin.isBefore(LocalDateTime.now().truncatedTo(ChronoUnit.MINUTES));
 	}
 
 }

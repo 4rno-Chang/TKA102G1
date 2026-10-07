@@ -14,18 +14,19 @@
   <link rel="stylesheet" th:href="@{/css/staff/staff.css}" />
   <link rel="stylesheet" th:href="@{/css/staff/staff-announcement.css}" />
   <script th:src="@{/js/staff/staff.js}" defer></script>
+  <script th:src="@{/js/staff/staff-announcement.js}" defer></script>
 </head>
 
 <!-- 新增公告（/staff/announcement/insert）
      送出到 POST /staff/announcement/insert，欄位名稱要和 AnnouncementController 的 @RequestParam 相同：
      annTitle、annBegin、annImg、annText。有上傳檔案，所以 form 一定要 enctype="multipart/form-data" -->
 <body class="staff-layout">
-  <nav th:replace="~{staff/staff_sidebar :: sidebar('announcement')}"></nav>
+  <nav th:replace="~{staff/staff_sidebar :: sidebar('announcement-and-qa')}"></nav>
 
   <main class="staff-main">
     <header class="staff-header">
       <div>
-        <a class="ann-back" th:href="@{/staff/announcement}">‹ 公告管理</a>
+        <a class="ann-back" th:href="@{/staff/announcement}">‹ 公告及QA</a>
         <h1 class="staff-title">新增公告</h1>
       </div>
       <p class="staff-clock" id="staffClock"></p>
@@ -35,12 +36,14 @@
       <form class="ann-form" th:action="@{/staff/announcement/insert}" method="post" enctype="multipart/form-data">
         <div class="ann-field">
           <label class="ann-label" for="annTitle">公告標題</label>
-          <input type="text" class="staff-input" id="annTitle" name="annTitle" required>
+          <input type="text" class="staff-input" id="annTitle" name="annTitle" th:value="${annTitle}" required>
         </div>
 
         <div class="ann-field">
           <label class="ann-label" for="annBegin">公告開始時間 <small>到了這個時間，前台才會顯示</small></label>
-          <input type="datetime-local" class="staff-input" id="annBegin" name="annBegin" required>
+          <input type="datetime-local" class="staff-input" id="annBegin" name="annBegin" th:value="${annBegin}" required>
+          <!-- 後端檢查到過往日期時才會出現（beginError）；JS 檢查到時也會用這個 id 顯示 -->
+          <p class="ann-field-error" id="annBeginError" th:if="${beginError != null}" th:text="${beginError}" role="alert">請勿設定過往日期</p>
         </div>
 
         <div class="ann-field">
@@ -50,7 +53,7 @@
 
         <div class="ann-field">
           <label class="ann-label" for="annText">公告內容</label>
-          <textarea class="staff-input" id="annText" name="annText" rows="8" required></textarea>
+          <textarea class="staff-input" id="annText" name="annText" rows="8" th:text="${annText}" required></textarea>
         </div>
 
         <div class="ann-form-foot">

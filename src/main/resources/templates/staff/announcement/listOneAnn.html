@@ -17,14 +17,14 @@
 </head>
 
 <!-- 編號查詢的結果（/staff/announcement/search?annNo=...）
-     ann：AnnouncementController 放入的那一則公告；查不到時 Controller 會帶 errorMsg 回公告管理首頁 -->
+     ann：AnnouncementController 放入的那一則公告；查不到時 Controller 會帶 errorMsg 回公告及QA 的公告分頁 -->
 <body class="staff-layout">
-  <nav th:replace="~{staff/staff_sidebar :: sidebar('announcement')}"></nav>
+  <nav th:replace="~{staff/staff_sidebar :: sidebar('announcement-and-qa')}"></nav>
 
   <main class="staff-main">
     <header class="staff-header">
       <div>
-        <a class="ann-back" th:href="@{/staff/announcement}">‹ 公告管理</a>
+        <a class="ann-back" th:href="@{/staff/announcement}">‹ 公告及QA</a>
         <h1 class="staff-title">公告查詢結果</h1>
       </div>
       <p class="staff-clock" id="staffClock"></p>
@@ -56,7 +56,7 @@
                 onsubmit="return confirm('確定要刪除這則公告嗎？刪除後無法復原。');">
             <button type="submit" class="staff-btn btn-danger-outline">刪除</button>
           </form>
-          <a class="staff-btn" th:href="@{/staff/announcement/list}">查看所有公告</a>
+          <a class="staff-btn" th:href="@{/staff/announcement}">查看所有公告</a>
         </div>
       </article>
     </section>

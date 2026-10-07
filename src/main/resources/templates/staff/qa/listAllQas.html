@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="zh-Hant" xmlns:th="http://www.thymeleaf.org">
+
+<!-- 常見問題列表（片段）
+     由外殼 staff/announcement-and-qa.html 在 tab = 'qa' 時 include 進來，這個檔案不會單獨顯示。
+     qaList：QaController 放入的所有常見問題
+     樣式沿用 staff-announcement.css 的 ann-*（外殼的 <head> 已載入），qa-row 是沒有縮圖的版本 -->
+<body>
+  <div th:fragment="content">
+    <div class="ann-toolbar">
+      <p class="ann-count" th:text="|共 ${#lists.size(qaList)} 則常見問題|">共 0 則常見問題</p>
+      <a class="staff-btn btn-pay" th:href="@{/staff/qa/insert}">＋ 新增常見問題</a>
+    </div>
+
+    <section class="staff-card">
+      <p class="staff-empty" th:if="${#lists.isEmpty(qaList)}">目前沒有任何常見問題</p>
+
+      <ul th:unless="${#lists.isEmpty(qaList)}">
+        <li class="ann-row qa-row" th:each="qa : ${qaList}">
+          <div>
+            <p class="ann-meta">
+              <span class="ann-no" th:text="|#${qa.qaNo}|">#1</span>
+            </p>
+            <h2 class="ann-row-title" th:text="|Q：${qa.qaTitle}|">Q：問題標題</h2>
+            <p class="ann-row-text" th:text="|A：${qa.qaContent}|">A：回答內容</p>
+          </div>
+
+          <div class="ann-actions">
+            <a class="staff-btn" th:href="@{/staff/qa/update/{no}(no=${qa.qaNo})}">修改</a>
+            <!-- 刪除要用 POST；th:action 會自動加上 _csrf。送出前先跳確認視窗，按「取消」就不送出 -->
+            <form th:action="@{/staff/qa/delete/{no}(no=${qa.qaNo})}" method="post"
+                  onsubmit="return confirm('確定要刪除這則常見問題嗎？刪除後無法復原。');">
+              <button type="submit" class="staff-btn btn-danger-outline">刪除</button>
+            </form>
+          </div>
+        </li>
+      </ul>
+    </section>
+  </div>
+</body>
+
+</html>
