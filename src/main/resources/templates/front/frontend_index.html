@@ -78,8 +78,18 @@
 			<div class="container">
 				<p class="eyebrow">FAQ</p>
 				<h2 class="section-title">常見問題</h2>
-				<!-- 內容由下方 JS 的 faqData 產生；之後可改成從後端（Servlet / AJAX）取得 -->
-				<div class="faq-list" id="faqList"></div>
+				<!-- 內容來自資料庫的 qa 表：${@qaService.getAll()} 直接呼叫 Spring 的 QaService（不經過 Controller）。
+				     點問題展開答案的效果在 frontend_index.js「3. 常見問題」 -->
+				<div class="faq-list" id="faqList" th:with="qaList=${@qaService.getAll()}">
+					<p th:if="${#lists.isEmpty(qaList)}">目前沒有常見問題</p>
+					<div class="faq-item" th:each="qa : ${qaList}">
+						<button class="faq-question" aria-expanded="false">
+							<span th:text="|Q：${qa.qaTitle}|">Q：問題</span>
+							<span class="faq-icon">+</span>
+						</button>
+						<div class="faq-answer"><p th:text="|A：${qa.qaContent}|">A：回答</p></div>
+					</div>
+				</div>
 				<div class="btn-center">
 					<a href="#" class="btn-outline">more→</a>
 				</div>

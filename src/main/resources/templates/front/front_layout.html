@@ -3,29 +3,26 @@
 <body>
 
 <!--
-  前台共用的「頁首」和「頁尾」（內容和 frontend_index.html 的相同）
-  預約訂位、候位的頁面都是引用這裡，所以選單要增減項目時，改這一個檔案就好。
+  前台共用的「頁首」和「頁尾」
+  首頁（frontend_index.html）、最新消息、預約訂位、候位的頁面都是引用這裡，所以選單要增減項目時，改這一個檔案就好。
 
   使用方式：在頁面的 <body> 裡
     頁首：<header th:replace="~{front/front_layout :: header('reservation')}"></header>
           括號內填「目前是哪一頁」，對應的選單項目會變成選取中的樣子。
-          可以填：reservation（預約訂位）／waiting（候位狀況）；都不是就填 ''（兩個單引號）
+          可以填：announcement（最新消息）／reservation（預約訂位）／waiting（候位狀況）；都不是就填 ''（兩個單引號）
     頁尾：<footer th:replace="~{front/front_layout :: footer}"></footer>
     回到頂端的按鈕：<button th:replace="~{front/front_layout :: backToTop}"></button>
 
   頁面還需要自己載入：
-    style.css、member.css，再加上自己的樣式（訂位用 reservation.css、候位用 waiting.css）
+    front.css、member.css，再加上自己的樣式（訂位用 reservation.css、候位用 waiting.css）
     member.js（會員登入），再加上自己的程式（訂位用 reservation.js、候位用 waiting.js；選單開合、頁尾年份也寫在裡面）
     並在 <body> 最前面放會員對話框：<div th:replace="~{front/member/member_modals :: modals}"></div>
 
   【Thymeleaf 串接】這個檔案沒有假資料：
     登入狀態（顯示「登入 / 註冊」還是會員的名字）已經是讀 session 裡的 member，接上資料庫後不用改。
-    唯一還沒接的是「最新消息」的連結，頁首和頁尾各有一個，目前是 href="#"（點了不會去任何地方）。
-    最新消息的前台頁面做好後，把那兩個 <a href="#"> 改成 <a th:href="@{/最新消息的網址}">。
+    「最新消息」連到前台公告列表 /bistroops/announcement（FrontAnnouncementController），頁首和頁尾各有一個。
 
-  frontend_index.html 目前還是用它自己寫的頁首頁尾。之後想讓首頁也共用這一份，
-  把首頁的 <header>...</header> 和 <footer>...</footer> 換成上面兩行即可
-  （選單裡「瀏覽菜單」等連結在這裡已經寫成完整網址，從哪一頁點都能回到首頁的那個區塊）。
+  選單裡「瀏覽菜單」等連結已經寫成完整網址，從哪一頁點都能回到首頁的那個區塊。
 -->
 
 <!-- ========== 頁首 ========== -->
@@ -39,7 +36,7 @@
 
     <nav class="nav" id="mainNav">
       <ul class="nav-list">
-        <li><a th:href="@{/bistroops/announcement}">最新消息</a></li>
+        <li><a th:href="@{/bistroops/announcement}" th:classappend="${active == 'announcement'} ? 'active'">最新消息</a></li>
         <li><a th:href="@{/bistroops/reservation}" th:classappend="${active == 'reservation'} ? 'active'">預約訂位</a></li>
         <li><a th:href="@{/bistroops/waiting}" th:classappend="${active == 'waiting'} ? 'active'">候位狀況</a></li>
         <li><a th:href="@{/bistroops} + '#menu'">瀏覽菜單</a></li>
@@ -76,9 +73,9 @@
         <li><a th:href="@{/bistroops/announcement}">最新消息</a></li>
         <li><a th:href="@{/bistroops} + '#menu'">瀏覽菜單</a></li>
         <li><a th:href="@{/bistroops/reservation}">預約訂位</a></li>
-        <li><a th:href="@{/bistroops} + '#about'">關於我們</a></li>
-        <li><a th:href="@{/bistroops/waiting}">候位狀況</a></li>
         <li><a th:href="@{/bistroops} + '#faq'">常見問題</a></li>
+        <li><a th:href="@{/bistroops/waiting}">候位狀況</a></li>
+        <li><a th:href="@{/bistroops} + '#about'">關於我們</a></li>
       </ul>
     </div>
 

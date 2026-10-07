@@ -280,6 +280,9 @@ button { cursor: pointer; }
 .staff-sub-item { min-height: 58px; font-size: 12px; }
 .staff-sub-item svg { width: 22px; height: 22px; }
 .staff-sub-item:hover { background: var(--st-card); }
+/* 文字比較長的項目（例如「公告及QA」）：字小一號、不換行。
+   選單內可放文字的寬度：桌機約 64px、900px 以下約 52px、手機約 60px，11px 的「公告及QA」約 47px，三種寬度都放得下 */
+.staff-sub-item.is-compact span { font-size: 11px; white-space: nowrap; }
 
 /* 最下面的「員工登入」 */
 .staff-menu-bottom { margin-top: auto; border-top: 1px solid var(--st-border); border-radius: 0 0 14px 14px; }
