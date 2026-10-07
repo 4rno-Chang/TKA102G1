@@ -77,7 +77,6 @@ CREATE TABLE IF NOT EXISTS promote(
   promote_name VARCHAR(10) COMMENT '活動名稱',
   promote_begin DATETIME COMMENT '開始時間',
   promote_end DATETIME COMMENT '結束時間',
-  promote_status VARCHAR(5) COMMENT '活動狀態',
   promote_content MEDIUMTEXT COMMENT '活動內容',
   promote_img MEDIUMBLOB COMMENT '活動圖片',
   PRIMARY KEY(promote_no)
@@ -371,10 +370,10 @@ INSERT INTO orders (seat_no, member_no, orders_time, orders_total, orders_discou
 ('C01', 3, '2026-08-24 19:40:00', 430, 0, 430, '現金');
 
 -- 7. 活動 (promote)
-INSERT INTO promote (promote_name, promote_begin, promote_end, promote_status, promote_content, promote_img) VALUES
-('週年慶活動', '2026-09-01 10:00:00', '2026-09-30 22:00:00', '不在進行中', '週年慶全館商品優惠活動', NULL),
-('中秋節活動', '2026-09-20 10:00:00', '2026-10-06 22:00:00', '不在進行中', '中秋節限定商品優惠', NULL),
-('雙十節活動', '2026-10-01 10:00:00', '2026-10-10 22:00:00', '進行中', '雙十國慶期間限定活動', NULL);
+INSERT INTO promote (promote_name, promote_begin, promote_end, promote_content, promote_img) VALUES
+('中秋節活動', '2026-09-20 10:00:00', '2026-10-06 22:00:00',  '中秋節限定商品優惠', NULL),
+('雙十節活動', '2026-10-01 10:00:00', '2026-10-31 22:00:00',  '雙十國慶期間限定活動', NULL),
+('週年慶活動', '2027-09-01 10:00:00', '2027-09-30 22:00:00',  '週年慶全館商品優惠活動', NULL);
 
 -- 8. 活動商品 (promote_meal)
 INSERT INTO promote_meal (promote_no, meal_no, promote_discount) VALUES

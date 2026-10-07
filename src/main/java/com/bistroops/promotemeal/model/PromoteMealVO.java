@@ -35,6 +35,14 @@ public class PromoteMealVO {
 
 	public PromoteMealVO() {
 	}
+	
+	public ComPromteMealId getId() {
+	    return id;
+	}
+
+	public void setId(ComPromteMealId id) {
+	    this.id = id;
+	}
 
 	public PromoteVO getPromote() {
 		return promote;
@@ -62,9 +70,8 @@ public class PromoteMealVO {
 
 	@Override
 	public String toString() {
-		return "PromoteMealVO [promote=" + promote + ", meal=" + meal + ", promoteDiscount=" + promoteDiscount + "]";
+	    return "PromoteMealVO [id=" + id + ", promoteDiscount=" + promoteDiscount + "]";
 	}
-	
 	
 	
 }

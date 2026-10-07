@@ -34,9 +34,6 @@ public class PromoteVO {
 	@Column(name="promote_end")
 	private LocalDateTime promoteEnd;
 	
-	@Column(name="promote_status")
-	private String promoteStatus;
-	
 	@Column(name="promote_content", columnDefinition = "mediumtext")
 	private String promoteContent;
 	
@@ -86,13 +83,6 @@ public class PromoteVO {
 		this.promoteEnd = promoteEnd;
 	}
 
-	public String getPromoteStatus() {
-		return promoteStatus;
-	}
-
-	public void setPromoteStatus(String promoteStatus) {
-		this.promoteStatus = promoteStatus;
-	}
 
 	public String getPromoteContent() {
 		return promoteContent;
@@ -129,8 +119,7 @@ public class PromoteVO {
 	@Override
 	public String toString() {
 		return "PromoteVO [promoteNo=" + promoteNo + ", promoteName=" + promoteName + ", promoteBegin=" + promoteBegin
-				+ ", promoteEnd=" + promoteEnd + ", promoteStatus=" + promoteStatus + ", promoteContent="
-				+ promoteContent + ", promoteImg=" + Arrays.toString(promoteImg) + ", promoteMeals=" + promoteMeals
+				+ ", promoteEnd=" + promoteEnd + ", promoteContent="+ promoteContent + ", promoteImg=" + Arrays.toString(promoteImg) + ", promoteMeals=" + promoteMeals
 				+ "]";
 	}
 	
