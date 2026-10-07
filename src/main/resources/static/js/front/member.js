@@ -420,6 +420,13 @@ const registerForm = $('registerForm');
 const forgotForm = $('forgotForm');
 const resetForm = $('resetForm');
 
+const registerReturnUrl = $('registerReturnUrl');
+
+if (registerReturnUrl) {
+  registerReturnUrl.value =
+    window.location.pathname + window.location.search;
+}
+
 // 忘記密碼步驟 1 通過後，暫存手機與驗證碼給步驟 2 使用
 let forgotData = null;
 
@@ -509,7 +516,7 @@ loginForm.addEventListener('submit', async e => {
 
   // 登入成功
   if (result === 'OK') {
-    window.location.href = '/bistroops';
+    window.location.reload();
     return;
   }
   
@@ -632,6 +639,11 @@ registerForm.addEventListener('submit', async e => {
   }
 
   // 手機號碼沒有被註冊，正式送出註冊表單
+  
+  // 記住目前所在頁面，註冊完成後回到這一頁
+  registerReturnUrl.value =
+    window.location.pathname + window.location.search;
+
   registerForm.submit();
  	 });
 // ---------- 忘記密碼：步驟 1 身分驗證 ----------
@@ -757,6 +769,11 @@ forgotForm.addEventListener('submit', async e => {
     //   Controller 要做的事：從 session 取出步驟 1 存的 resetPhone，更新密碼後把它移除
     //     成功：帶 startView="login"、toastMsg="修改成功，請重新登入" 後 redirect 回頁面
     //     失敗（例如 session 裡沒有 resetPhone）：帶 resetError="修改失敗！請重新操作" 和 startView="reset"
+	// 記住目前所在頁面，修改密碼完成後回到這一頁
+	const resetReturnUrl = $('resetReturnUrl');
+
+	resetReturnUrl.value =
+	  window.location.pathname + window.location.search;
 
     resetForm.submit();
   });
@@ -783,7 +800,10 @@ function setLoggedOut() {
 document.addEventListener('click', async e => {
   if (!e.target.closest('[data-logout]')) return;
   
-location.href = '/member/logout';
+
+  const returnUrl = window.location.pathname + window.location.search;
+
+  location.href ='/member/logout?returnUrl=' + encodeURIComponent(returnUrl);
 });
 
 // 【Thymeleaf 串接】判斷是否已登入
@@ -838,6 +858,38 @@ const profileName = $('profileName');
 const birthYear = $('birthYear');
 const birthMonth = $('birthMonth');
 const birthDay = $('birthDay');
+const profileBarcode = $('profileBarcode');
+const profileBarcodeMsg = $('profileBarcodeMsg');
+
+const BARCODE_RE = /^\/[A-Za-z0-9]{7}$/;
+
+function checkBarcode() {
+
+  const barcode = profileBarcode.value.trim();
+
+  // 沒有填載具，可以
+  if (barcode === '') {
+    setMsg(profileBarcodeMsg, '');
+    return true;
+  }
+
+  // 格式錯誤
+  if (!BARCODE_RE.test(barcode)) {
+    setMsg(
+      profileBarcodeMsg,
+      '※手機條碼載具格式錯誤（/ 開頭，共 8 碼）',
+      'error'
+    );
+    return false;
+  }
+
+  // 格式正確
+  setMsg(profileBarcodeMsg, '✓ 載具格式正確', 'ok');
+  return true;
+}
+
+// 輸入完點到其他地方時檢查
+profileBarcode.addEventListener('blur', checkBarcode);
 
 function fillSelect(select, from, to, keep) {
   const options = ['<option value="">--</option>'];
@@ -893,6 +945,12 @@ profileForm.addEventListener('submit', e => {
   setMsg(profileError, '');
 
   const email = profileForm.email.value.trim();
+  
+  // 載具格式錯誤，不允許送出
+  if (!checkBarcode()) {
+    profileBarcode.focus();
+    return;
+  }
 
   // Email 有填才檢查格式
   if (email !== '' && !EMAIL_RE.test(email)) {
@@ -909,7 +967,14 @@ profileForm.addEventListener('submit', e => {
     return;
   }
 
-  // 驗證通過，正式送到 Controller
+  
+  // 記住目前所在頁面，修改會員資料完成後回到這一頁
+  const profileReturnUrl = $('profileReturnUrl');
+
+  profileReturnUrl.value =
+    window.location.pathname + window.location.search;
+
+
   profileForm.submit();
 });
 
@@ -989,6 +1054,12 @@ changePwForm.addEventListener('submit',  e => {
   // 驗證碼尚未通過即時驗證
   if (!changePwCodeVerified) {setMsg(changePwCodeMsg, '※請先完成驗證碼驗證', 'error');return;}
   if (!passwordValid) return;
+  
+  // 記住目前所在頁面，修改密碼完成後回到這一頁
+  const changePwReturnUrl = $('changePwReturnUrl');
+
+  changePwReturnUrl.value =
+    window.location.pathname + window.location.search;
   
   // 驗證通過，正式送到 Controller
     changePwForm.submit();
