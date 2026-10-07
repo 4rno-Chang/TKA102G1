@@ -20,7 +20,6 @@ public class ComPromteMealId implements Serializable{
 	}
 	
 	public ComPromteMealId(Integer promoteNo, Integer mealNo) {
-		super();
 		this.promoteNo = promoteNo;
 		this.mealNo = mealNo;
 	}

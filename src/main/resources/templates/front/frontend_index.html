@@ -32,7 +32,27 @@
 				<p>副標題</p>
 				<a th:href="@{/bistroops/reservation}" class="btn-outline">立即訂位</a>
 			</div>
+	<!-- 輪播：目前是三張固定的示範圖片。
+	圖片固定用 16:9 顯示，並拉開填滿整個框（frontend_index.css 的 .slide img { object-fit: fill }）：
+     其他比例的圖片會被拉成 16:9（會變形），不留白、不裁切。後台活動管理的預覽用的是同樣的設定。
 
+     【Thymeleaf 串接】之後要改成顯示資料庫的活動圖片時：
+     1. 首頁的 Controller（IndexController_inSpringBoot 的 frontIndex）把要輪播的活動放進 Model，例如名稱 promotes。
+        要放哪些活動請自己決定，建議只放「進行中、而且有圖片」的：
+          開始時間 不晚於 現在，而且 結束時間 不早於 現在，而且 promoteImg 不是 null。
+        （活動狀態不存在資料庫，是用時間判斷的，說明在 StaffPageController.java）
+     2. 前台要有自己的輸出圖片的方法，網址放在 /bistroops 底下，例如 GET /bistroops/promote/img?promoteNo=1，
+        寫法和後台的 /staff/promote/img 一樣。不要直接連 /staff 的網址。
+     3. 把下面 carousel-track 裡的三個 <div class="slide"> 換成：
+          <div class="slide" th:each="p : ${promotes}">
+            <img th:src="@{/bistroops/promote/img(promoteNo=${p.promoteNo})}" th:alt="${p.promoteName}">
+          </div>
+        輪播的圓點是 frontend_index.js 依照 slide 的數量自動產生的，不用改。
+     4. 沒有任何活動時輪播會是空的。可以保留一張固定的圖片當預設：
+          <div class="slide" th:if="${#lists.isEmpty(promotes)}">
+            <img th:src="@{/images/promo-reservation.svg}" alt="線上預約訂位現正開放">
+          </div> -->
+		
 			<div class="carousel" id="carousel">
 				<div class="carousel-track">
 					<div class="slide">

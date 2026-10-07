@@ -70,9 +70,8 @@
 }
 
 /* 輪播
-   aspect-ratio: 16 / 9 → 高度永遠是寬度的 9/16，和活動圖的比例一樣，所以圖片剛好完整放進去。
-   之後如果換成別的比例的圖片，把 16 / 9 改成那張圖的「寬 / 高」。
-   align-self: stretch → 左邊文字比圖片高的時候，輪播的框跟著拉高（圖片還是完整顯示，上下露出底色）。 */
+   aspect-ratio: 16 / 9 → 框的高度永遠是寬度的 9/16。
+   align-self: stretch → 左邊文字比框高的時候，輪播的框跟著拉高（圖片也會跟著被拉高）。 */
 .carousel {
   position: relative; overflow: hidden;
   aspect-ratio: 16 / 9;
@@ -90,8 +89,14 @@
 }
 .carousel-track { display: flex; height: 100%; transition: transform .7s ease; }
 .slide { flex: 0 0 100%; }
-/* 圖片完整顯示、不裁切（contain）。全站的 img 預設是 cover（填滿並裁掉多的部分），這裡改掉 */
-.slide img { object-fit: contain; }
+/* 圖片一律拉開填滿整個 16:9 的框（object-fit: fill）：
+   16:9 的圖片剛好填滿、不會變形；其他比例的圖片會被拉成 16:9（會變形），不留白、也不裁切。
+   這只是「顯示」的方式，圖片檔案本身沒有被改動（資料庫存的、取出來的都是原本的圖片）。
+   後台活動管理的「活動詳細」和新增／修改的預覽用的是同樣的設定（static/css/staff/promote.css），
+   三個地方看到的樣子一樣；要改的話要一起改。
+   其他寫法：contain 完整顯示不變形（比例不同會留白）；cover 填滿不變形（比例不同會裁掉多的部分）。
+   全站的 img 預設是 cover，這裡改掉。 */
+.slide img { object-fit: fill; }
 /* 下方的短橫線：目前這張是金色 */
 .carousel-dots {
   position: absolute; bottom: 50px; left: 50%; transform: translateX(-50%);
