@@ -45,11 +45,12 @@
       <span>結帳</span>
     </a>
 
-    <!-- 後臺管理：摺疊選單。平常只看得到「後臺管理」這一顆，點了才展開下面三項，再點一次收起。
+    <!-- 後臺管理：摺疊選單。平常只看得到「後臺管理」這一顆，點了才展開下面的項目
+         （員工管理、會員管理、菜單管理、活動管理、公告管理），再點一次收起。
          展開／收起由 staff.js 的「選單的摺疊群組」控制：它會替外層的 staff-group 加上或拿掉 open 這個 class，
          並記住目前是不是展開的，換到別的後台頁面時會維持同樣的狀態。
 
-         裡面三項的功能都還沒做，先用 data-coming-soon。之後某一項做好了，
+         公告管理已經做好了，其他幾項的功能還沒做，先用 data-coming-soon。之後某一項做好了，
          把那顆 <button type="button" ... data-coming-soon="..."> 換成連結（結尾的 </button> 換成 </a>）：
            <a class="staff-menu-item staff-sub-item" th:href="@{/staff/employees}"
               th:classappend="${active == 'employees'} ? 'active'">
@@ -79,7 +80,14 @@
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z"/><path d="M5 17a3 3 0 0 1 3-3h11M9 8h6"/></svg>
           <span>菜單管理</span>
         </button>
-        
+
+        <!-- 活動管理：頁面還沒做，先用 data-coming-soon。做好後照上面的說明換成連結，
+             例如 th:href="@{/staff/promote}"、名稱用 'promote'（網址與名稱請換成實際的） -->
+        <button type="button" class="staff-menu-item staff-sub-item" data-coming-soon="活動管理">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12V4h8l10 10-8 8z"/><circle cx="7.500" cy="8.500" r="1.500"/></svg>
+          <span>活動管理</span>
+        </button>
+
         <a class="staff-menu-item staff-sub-item" th:href="@{/staff/announcement}" th:classappend="${active == 'announcement'} ? 'active'">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10v4a1 1 0 0 0 1 1h2l5 4V5L7 9H5a1 1 0 0 0-1 1z"/><path d="M16 9a4 4 0 0 1 0 6M18.5 6.5a7.500 7.500 0 0 1 0 11"/></svg>
           <span>公告管理</span>

@@ -1,13 +1,75 @@
 /* =========================================================
    Bistroops 員工後台：訂單管理（查詢所有訂單）
    對應的 HTML：templates/staff/orders.html
-   需要先載入 staff.js（訂單資料 StaffStore 在那裡）
+   需要先載入 staff.js（假資料 StaffStore 在那裡）
+
+   這個檔案分成兩區：
+     A. 資料庫的清單也會用到的程式（保留）：展開／收合明細、日期的月曆
+     B. 假資料：只控制 orders.html 裡標示【假資料】的那一塊
+
+   【Thymeleaf 串接】資料庫的版本確認沒問題後：
+     1. 刪掉 orders.html 裡標示【假資料】的那個 div
+     2. 刪掉這個檔案的 B 區（從「B. 假資料」那一行到檔案最後；最後一行的 })(); 要留著）
    ========================================================= */
 
 // 用 (() => { ... })() 包起來，避免這裡的變數名稱和其他檔案互相衝突
 (() => {
 
+
+/* =====================================================================
+   A. 資料庫的清單（orders.html 的【資料庫資料】）也會用到的程式 ── 保留
+   這一區和資料無關，只處理畫面上的互動。Controller 還沒把 orders 放進 Model 時，
+   那一塊不在頁面上，下面的 if 不成立，這一區就不會做任何事。
+   ===================================================================== */
+
+// A-1. 點某一筆訂單：展開／收合餐點明細
+//      明細已經由 Thymeleaf 產生在頁面上，只是一開始加了 hidden 藏起來，這裡負責切換
+const dbOrderList = document.getElementById('dbOrderList');
+if (dbOrderList) {
+  dbOrderList.addEventListener('click', e => {
+    const row = e.target.closest('[data-toggle-order]');
+    if (!row) return;
+    const item = row.closest('.order-item');
+    const detail = item.querySelector('.order-detail');
+    detail.hidden = !detail.hidden;                       // 藏著就打開，開著就藏起來
+    item.classList.toggle('open', !detail.hidden);        // open 這個 class 會讓右邊的 + 轉成 ×
+    row.setAttribute('aria-expanded', !detail.hidden);
+  });
+}
+
+// A-2. 日期：點中間的日期打開月曆；選了日期就把表單送出（網址會帶上新的日期，由 Controller 查那一天）
+//      真正的日期欄位是透明的，蓋在顯示日期的文字上面，所以點文字其實是點到它。
+//        平板：點到日期欄位，系統就會自己跳出月曆。
+//        電腦：點日期欄位只會把游標放進去，所以另外呼叫瀏覽器提供的 showPicker() 把月曆打開
+//      Controller 要自己再檢查一次日期：沒有帶日期或格式不對就用今天，日期在今天之後也改成今天。
+const dbDateInput = document.getElementById('dbDateInput');
+if (dbDateInput) {
+  dbDateInput.addEventListener('click', () => {
+    if (typeof dbDateInput.showPicker === 'function') {
+      try { dbDateInput.showPicker(); } catch (e) { /* 打不開就算了，仍然可以用鍵盤輸入 */ }
+    }
+  });
+  dbDateInput.addEventListener('change', () => {
+    if (dbDateInput.value) dbDateInput.form.submit();     // 把日期清掉的話 value 是空的，這時不送出
+  });
+}
+
+
+// ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
+// ▼▼▼  【假資料・刪除範圍 開始】                                          ▼▼▼
+// ▼▼▼   串接完成、確認資料庫的畫面沒問題後，從這一行開始刪，               ▼▼▼
+// ▼▼▼   一直刪到下面 ▲▲▲ 框起來的「刪除範圍 結束」那一行（標記也一起刪掉）▼▼▼
+// ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
+/* =====================================================================
+   B. 假資料 ── 資料庫的版本確認沒問題後，從這一行到檔案最後都可以刪掉
+      （最後一行的 })(); 要留著）
+   這一區只控制 orders.html 裡標示【假資料】的那一塊：用 staff.js 的 StaffStore 產生清單，
+   篩選、日期、搜尋都是直接在瀏覽器裡篩選，不會送到後端。
+   ===================================================================== */
 const orderList = document.getElementById('orderList');
+// 假資料那一塊已經從 orders.html 刪掉的話，下面的程式就不用執行了
+if (!orderList) return;
+
 const orderSearch = document.getElementById('orderSearch');
 const filterButtons = document.querySelectorAll('#orderFilters [data-filter]');
 
@@ -29,14 +91,10 @@ let currentDate = StaffStore.todayText();   // 目前看的是哪一天，格式
 
 
 
-/* ========== 1. 產生畫面 ==========
-   【Thymeleaf 串接】
-     清單改由 orders.html 的 th:each 產生，可以整區刪掉。
-     篩選與搜尋改成一個 method="get" 的表單，把條件帶在網址上，例如
-       /staff/orders?status=PAID&keyword=A1
-     Controller 用 @RequestParam 接 status 和 keyword，查出符合的訂單放進 Model。
-     「展開明細」不需要後端，下面第 2 區的展開程式可以保留。
-     「已結帳、已取消」依日期查詢的做法寫在第 3 區。 */
+/* ========== B-1. 產生畫面（假資料） ==========
+   資料庫的版本寫在 orders.html 的【資料庫資料】：清單用 th:each 產生，
+   篩選條件帶在網址上（/staff/orders?status=PAID&date=2026-10-04&keyword=A1），由 Controller 查資料庫。
+   下面「怎麼篩選、怎麼算一筆訂單在哪一天」可以當作寫 Service 的參考。 */
 function detailHtml(order) {
   const amount = StaffStore.amountOf(order);
   // 被刪除的餐點仍然列出來（整列劃線變淡），狀態顯示「已取消」
@@ -116,7 +174,7 @@ function render() {
 }
 
 
-/* ========== 2. 操作 ========== */
+/* ========== B-2. 操作（假資料） ========== */
 // 切換狀態篩選
 filterButtons.forEach(btn => {
   btn.addEventListener('click', () => {
@@ -140,23 +198,17 @@ orderList.addEventListener('click', e => {
 });
 
 
-/* ========== 3. 日期切換（在「全部」「已結帳」「已取消」出現） ==========
+/* ========== B-3. 日期切換（假資料；在「全部」「已結帳」「已取消」出現） ==========
    一次看一天，預設今天。左右箭頭切換前一天、後一天；點中間的日期會跳出裝置內建的月曆，可以直接跳到某一天。
    不能選未來的日期：右箭頭到今天就不能再按，月曆也選不到今天以後。
    「已結帳」依結帳的日期分，「已取消」依下單的日期分（沒有另外記取消的時間）；「全部」則是都算：
    已結帳的看結帳日期，其他的看下單日期。
 
-   【Thymeleaf 串接】接上資料庫後（HTML 的寫法見 orders.html）：
-     日期放在網址上，例如 /staff/orders?status=PAID&date=2026-10-04，Controller 用這個日期查資料庫。
-     左右箭頭變成連結（網址換成前一天、後一天），所以下面 datePrev、dateNext 的 click 可以刪掉；
-     顯示日期的 updateDateNav 也可以刪掉（改由 th:text、th:if 處理）。
-     只需要保留兩件事：
-       1. 點中間的日期時打開月曆（下面 dateInput 的 click）
-       2. 在月曆選了日期後送出表單：dateInput.addEventListener('change', () => dateInput.form.submit());
-     Controller 要自己再檢查一次日期：沒有帶日期或格式不對就用今天，日期在今天之後也改成今天。
+   資料庫的版本：日期放在網址上，左右箭頭是連結（網址換成前一天、後一天），顯示的文字用 th:text，
+   都寫在 orders.html 的【資料庫資料】；它需要的 JS（打開月曆、選了日期就送出表單）在上面的 A-2。
 
    目前「沒有」顯示當天的小計（筆數與金額）。之後想加的話，Controller 算好放進 Model，
-   在 orders.html 的日期旁邊或清單表頭用 th:text 顯示即可，這裡不用改。 */
+   在 orders.html 的日期旁邊或清單表頭用 th:text 顯示即可。 */
 const dateNav = document.getElementById('orderDateNav');
 const datePrev = document.getElementById('datePrev');
 const dateNext = document.getElementById('dateNext');
@@ -214,5 +266,11 @@ dateInput.addEventListener('change', () => {
 StaffStore.onChange(render);
 
 render();
+
+
+// ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
+// ▲▲▲  【假資料・刪除範圍 結束】刪到這一行為止（這一行也刪掉）。           ▲▲▲
+// ▲▲▲   下面的 })(); 不是假資料，要留著。                                ▲▲▲
+// ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
 
 })();

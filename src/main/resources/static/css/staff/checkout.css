@@ -1,0 +1,87 @@
+/* =========================================================
+   Bistroops 員工後台：結帳（checkout.html）
+   需要先載入 staff.css（使用它的 --st-* 變數，以及 .staff-card、.staff-btn、.badge、.tag、.receipt-table）
+   ========================================================= */
+
+
+/* 左：訂單清單　右：餐點明細 */
+.checkout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.checkout-row {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--st-border);
+  border-radius: 14px;
+}
+.checkout-row + .checkout-row { margin-top: 10px; }
+/* 目前正在看明細的那一列 */
+.checkout-row.selected { background: #fbeee9; border-color: var(--st-red); }
+.checkout-row-info { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; min-width: 0; }
+.checkout-row-id { color: var(--st-muted); font-size: 14px; }
+.checkout-row-amount { font-family: var(--st-serif); font-size: 18px; font-weight: 700; }
+
+/* 餐點明細 */
+/* 左右兩欄各自的外框：裡面的卡片由上到下排
+   （串接資料庫的期間，每一欄會有「資料庫」和「假資料」兩張卡片） */
+.checkout-col { display: grid; gap: 20px; align-content: start; min-width: 0; }
+/* 右欄：頁面往下捲的時候停在畫面上方 */
+.checkout-col-receipt { position: sticky; top: 20px; }
+.receipt-empty { padding: 90px 0; color: var(--st-muted); text-align: center; }
+.receipt-body { position: relative; }
+.receipt-close {
+  display: grid; place-items: center;   /* 用連結（a）當關閉鈕時，× 也會在正中間 */
+  position: absolute; top: -8px; right: -8px;
+  width: 48px; height: 48px;
+  background: none; border: 0; border-radius: 50%;
+  color: var(--st-red);
+  font-size: 32px; line-height: 1;
+}
+.receipt-close:hover { background: var(--st-soft); }
+.receipt-top { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; padding-right: 44px; }
+.receipt-title { margin-left: 6px; color: var(--st-muted); font-size: 18px; font-weight: 500; }
+.receipt-meta { color: var(--st-muted); font-size: 14px; }
+
+.receipt-sum { margin-top: 14px; padding-top: 12px; border-top: 2px solid var(--st-text); }
+.receipt-sum div { display: flex; justify-content: space-between; padding: 3px 6px; }
+.receipt-sum dd { font-weight: 500; }
+.receipt-pay { margin-top: 6px; font-size: 20px; font-weight: 700; }
+.receipt-pay dd { color: var(--st-red); font-family: var(--st-serif); font-size: 26px; font-weight: 700; }
+
+.receipt-warn {
+  margin-top: 12px; padding: 8px 14px;
+  background: #f8e7c4;
+  border-radius: 10px;
+  color: #8a5e10;
+  font-size: 14px;
+}
+.receipt-actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px; }
+.receipt-actions .staff-btn { min-width: 104px; min-height: 54px; font-size: 18px; font-weight: 700; }
+
+
+/* ========== 直立的平板與較窄的畫面（900px 以下） ========== */
+@media (max-width: 900px) {
+  /* 結帳：清單佔滿，餐點明細改成蓋在畫面上的整頁視窗（選了訂單才出現） */
+  .checkout { grid-template-columns: 1fr; }
+  .receipt { display: none; }
+  .receipt.open {
+    display: block;
+    position: fixed; inset: 0; z-index: 2000;
+    border: 0; border-radius: 0;
+    overflow-y: auto;
+  }
+  .receipt-close { top: 0; right: 0; }
+}
+
+
+/* ========== 手機（640px 以下） ========== */
+@media (max-width: 640px) {
+  .checkout-row { grid-template-columns: auto minmax(0, 1fr) auto; }
+  .checkout-row-amount { grid-column: 2; text-align: right; }
+  .checkout-row-info { grid-column: 1 / -1; grid-row: 2; }
+  .receipt-actions .staff-btn { flex: 1; min-width: 0; }
+}

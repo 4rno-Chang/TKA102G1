@@ -1,7 +1,21 @@
+// ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
+// ▼▼▼  【假資料・刪除範圍】這個檔案「從頭到尾」都是假資料。               ▼▼▼
+// ▼▼▼   串接完成、確認資料庫的畫面沒問題後，整個檔案刪掉，                ▼▼▼
+// ▼▼▼   並把 checkout.html 的 <head> 裡載入 checkout.js 的那一行也刪掉。  ▼▼▼
+// ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
+
 /* =========================================================
    Bistroops 員工後台：結帳
    對應的 HTML：templates/staff/checkout.html
-   需要先載入 staff.js（訂單資料 StaffStore 在那裡）
+   需要先載入 staff.js（假資料 StaffStore 在那裡）
+
+   ★ 這個檔案「全部」都是假資料用的：它只控制 checkout.html 裡標示【假資料】的那兩塊。★
+     checkout.html 裡【資料庫資料】的那兩塊是 Thymeleaf 直接產生的，不需要這個檔案
+     （結帳前的確認視窗用的是 staff.js 的「送出前先確認」）。
+
+   【Thymeleaf 串接】資料庫的版本確認沒問題後：
+     1. 刪掉 checkout.html 裡標示【假資料】的兩個 section
+     2. 刪掉這個檔案，以及 checkout.html 的 <head> 裡載入它的那一行
    ========================================================= */
 
 // 用 (() => { ... })() 包起來，避免這裡的變數名稱和其他檔案互相衝突
@@ -10,6 +24,9 @@
 const $ = id => document.getElementById(id);
 
 const checkoutList = $('checkoutList');
+// 假資料那一塊已經從 checkout.html 刪掉的話，下面的程式就不用執行了
+if (!checkoutList) return;
+
 const receipt = $('receipt');
 const receiptEmpty = $('receiptEmpty');
 const receiptBody = $('receiptBody');
@@ -17,12 +34,9 @@ const receiptBody = $('receiptBody');
 let selectedId = null;   // 目前在右邊顯示明細的訂單編號，沒有選就是 null
 
 
-/* ========== 1. 左邊：未結帳的訂單 ==========
-   【Thymeleaf 串接】
-     清單改由 checkout.html 的 th:each 產生，Controller 把未結帳的訂單放進 Model。
-     每一列的「結帳」改成連結，例如 <a th:href="@{/staff/checkout(order=${order.id})}">，
-     Controller 收到 order 參數時，把那筆訂單也放進 Model，右邊的明細就用 th:text 顯示。
-     改完後這個檔案的第 1、2 區都可以刪掉。 */
+/* ========== 1. 左邊：未結帳的訂單（假資料） ==========
+   資料庫的版本寫在 checkout.html 的【資料庫資料】：清單用 th:each 產生，
+   每一列的「結帳」是連結（/staff/checkout?order=編號），Controller 收到後把那筆訂單放進 Model。 */
 function renderList() {
   const orders = StaffStore.getOrders().filter(order => StaffStore.isOpen(order));
   // 餐點已全部送達的排前面，其次依下單時間
@@ -50,7 +64,7 @@ function renderList() {
 }
 
 
-/* ========== 2. 右邊：餐點明細 ========== */
+/* ========== 2. 右邊：餐點明細（假資料） ========== */
 function renderReceipt() {
   const order = StaffStore.getOrders().find(o => o.id === selectedId && StaffStore.isOpen(o));
 
@@ -110,14 +124,8 @@ $('receiptClose').addEventListener('click', () => {
 });
 
 // 刷卡／現金
-// 【Thymeleaf 串接】兩顆按鈕改成放在同一個小表單裡送到 Controller：
-//     <form th:action="@{/staff/checkout/pay}" method="post">
-//       <input type="hidden" name="orderId" th:value="${order.id}">
-//       <button type="submit" name="method" value="刷卡">刷卡</button>
-//       <button type="submit" name="method" value="現金">現金</button>
-//     </form>
-//   按哪一顆，Controller 的 method 參數就會收到那顆的 value。
-//   JS 只需要保留確認視窗：在表單的 submit 事件裡，使用者按「取消」時呼叫 e.preventDefault()。
+// 資料庫的版本是 checkout.html【資料庫資料】裡的表單（送到 POST /staff/checkout/pay），
+// 按哪一顆，Controller 的 method 參數就會收到那顆的 value
 receiptBody.addEventListener('click', e => {
   const btn = e.target.closest('[data-pay]');
   if (!btn) return;

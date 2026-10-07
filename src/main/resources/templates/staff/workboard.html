@@ -11,14 +11,17 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet"
     href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;700&display=swap">
+  <!-- staff.css：後台共用；workboard.css：這一頁自己的樣式（要寫在 staff.css 後面） -->
   <link rel="stylesheet" th:href="@{/css/staff/staff.css}" />
+  <link rel="stylesheet" th:href="@{/css/staff/workboard.css}" />
   <script th:src="@{/js/staff/staff.js}" defer></script>
   <script th:src="@{/js/staff/staff-workboard.js}" defer></script>
 </head>
 
 <!--
   工作面板：這一頁不放主選單，讓出空間給桌子的卡片（內場、外場的平板會一直停在這頁）。
-  左邊的「內場／外場／已完成訂單」三顆按鈕是切換畫面用的，三個畫面用的是同一份訂單資料：
+  左邊的「內場／外場／已完成訂單」三顆是連結，用網址上的 view 決定要看哪個畫面
+  （/staff/workboard?view=kitchen、floor、done；沒有帶 view 就是內場）。三個畫面用的是同一份訂單資料：
 
     狀態        外觀        內場畫面            外場畫面
     製作中     一般        可按「出餐」        顯示「製作中」
@@ -27,17 +30,28 @@
     已送達      劃線變淡    顯示「已送達」      顯示「已送達」
 
   一桌的餐點全部 已送達 後，那一桌會從內場、外場消失，改出現在「已完成訂單(未結帳)」。
-  卡片的內容由 staff-workboard.js 產生。
 
-  【Thymeleaf 串接】這一頁接上資料庫後要改的地方（往下搜尋「Thymeleaf 串接」可以一個一個找到）：
-    1. 左邊的三顆切換按鈕 → 改成連結
-    2. 桌子的卡片 → 改用 th:each 產生，每道餐點的按鈕包成小表單
-    3. 編輯訂單的對話框 → 改成兩個表單（儲存變更、刪除訂單）
+  這一頁的卡片區和「編輯訂單」的對話框都有「兩份」：
+    【資料庫資料】用 Thymeleaf 寫好的版本。Controller 還沒把資料放進 Model 時，這一塊不會出現。
+    【假資料】    staff-workboard.js 用 staff.js 的假資料產生的版本，目前看到的就是這一塊。
+
+  【Thymeleaf 串接】步驟
+    1. 在 StaffPageController 的 workboard 方法把 orders（要顯示的訂單）和 view 放進 Model。
+       只要 orders 不是 null，【資料庫資料】的卡片就會出現在【假資料】的上面，兩邊可以對照著看
+       （這時候兩排卡片上方各會多一個「資料庫資料」「假資料」的小標籤，頁面也會變成可以上下捲動）。
+    2. ★★ 欄位名稱目前都是「範例」★★
+       【資料庫資料】裡寫的 order.table、item.status、item.mealtype 這些名稱，只是照假資料的欄位先取的，不是規定。
+       VO 要怎麼設計、屬性要叫什麼名字，請負責的組員照自己的想法決定（例如照資料表的欄位取名）。
+       決定之後，把這個檔案【資料庫資料】裡 ${...} 用到的名稱改成你們 VO 實際的名稱即可；
+       兩邊的名稱要一樣，對不上的話頁面會出現錯誤（Thymeleaf 找不到那個屬性）。
+       Model 的名稱（orders 等）也可以改，Controller 放進去的名稱和這裡寫的相同就好。
+    3. 確認資料庫的版本沒問題後，刪除假資料：
+         a. 這個檔案裡標示【假資料】的兩塊（卡片區、編輯訂單的對話框）
+         b. staff-workboard.js 的「B. 假資料」整區（從那一行到檔案最後；最後一行的 })(); 要留著）
+         c. 下面 <main> 上的 th:classappend（board-both）和兩個小標籤 <p class="source-line">
     4. 不同平板之間要同步：在上面的 <head> 裡加上這一行，頁面每 10 秒會自動重新載入
-         <meta http-equiv="refresh" content="10">
-       但「編輯訂單」的對話框打開時不能重新載入（填到一半的備註會不見），
-       所以 Controller 回傳有 editOrder 的頁面時不要加這一行，可以寫成
          <meta th:if="${editOrder == null}" http-equiv="refresh" content="10">
+       （「編輯訂單」的對話框打開時不能重新載入，填到一半的備註會不見，所以有 editOrder 時不加）
   Controller 要準備哪些資料與網址，列在 StaffPageController.java 開頭的總覽。
 -->
 <body class="board-layout">
@@ -45,133 +59,267 @@
   <aside class="board-side">
     <a class="board-btn board-btn-home" th:href="@{/staff}">返回主頁</a>
 
-    <!-- 【Thymeleaf 串接】三顆切換按鈕改成連結，用網址上的 view 告訴 Controller 要看哪個畫面。
-         把 <button type="button" ... data-board-view="kitchen"> 換成（結尾的 </button> 換成 </a>）：
-           <a class="board-btn" th:href="@{/staff/workboard(view='kitchen')}"
-              th:classappend="${view == 'kitchen'} ? 'active'">
-         外場是 view='floor'，已完成訂單是 view='done'（它原本的 board-btn-done 這個 class 要保留）。
-         class 裡原本寫死的 active 要拿掉，改由 th:classappend 決定哪一顆是磚紅色。
-         說明文字 boardHint 也可以改用 th:text 依照 view 顯示。 -->
-
-    <button type="button" class="board-btn active" data-board-view="kitchen">
+    <!-- 三顆切換的連結。目前是哪個畫面（哪一顆是磚紅色）、說明文字，都是 staff-workboard.js 的 A 區
+         依照網址上的 view 決定的，和資料無關，接上資料庫後不用改。 -->
+    <a class="board-btn" th:href="@{/staff/workboard(view='kitchen')}" data-board-view="kitchen">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 14a4 4 0 1 1 1.500-7.700 4 4 0 0 1 7 0A4 4 0 1 1 17 14v5H7z"/><path d="M7 17h10"/></svg>
       內場
-    </button>
-    <button type="button" class="board-btn" data-board-view="floor">
+    </a>
+    <a class="board-btn" th:href="@{/staff/workboard(view='floor')}" data-board-view="floor">
       <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="13" cy="4.500" r="1.800"/><path d="M9 21l2.500-6-2.500-2.500 1-4.500 4 2.500 3 1M11 8l-3.500 2-1 3.500M13.500 15l2.500 6"/></svg>
       外場
-    </button>
-    <button type="button" class="board-btn board-btn-done" data-board-view="done">
+    </a>
+    <a class="board-btn board-btn-done" th:href="@{/staff/workboard(view='done')}" data-board-view="done">
       已完成訂單<br>(未結帳)
-    </button>
+    </a>
   </aside>
 
-  <main class="board-main">
+  <!-- board-both：資料庫和假資料兩排卡片同時出現時，讓頁面可以上下捲動。假資料刪掉後，這個 th:classappend 可以拿掉 -->
+  <main class="board-main" th:classappend="${orders != null} ? 'board-both'">
     <header class="board-head">
-      <!-- 說明文字會依照目前的畫面切換（目前在哪個畫面，看左邊哪顆按鈕是磚紅色） -->
+      <!-- 說明文字會依照目前的畫面切換（由 staff-workboard.js 的 A 區填入） -->
       <p class="board-hint" id="boardHint"></p>
     </header>
 
+
+    <!-- ================================================================
+         【資料庫資料】Thymeleaf 串接：桌子的卡片
+         Controller 放進 Model（名稱是範例，要和這裡寫的一致）：
+           view     kitchen 內場／floor 外場／done 已完成訂單
+           orders   要顯示的訂單，先下單的排前面。
+                    內場、外場：還有餐點沒送達的未結帳訂單；已完成訂單：餐點全部送達、尚未結帳的訂單。
+                    已結帳、已取消的訂單都不要放進來。
+         每一筆訂單用到的欄位：
+           order.id、order.table 桌號、order.time 下單時間、
+           order.servedCount 已送達幾道、order.activeCount 沒被取消的共幾道（請在 Java 算好）、
+           order.items 餐點清單，每一道有 id、mealtype、name、qty、status、note、servedAt 送達時間
+         ================================================================ -->
+    <p class="source-line" th:if="${orders != null}"><span class="source-tag source-db">資料庫資料</span></p>
+    <div class="board-scroll" th:if="${orders != null}">
+      <!-- 左右箭頭：那個方向還有卡片時才會出現（由 staff-workboard.js 的 A 區控制） -->
+      <button type="button" class="board-arrow board-arrow-prev" aria-label="往左看前面的訂單" hidden>‹</button>
+      <button type="button" class="board-arrow board-arrow-next" aria-label="往右看後面的訂單" hidden>›</button>
+
+      <div class="board-cards" id="dbBoardCards">
+        <p class="board-empty" th:if="${#lists.isEmpty(orders)}"
+           th:text="${view == 'done'} ? '目前沒有待結帳的桌子' : '目前沒有進行中的訂單'">目前沒有進行中的訂單</p>
+
+        <article class="table-card" th:each="order : ${orders}">
+          <!-- 點這一列可以縮小／展開卡片（由 staff-workboard.js 的 A 區處理，不需要後端） -->
+          <button type="button" class="table-card-head" data-toggle-card aria-expanded="true">
+            <strong class="table-name" th:text="|${order.table} 桌|">A1 桌</strong>
+            <span th:text="${order.time}">12:30</span>
+            <span class="table-progress" th:text="|${order.servedCount}/${order.activeCount} 已送達|">1/4 已送達</span>
+            <span class="table-toggle">▲ 縮小</span>
+          </button>
+
+          <div class="table-card-body">
+            <ul class="dish-list">
+              <!-- 每一道餐點：可以按的包在小表單裡，按下去就送到 Controller；不能按的是 disabled 的按鈕。
+                   裡面的分類、品名、數量、備註四個畫面都一樣，所以寫成一個片段 dishInfo（在這個檔案的最下面），
+                   用 th:replace 放進來。 -->
+              <li th:each="item : ${order.items}">
+
+                <!-- （1）內場、製作中：按「出餐」→ 等待送餐 -->
+                <form th:if="${view == 'kitchen' and item.status == '製作中'}"
+                      th:action="@{/staff/workboard/toServe}" method="post">
+                  <input type="hidden" name="itemId" th:value="${item.id}">
+                  <button type="submit" class="dish is-cooking">
+                    <th:block th:replace="~{:: dishInfo}"></th:block>
+                    <span class="dish-state">出餐 →</span>
+                  </button>
+                </form>
+
+                <!-- （2）內場、等待送餐：誤觸出餐時再按一次 → 退回製作中。
+                     data-confirm：送出前先跳出確認視窗，避免不小心連點兩下（程式在 staff.js 的「送出前先確認」）。
+                     Controller 要先確認這道餐點現在仍然是 等待送餐 才退回；外場已經按了「確認送達」就不要動它。 -->
+                <form th:if="${view == 'kitchen' and item.status == '等待送餐'}"
+                      th:action="@{/staff/workboard/backToCooking}" method="post"
+                      th:attr="data-confirm=|要把「${item.name}」退回製作中嗎？|">
+                  <input type="hidden" name="itemId" th:value="${item.id}">
+                  <button type="submit" class="dish is-to-serve">
+                    <th:block th:replace="~{:: dishInfo}"></th:block>
+                    <span class="dish-state">● 等待送餐</span>
+                  </button>
+                </form>
+
+                <!-- （3）外場、等待送餐：按「確認送達」→ 已送達（Controller 同時記下送達時間） -->
+                <form th:if="${view == 'floor' and item.status == '等待送餐'}"
+                      th:action="@{/staff/workboard/served}" method="post">
+                  <input type="hidden" name="itemId" th:value="${item.id}">
+                  <button type="submit" class="dish is-to-serve">
+                    <th:block th:replace="~{:: dishInfo}"></th:block>
+                    <span class="dish-state">確認送達 →</span>
+                  </button>
+                </form>
+
+                <!-- （4）其他情況都不能按：已取消、已送達、外場看到的製作中。
+                     th:unless 的條件就是上面（1）（2）（3）三種情況，符合其中一種就不顯示這一顆。 -->
+                <button type="button" class="dish" disabled
+                        th:unless="${(view == 'kitchen' and (item.status == '製作中' or item.status == '等待送餐')) or (view == 'floor' and item.status == '等待送餐')}"
+                        th:classappend="${item.status == '已取消'} ? 'is-cancelled' : (${item.status == '已送達' and view != 'done'} ? 'is-served' : '')">
+                  <th:block th:replace="~{:: dishInfo}"></th:block>
+                  <span class="dish-state" th:if="${item.status == '已取消'}">✕ 已取消</span>
+                  <span class="dish-state" th:if="${item.status == '已送達' and view != 'done'}">✓ 已送達</span>
+                  <span class="dish-state" th:if="${item.status == '已送達' and view == 'done'}" th:text="|${item.servedAt} 送達|">12:40 送達</span>
+                  <span class="dish-state" th:if="${item.status == '製作中'}">製作中</span>
+                </button>
+              </li>
+            </ul>
+
+            <!-- 內場才有的「編輯訂單」：是連結，Controller 收到後回傳同一頁，並多放 editOrder，對話框就會打開 -->
+            <div class="table-card-foot" th:if="${view == 'kitchen'}">
+              <a class="card-link" th:href="@{/staff/workboard/edit(orderId=${order.id})}">編輯訂單</a>
+            </div>
+          </div>
+        </article>
+      </div>
+    </div>
+
+
+    <!-- ================================================================
+         【假資料】卡片由 staff-workboard.js 的「B. 假資料」產生。
+         資料庫的版本確認沒問題後，下面的小標籤和 board-scroll 這個 div 整個刪掉。
+         ================================================================ -->
+    <p class="source-line" th:if="${orders != null}"><span class="source-tag">假資料</span></p>
     <div class="board-scroll">
-      <!-- 左右箭頭：浮在卡片區的左右兩側，平常是半透明，碰到才變清楚。
-           那個方向還有卡片時才會出現，由 staff-workboard.js 控制 -->
-      <button type="button" class="board-arrow board-arrow-prev" id="boardPrev" aria-label="往左看前面的訂單" hidden>‹</button>
-      <button type="button" class="board-arrow board-arrow-next" id="boardNext" aria-label="往右看後面的訂單" hidden>›</button>
+      <!-- 左右箭頭：浮在卡片區的左右兩側，平常是半透明，碰到才變清楚。那個方向還有卡片時才會出現 -->
+      <button type="button" class="board-arrow board-arrow-prev" aria-label="往左看前面的訂單" hidden>‹</button>
+      <button type="button" class="board-arrow board-arrow-next" aria-label="往右看後面的訂單" hidden>›</button>
 
       <!-- 桌子的卡片：由 staff-workboard.js 產生 -->
-      <!-- 【Thymeleaf 串接】卡片改用 th:each 產生。把下面那行 div 換成這一段
-           （欄位名稱是範例，請換成你們 VO 的；view 是 Controller 放進 Model 的 kitchen／floor／done）：
-
-        <div class="board-cards" id="boardCards">
-          <p class="board-empty" th:if="${#lists.isEmpty(orders)}">目前沒有進行中的訂單</p>
-
-          <article class="table-card" th:each="order : ${orders}">
-            <button type="button" class="table-card-head" data-toggle-card>
-              <strong class="table-name" th:text="|${order.table} 桌|">A1 桌</strong>
-              <span th:text="${order.time}">12:30</span>
-              <span class="table-progress" th:text="|${order.servedCount}/${order.activeCount} 已送達|">1/4 已送達</span>
-              <span class="table-toggle">▲ 縮小</span>
-            </button>
-
-            <div class="table-card-body">
-              <ul class="dish-list">
-                <li th:each="item : ${order.items}">
-
-                  （1）可以按的餐點：包在小表單裡，按下去就送到 Controller。
-                       內場是 製作中 的餐點送到 toServe，外場是 等待送餐 的餐點送到 served。
-                       內場是 等待送餐 的餐點也可以按（誤觸出餐時退回製作中），表單送到 backToCooking，
-                       最右邊的文字是「● 等待送餐」，下面加一行小字
-                         <small class="dish-sub">再點一次可退回</small>
-                  <form th:if="${view == 'kitchen' and item.status == '製作中'}"
-                        th:action="@{/staff/workboard/toServe}" method="post">
-                    <input type="hidden" name="itemId" th:value="${item.id}">
-                    <button type="submit" class="dish is-cooking">
-                      <span class="dish-tag" th:text="${item.mealtype}">主菜</span>
-                      <span class="dish-name">
-                        <span th:text="${item.name}">品名</span>
-                        <small class="dish-note" th:if="${item.note}" th:text="${item.note}">備註</small>
-                      </span>
-                      <span class="dish-state">出餐 →</span>
-                    </button>
-                  </form>
-
-                  （2）不能按的餐點：不用表單，直接是一顆 disabled 的按鈕，class 依狀態決定
-                       is-to-serve 等待送餐／is-served 已送達／is-cancelled 已取消
-                  <button type="button" class="dish" disabled
-                          th:classappend="${item.status == '已取消'} ? 'is-cancelled' : (${item.status == '已送達'} ? 'is-served' : '')">
-                    ...內容同上，最右邊的文字換成「● 等待送餐」「✓ 已送達」「✕ 已取消」
-                       已完成訂單的畫面則顯示送達時間 th:text="|${item.servedAt} 送達|"
-                  </button>
-                </li>
-              </ul>
-
-              （3）內場才有的「編輯訂單」：改成連結，Controller 收到後回傳同一頁並打開對話框
-              <div class="table-card-foot" th:if="${view == 'kitchen'}">
-                <a class="card-link" th:href="@{/staff/workboard/edit(orderId=${order.id})}">編輯訂單</a>
-              </div>
-            </div>
-          </article>
-        </div>
-
-           order.servedCount（已送達幾道）和 order.activeCount（沒被取消的共幾道）請在 Java 算好。
-           改完後，staff-workboard.js 的第 1、2 區可以刪掉，只留「縮小／展開」和第 3 區的左右箭頭。 -->
       <div class="board-cards" id="boardCards"></div>
     </div>
   </main>
 
-  <!-- =====================================================
-       編輯訂單的對話框（內場卡片下方的「編輯訂單」會打開它）
+
+  <!-- ================================================================
+       【資料庫資料】Thymeleaf 串接：編輯訂單的對話框
        可以做三件事：1. 填寫每道餐點的備註　2. 刪除單一道餐點　3. 刪除整筆訂單
-       開關與內容由 staff-workboard.js 的第 4 區控制
-       ===================================================== -->
-  <!-- 【Thymeleaf 串接】對話框接上資料庫後的做法
-       1. 打開：卡片上的「編輯訂單」是連結 /staff/workboard/edit?orderId=...，
-          Controller 把那筆訂單放進 Model（名稱 editOrder）後回傳這一頁。
-          下面那行 div 的 hidden 改成 th:hidden="${editOrder == null}"，有 editOrder 時對話框就會是打開的。
-       2. 關閉：背景、右上角的 ×、「取消」都改成連結 <a th:href="@{/staff/workboard}">，回到沒有對話框的頁面。
-       3. 標題與內容：桌號用 th:text 顯示 editOrder 的資料，
-          餐點那幾列用 th:each="item : ${editOrder.items}" 產生。
-       4. 儲存變更：把「畫面一」和它下面的 footer 一起包在一個表單裡
-            <form th:action="@{/staff/workboard/notes}" method="post">
-              <input type="hidden" name="orderId" th:value="${editOrder.id}">
-              每道餐點的備註輸入框都加上 name="itemNotes"（同一個名字，Controller 用 List<String> 依順序收）
-              「儲存變更」改成 <button type="submit">
-            </form>
-          刪除單一道餐點：每一列多放一個隱藏欄位
-            <input type="hidden" name="cancelledItemIds" th:value="${item.id}" disabled>
-          一開始是 disabled（不會被送出）。按「刪除」時用 JS 把它的 disabled 拿掉，按「復原」再加回去，
-          Controller 用 List<Integer> cancelledItemIds 收到的就是要刪除的餐點。
-       5. 刪除訂單：「畫面二」和它下面的 footer 包在另一個表單裡
-            <form th:action="@{/staff/workboard/cancel}" method="post">
-              <input type="hidden" name="orderId" th:value="${editOrder.id}">
-              「確認刪除」改成 <button type="submit">
-            </form>
-          Controller 把這筆訂單所有訂單明細的狀態（od_status）都改成「已取消」，訂單 orders 本身不用動。
-          「刪除訂單」按鈕只在餐點都還沒出餐時顯示，可以由 Controller 算好放進 Model（例如 canCancel），
-          按鈕加上 th:if="${canCancel}"。
-       6. 訂單與餐點都不要真的從資料庫刪掉：刪除餐點是把那一筆訂單明細的狀態改成「已取消」，
-          刪除訂單是把它所有訂單明細的狀態都改成「已取消」。這樣之後才查得到。
-          被取消的餐點復原時，狀態改回「製作中」。 -->
+
+       打開：卡片上的「編輯訂單」連到 /staff/workboard/edit?orderId=...，
+             Controller 把那筆訂單放進 Model（名稱 editOrder）後回傳這一頁，下面的 th:if 成立，對話框就出現。
+             同時也要放 orders 和 view（和 /staff/workboard 一樣），後面的卡片才會在。
+       關閉：背景、右上角的 ×、「取消」都是連結，回到沒有對話框的 /staff/workboard。
+       儲存變更：第一個表單送到 POST /staff/workboard/notes，Controller 會收到
+             orderId            訂單編號
+             itemIds            每一道餐點的編號（List<Integer>）
+             itemNotes          每一道餐點的備註（List<String>，順序和 itemIds 相同，第幾個就是第幾道的備註）
+             cancelledItemIds   要標記成「已取消」的餐點編號（List<Integer>，沒有的話是 null，參數要加 required = false）
+           每一列都有一個藏起來的 cancelledItemIds，一開始是 disabled（不會被送出）。
+           按「刪除」時 JS 把它的 disabled 拿掉，按「復原」再加回去（程式在 staff-workboard.js 的 A 區）。
+           Controller 的處理：在 cancelledItemIds 裡的餐點 → 狀態改成「已取消」；
+                              不在裡面、但原本是「已取消」的餐點 → 復原，狀態改回「製作中」。
+           另外請檢查不能把每一道都刪掉（全部都要刪的話，應該用「刪除訂單」）。
+       刪除訂單：第二個表單送到 POST /staff/workboard/cancel，帶 orderId。
+           Controller 把這筆訂單所有訂單明細的狀態（od_status）都改成「已取消」，訂單 orders 本身不用動。
+           「刪除訂單」按鈕只在餐點都還沒出餐時顯示：由 Controller 算好放進 Model（名稱 canCancel，true／false）。
+       訂單與餐點都不要真的從資料庫刪掉，只改狀態，之後才查得到。
+       ================================================================ -->
+  <div class="edit-modal" th:if="${editOrder != null}">
+    <!-- 半透明的背景，點一下會關閉對話框 -->
+    <a class="edit-backdrop" th:href="@{/staff/workboard}" aria-label="關閉"></a>
+
+    <section class="edit-dialog" role="dialog" aria-modal="true" aria-labelledby="dbEditHeading">
+      <header class="edit-head">
+        <div>
+          <h2 class="edit-title" id="dbEditHeading">
+            <span th:text="|${editOrder.table} 桌|">A1 桌</span>
+            <span class="edit-title-sub">訂單修改</span>
+            <span class="source-tag source-db">資料庫</span>
+          </h2>
+          <!-- 下單時間、訂單編號 -->
+          <p class="edit-meta" th:text="|${editOrder.time} 下單　訂單編號 ${editOrder.id}|"></p>
+        </div>
+        <a class="edit-close" th:href="@{/staff/workboard}" aria-label="關閉">×</a>
+      </header>
+
+      <!-- ========== 畫面一：填寫備註、刪除單一道餐點（表單：儲存變更） ========== -->
+      <form class="edit-form" th:action="@{/staff/workboard/notes}" method="post" data-edit-view="notes">
+        <input type="hidden" name="orderId" th:value="${editOrder.id}">
+
+        <div class="edit-body">
+          <!-- 常用備註：先點下面要填的欄位，再點這裡的按鈕，文字就會加進那個欄位 -->
+          <div class="edit-section">
+            <h3 class="edit-label">常用備註 <small>先點要填的欄位，再點這裡</small></h3>
+            <div class="chips">
+              <button type="button" class="chip chip-small" data-note-chip="趕時間">趕時間</button>
+              <button type="button" class="chip chip-small" data-note-chip="過敏注意">過敏注意</button>
+              <button type="button" class="chip chip-small" data-note-chip="餐點一起上">餐點一起上</button>
+              <button type="button" class="chip chip-small" data-note-chip="不要香菜">不要香菜</button>
+              <button type="button" class="chip chip-small" data-note-chip="不要洋蔥">不要洋蔥</button>
+              <button type="button" class="chip chip-small" data-note-chip="不要蒜">不要蒜</button>
+              <button type="button" class="chip chip-small" data-note-chip="少鹽">少鹽</button>
+              <button type="button" class="chip chip-small" data-note-chip="不辣">不辣</button>
+              <button type="button" class="chip chip-small" data-note-chip="醬汁另外放">醬汁另外放</button>
+              <button type="button" class="chip chip-small" data-note-chip="晚點再上">晚點再上</button>
+            </div>
+          </div>
+
+          <div class="edit-section">
+            <h3 class="edit-label">餐點 <small>可以填備註，或刪除單一道餐點；按「儲存變更」後才會生效</small></h3>
+            <ul class="edit-items">
+              <!-- 每一道餐點一列：品名、備註的輸入框、刪除按鈕。
+                   已經被取消的那一列會有 is-removed 這個 class（品名劃線、輸入框鎖住、按鈕是「復原」）。
+                   已經送到客人桌上的餐點不能刪除，按鈕是 disabled 的「已送達」。
+                   被取消的列，備註欄位用 readonly（不能用 disabled：disabled 的欄位不會被送出，
+                   itemNotes 的數量就會和 itemIds 對不起來）。 -->
+              <li class="edit-item" th:each="item : ${editOrder.items}"
+                  th:classappend="${item.status == '已取消'} ? 'is-removed'">
+                <span class="edit-item-name">
+                  <span class="dish-tag" th:text="${item.mealtype}">主菜</span>
+                  <span th:text="${item.name}">品名</span>
+                  <span class="dish-qty" th:if="${item.qty > 1}" th:text="|× ${item.qty}|">× 2</span>
+                </span>
+                <input type="hidden" name="itemIds" th:value="${item.id}">
+                <input type="text" class="staff-input edit-input" name="itemNotes" maxlength="20"
+                       th:value="${item.note}" th:readonly="${item.status == '已取消'}"
+                       placeholder="備註" autocomplete="off" th:attr="aria-label=|${item.name}的備註|">
+                <input type="hidden" name="cancelledItemIds" th:value="${item.id}"
+                       th:disabled="${item.status != '已取消'}">
+                <button type="button" class="staff-btn edit-remove" data-db-remove
+                        th:disabled="${item.status == '已送達'}"
+                        th:text="${item.status == '已送達'} ? '已送達' : (${item.status == '已取消'} ? '復原' : '刪除')">刪除</button>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <footer class="edit-foot">
+          <!-- 只有在這一桌的餐點都還沒出餐時才顯示（canCancel 由 Controller 算好） -->
+          <button type="button" class="staff-btn btn-danger-outline" data-edit-ask-delete th:if="${canCancel}">刪除訂單</button>
+          <span class="edit-foot-space"></span>
+          <a class="staff-btn" th:href="@{/staff/workboard}">取消</a>
+          <button type="submit" class="staff-btn btn-pay">儲存變更</button>
+        </footer>
+      </form>
+
+      <!-- ========== 畫面二：確認刪除（按了「刪除訂單」才會換成這個畫面；表單：確認刪除） ========== -->
+      <form class="edit-form" th:action="@{/staff/workboard/cancel}" method="post" data-edit-view="delete" hidden>
+        <input type="hidden" name="orderId" th:value="${editOrder.id}">
+
+        <div class="edit-body">
+          <div class="delete-warn">
+            <p class="delete-warn-title">確定要刪除這筆訂單嗎？</p>
+            <p>刪除後這一桌的餐點會全部標記成「已取消」，並從內場、外場和結帳消失，之後只能在「訂單管理」的「已取消」查到。</p>
+          </div>
+        </div>
+
+        <footer class="edit-foot">
+          <button type="button" class="staff-btn" data-edit-back>← 返回</button>
+          <span class="edit-foot-space"></span>
+          <button type="submit" class="staff-btn btn-danger">確認刪除</button>
+        </footer>
+      </form>
+    </section>
+  </div>
+
+
+  <!-- ================================================================
+       【假資料】編輯訂單的對話框（假資料卡片下方的「編輯訂單」會打開它）
+       開關與內容由 staff-workboard.js 的「B. 假資料」控制。
+       資料庫的版本確認沒問題後，這個 div 整個刪掉（到它結尾的 </div> 為止）。
+       ================================================================ -->
   <div class="edit-modal" id="editModal" hidden>
     <!-- 半透明的背景，點一下會關閉對話框 -->
     <div class="edit-backdrop" data-edit-close></div>
@@ -181,8 +329,9 @@
         <div>
           <!-- 桌號由 staff-workboard.js 填入，後面固定接「訂單修改」 -->
           <h2 class="edit-title" id="editHeading">
-            <span id="editTitle">A1 桌</span>
+            <span id="editTitle"></span>
             <span class="edit-title-sub">訂單修改</span>
+            <span class="source-tag" th:if="${orders != null}">假資料</span>
           </h2>
           <!-- 下單時間、訂單編號 -->
           <p class="edit-meta" id="editMeta"></p>
@@ -195,7 +344,7 @@
         <!-- 常用備註：先點下面要填的欄位，再點這裡的按鈕，文字就會加進那個欄位 -->
         <div class="edit-section">
           <h3 class="edit-label">常用備註 <small>先點要填的欄位，再點這裡</small></h3>
-          <div class="chips" id="noteChips">
+          <div class="chips">
             <button type="button" class="chip chip-small" data-note-chip="趕時間">趕時間</button>
             <button type="button" class="chip chip-small" data-note-chip="過敏注意">過敏注意</button>
             <button type="button" class="chip chip-small" data-note-chip="餐點一起上">餐點一起上</button>
@@ -241,6 +390,24 @@
   </div>
 
   <div class="staff-toast" id="staffToast" role="status" aria-live="polite"></div>
+
+
+  <!-- ================================================================
+       片段 dishInfo：一道餐點的「分類、品名、數量、備註」。
+       上面【資料庫資料】的卡片裡用 th:replace="~{:: dishInfo}" 把它放進每一顆餐點按鈕。
+       外面這個 th:remove="all" 的意思是：頁面產生時，這裡定義的地方不要顯示出來（只有被引用的地方才顯示）。
+       它用的是引用當下的 item，所以只能放在 th:each="item : ..." 的裡面使用。
+       ================================================================ -->
+  <th:block th:remove="all">
+    <th:block th:fragment="dishInfo">
+      <span class="dish-tag" th:text="${item.mealtype}">主菜</span>
+      <span class="dish-name">
+        <span th:text="${item.name}">品名</span>
+        <span class="dish-qty" th:if="${item.qty > 1}" th:text="|× ${item.qty}|">× 2</span>
+        <small class="dish-note" th:if="${!#strings.isEmpty(item.note)}" th:text="${item.note}">備註</small>
+      </span>
+    </th:block>
+  </th:block>
 </body>
 
 </html>
