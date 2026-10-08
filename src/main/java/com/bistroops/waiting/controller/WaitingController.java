@@ -21,6 +21,9 @@ import com.bistroops.waiting.model.WaitingVO;
 
 import jakarta.servlet.http.HttpSession;
 
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
+
 @Controller
 @RequestMapping("/bistroops/waiting")
 public class WaitingController {
@@ -138,5 +141,29 @@ public class WaitingController {
 		}
 
 		return tickets;
+	}
+
+	@RequestMapping(value = "", method = RequestMethod.GET)
+	public String showStatus(Model model) {
+
+		model.addAttribute("open", true);
+
+		model.addAttribute("queues", List.of(statusQueue(2), statusQueue(4), statusQueue(6)));
+
+		model.addAttribute("refreshTime", LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss")));
+
+		return "front/waiting/waiting_status";
+	}
+
+	private Map<String, Object> statusQueue(Integer tableType) {
+
+		List<WaitingVO> active = waitingService.getActiveBySeatType(tableType);
+
+		List<Long> notifiedNumbers = active.stream()
+				.filter(waiting -> WaitingService.NOTIFIED.equals(waiting.getWaitingStatus()))
+				.map(WaitingVO::getWaitingNo).toList();
+
+		return Map.of("tableType", tableType, "waitingCount", active.size(), "notifiedNumbers", notifiedNumbers,
+				"estimate", "請洽現場人員");
 	}
 }

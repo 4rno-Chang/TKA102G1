@@ -2,23 +2,23 @@
 <html lang="zh-Hant" xmlns:th="http://www.thymeleaf.org">
 
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <!-- 這一頁每 60 秒會自動重新載入一次，叫號才會是最新的（不用 JSON 的同步方式）。
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- 這一頁每 60 秒會自動重新載入一次，叫號才會是最新的（不用 JSON 的同步方式）。
        自動刷新寫在 waiting.js 第 4 區（startAutoRefresh），因為「查詢候位」的對話框打開時要能暫停。
        想更新得更頻繁，改 waiting.js 裡的 REFRESH_SECONDS。 -->
-  <title>Bistroops｜候位狀況</title>
-  <link rel="icon" th:href="@{/images/logo-mark.svg}" type="image/svg+xml">
+<title>Bistroops｜候位狀況</title>
+<link rel="icon" th:href="@{/images/logo-mark.svg}" type="image/svg+xml">
 
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet"
-    href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Noto+Sans+TC:wght@300;400;500;700&family=Noto+Serif+TC:wght@500;600&display=swap">
-  <link rel="stylesheet" th:href="@{/css/front/front.css}" />
-  <link rel="stylesheet" th:href="@{/css/front/member.css}" />
-  <link rel="stylesheet" th:href="@{/css/front/waiting.css}" />
-  <script th:src="@{/js/front/member.js}" defer></script>
-  <script th:src="@{/js/front/waiting.js}" defer></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet"
+	href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Noto+Sans+TC:wght@300;400;500;700&family=Noto+Serif+TC:wght@500;600&display=swap">
+<link rel="stylesheet" th:href="@{/css/front/style.css}" />
+<link rel="stylesheet" th:href="@{/css/front/member.css}" />
+<link rel="stylesheet" th:href="@{/css/front/waiting.css}" />
+<script th:src="@{/js/front/member.js}" defer></script>
+<script th:src="@{/js/front/waiting.js}" defer></script>
 </head>
 
 <!--
@@ -38,23 +38,22 @@
 -->
 
 <body>
-  <div th:replace="~{front/member/member_modals :: modals}"></div>
-  <header th:replace="~{front/front_layout :: header('waiting')}"></header>
+	<div th:replace="~{front/member/member_modals :: modals}"></div>
+	<header th:replace="~{front/front_layout :: header('waiting')}"></header>
 
-  <main class="booking">
-    <div class="container">
+	<main class="booking">
+		<div class="container">
 
-      <header class="booking-head">
-        <p class="eyebrow">Waiting List</p>
-        <h1 class="booking-title">現場候位</h1>
-        <p class="booking-lead">請至現場領取號碼牌，上午最晚發放至當日 12:30，下午最晚發放至當日 18:30。</p>
-        <!-- 查詢候位：點了會打開這一頁最下面的對話框，並暫停自動刷新 -->
-        <p class="booking-head-action">
-          <button type="button" class="btn-outline btn-lookup" data-open-lookup="waitLookup">查詢候位</button>
-        </p>
-      </header>
+			<header class="booking-head">
+				<p class="eyebrow">Waiting List</p>
+				<h1 class="booking-title">現場候位</h1>
+				<p class="booking-lead">請至現場領取號碼牌，上午最晚發放至當日 12:30，下午最晚發放至當日
+					18:30。</p>
+				<!-- 查詢候位：點了會打開這一頁最下面的對話框，並暫停自動刷新 -->
+				
+			</header>
 
-      <!-- ========== 取號狀態與重新整理（文字由 waiting.js 填入） ==========
+			<!-- ========== 取號狀態與重新整理（文字由 waiting.js 填入） ==========
            【Thymeleaf 串接 1】把下面這個 section 換成：
              <section class="waiting-bar" th:classappend="${open} ? '' : 'is-closed'">
                <div>
@@ -63,16 +62,22 @@
                </div>
                <a class="btn-outline" th:href="@{/bistroops/waiting}">刷新頁面</a>
              </section> -->
-      <section class="waiting-bar" id="waitingBar">
-        <div>
-          <p class="waiting-bar-title" id="waitingTitle">目前開放取號</p>
-          <p class="waiting-bar-time">每分鐘刷新頁面，最後刷新時間 <span id="refreshTime"></span></p>
-        </div>
-        <!-- 刷新頁面：就是連回這一頁，重新載入一次 -->
-        <a class="btn-outline" th:href="@{/bistroops/waiting}">刷新頁面</a>
-      </section>
+			<section class="waiting-bar" id="waitingBar"
+				th:classappend="${not open} ? 'is-closed' : ''">
 
-      <!-- ========== 三種桌型的叫號（卡片由 waiting.js 產生） ==========
+				<div>
+					<p class="waiting-bar-title"
+						th:text="${open} ? '目前開放取號' : '目前已停止取號'"></p>
+
+					<p class="waiting-bar-time">
+						每分鐘刷新頁面，最後刷新時間 <span th:text="${refreshTime}"></span>
+					</p>
+				</div>
+
+				<a class="btn-outline" th:href="@{/bistroops/waiting}"> 刷新頁面 </a>
+			</section>
+
+			<!-- ========== 三種桌型的叫號（卡片由 waiting.js 產生） ==========
            【Thymeleaf 串接 2】把下面這個 section 換成：
              <section class="queue-grid">
                <article class="queue-card" th:each="queue : ${queues}">
@@ -85,43 +90,71 @@
                  </div>
                </article>
              </section> -->
-      <section class="queue-grid" id="queueGrid"></section>
+			<section class="queue-grid" id="queueGrid">
+				<article class="queue-card" th:each="queue : ${queues}">
+					<h2 class="queue-head" th:text="|${queue.tableType} 人桌|"></h2>
 
-      <!-- ========== 候位方式 ========== -->
-      <section class="waiting-how">
-        <h2 class="booking-rules-title">候位方式</h2>
-        <div class="how-grid">
-          <article class="how-card">
-            <h3><span class="how-no">01</span>現場取號</h3>
-            <p>依現場安排領取不同桌型的號碼牌。</p>
-          </article>
-          <article class="how-card">
-            <h3><span class="how-no">02</span>查看叫號</h3>
-            <p>對照自己桌型的隊列與號碼。</p>
-          </article>
-          <article class="how-card">
-            <h3><span class="how-no">03</span>到號入場</h3>
-            <p>叫號後，請向現場人員報到。若不在現場，手機會收到通知，請於 10 分鐘內回到現場向工作人員報到。</p>
-          </article>
-        </div>
-      </section>
+					<div class="queue-body">
+						<p class="queue-label">已通知，等待報到</p>
 
-      <!-- ========== 注意事項 ========== -->
-      <section class="booking-rules">
-        <h2 class="booking-rules-title">注意事項</h2>
-        <ul>
-          <li>2 人桌、4 人桌、6 人桌分開計算，不共用順位。</li>
-          <li>到號後請於 10 分鐘內回到現場，逾時視為過號，過號需重新取號候位。</li>
-          <li>本頁提供現場候位查詢，取號與入座安排請洽現場人員。</li>
-          <li>預估時間僅供參考，實際入座依現場桌況調整。</li>
-          <li>過號與停止取號後的安排，以現場公告為準。</li>
-        </ul>
-      </section>
+						<p class="queue-no"
+							th:if="${#lists.isEmpty(queue.notifiedNumbers)}">—</p>
 
-    </div>
-  </main>
+						<p class="queue-no" th:each="number : ${queue.notifiedNumbers}"
+							th:text="${number}"></p>
 
-  <!-- =====================================================
+						<p class="queue-info">
+							等待組數 <strong th:text="${queue.waitingCount}"></strong> 組
+						</p>
+
+						<p class="queue-info">
+							預估等候 <strong th:text="${queue.estimate}"></strong>
+						</p>
+					</div>
+				</article>
+			</section>
+
+			<!-- ========== 候位方式 ========== -->
+			<section class="waiting-how">
+				<h2 class="booking-rules-title">候位方式</h2>
+				<div class="how-grid">
+					<article class="how-card">
+						<h3>
+							<span class="how-no">01</span>現場取號
+						</h3>
+						<p>依現場安排領取不同桌型的號碼牌。</p>
+					</article>
+					<article class="how-card">
+						<h3>
+							<span class="how-no">02</span>查看叫號
+						</h3>
+						<p>對照自己桌型的隊列與號碼。</p>
+					</article>
+					<article class="how-card">
+						<h3>
+							<span class="how-no">03</span>到號入場
+						</h3>
+						<p>叫號後，請向現場人員報到。若不在現場，手機會收到通知，請於 10 分鐘內回到現場向工作人員報到。</p>
+					</article>
+				</div>
+			</section>
+
+			<!-- ========== 注意事項 ========== -->
+			<section class="booking-rules">
+				<h2 class="booking-rules-title">注意事項</h2>
+				<ul>
+					<li>2 人桌、4 人桌、6 人桌分開計算，不共用順位。</li>
+					<li>到號後請於 10 分鐘內回到現場，逾時視為過號，過號需重新取號候位。</li>
+					<li>本頁提供現場候位查詢，取號與入座安排請洽現場人員。</li>
+					<li>預估時間僅供參考，實際入座依現場桌況調整。</li>
+					<li>過號與停止取號後的安排，以現場公告為準。</li>
+				</ul>
+			</section>
+
+		</div>
+	</main>
+
+	<!-- =====================================================
        查詢候位的對話框（標題下方的「查詢候位」按鈕會打開它）
        輸入手機 → 顯示今天還在等候的號碼、前面還有幾組、預估等候 → 可以取消候位，不能修改
        對話框打開時，頁面會停止自動刷新；關閉後恢復。
@@ -160,37 +193,38 @@
        4. 取消：Controller 要先確認「這張號碼牌的手機和送來的 phone 相同」才取消，取消後
             return "redirect:/bistroops/waiting?lookupPhone=" + phone;
        ===================================================== -->
-  <div class="lookup-modal" id="waitLookup" hidden>
-    <!-- 半透明的背景，點一下會關閉對話框 -->
-    <div class="lookup-backdrop" data-lookup-close></div>
+	
 
-    <section class="lookup-dialog" role="dialog" aria-modal="true" aria-labelledby="waitLookupTitle">
-      <button type="button" class="lookup-close" data-lookup-close aria-label="關閉">×</button>
+		<section class="lookup-dialog" role="dialog" aria-modal="true"
+			aria-labelledby="waitLookupTitle">
+			<button type="button" class="lookup-close" data-lookup-close
+				aria-label="關閉">×</button>
 
-      <p class="eyebrow">My Number</p>
-      <h2 class="lookup-title" id="waitLookupTitle">查詢候位</h2>
+			<p class="eyebrow">My Number</p>
+			<h2 class="lookup-title" id="waitLookupTitle">查詢候位</h2>
 
-      <form class="lookup-form" id="waitLookupForm" novalidate>
-        <div class="field">
-          <label for="waitLookupPhone">取號時填寫的手機號碼</label>
-          <div class="field-row">
-            <input type="tel" id="waitLookupPhone" name="phone" inputmode="numeric" maxlength="10"
-                   placeholder="09XXXXXXXX" autocomplete="tel" th:value="${session.member?.memTel}">
-            <button type="submit" class="btn-small">查詢</button>
-          </div>
-        </div>
-        <p class="form-msg error" id="waitLookupError" hidden></p>
-      </form>
+			<form class="lookup-form" id="waitLookupForm" novalidate>
+				<div class="field">
+					<label for="waitLookupPhone">取號時填寫的手機號碼</label>
+					<div class="field-row">
+						<input type="tel" id="waitLookupPhone" name="phone"
+							inputmode="numeric" maxlength="10" placeholder="09XXXXXXXX"
+							autocomplete="tel" th:value="${session.member?.memTel}">
+						<button type="submit" class="btn-small">查詢</button>
+					</div>
+				</div>
+				<p class="form-msg error" id="waitLookupError" hidden></p>
+			</form>
 
-      <!-- 查詢結果：今天還在等候的號碼，由 waiting.js 產生 -->
-      <div class="lookup-list" id="waitLookupList"></div>
+			<!-- 查詢結果：今天還在等候的號碼，由 waiting.js 產生 -->
+			<div class="lookup-list" id="waitLookupList"></div>
 
-      <p class="lookup-note">候位的桌型無法線上修改。如需更換桌型，請取消後重新取號。查詢期間頁面會暫停自動刷新。</p>
-    </section>
-  </div>
+			<p class="lookup-note">候位的桌型無法線上修改。如需更換桌型，請取消後重新取號。查詢期間頁面會暫停自動刷新。</p>
+		</section>
+	</div>
 
-  <footer th:replace="~{front/front_layout :: footer}"></footer>
-  <button th:replace="~{front/front_layout :: backToTop}"></button>
+	<footer th:replace="~{front/front_layout :: footer}"></footer>
+	<button th:replace="~{front/front_layout :: backToTop}"></button>
 </body>
 
 </html>

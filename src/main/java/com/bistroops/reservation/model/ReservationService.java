@@ -17,6 +17,8 @@ import com.bistroops.reservationdatetime.model.ReservationDatetimeVO;
 import com.bistroops.seattype.model.SeatTypeRepository;
 import com.bistroops.seattype.model.SeatTypeVO;
 
+import java.util.Map;
+
 @Service
 @Transactional(readOnly = true)
 public class ReservationService {
@@ -99,7 +101,7 @@ public class ReservationService {
 		MemberVO member = memberRepository.findById(memNo).orElseThrow(() -> new IllegalArgumentException("會員不存在"));
 
 		SeatTypeVO seatType = seatTypeRepository.findById(seatTypeNo)
-		        .orElseThrow(() -> new IllegalArgumentException("桌型不存在"));
+				.orElseThrow(() -> new IllegalArgumentException("桌型不存在"));
 
 		long duplicateCount = repository.countActiveByMemberAndTime(memNo, rsvDtNo);
 
@@ -132,4 +134,68 @@ public class ReservationService {
 
 		return repository.save(reservation);
 	}
+
+	public List<Map<String, Object>> getSlots(LocalDate date, Integer seatTypeNo) {
+
+		if (date == null) {
+			return List.of();
+		}
+
+		if (seatTypeNo == null || !Set.of(2, 4, 6).contains(seatTypeNo)) {
+			throw new IllegalArgumentException("請選擇2、4或6人桌");
+		}
+
+		SeatTypeVO seatType = seatTypeRepository.findById(seatTypeNo)
+				.orElseThrow(() -> new IllegalArgumentException("桌型不存在"));
+
+		Integer onlineLimit = seatType.getSeatTypeRsvNum();
+		Integer totalTables = seatType.getSeatTypeNum();
+
+		int capacity = onlineLimit == null || totalTables == null ? 0 : Math.max(0, Math.min(onlineLimit, totalTables));
+
+		Set<LocalTime> allowedTimes = Set.of(LocalTime.of(11, 0), LocalTime.of(12, 30), LocalTime.of(17, 0),
+				LocalTime.of(18, 30));
+
+		LocalDateTime now = LocalDateTime.now();
+
+		return rsvDtRepository
+				.findByRsvDtDatetimeGreaterThanEqualAndRsvDtDatetimeLessThanOrderByRsvDtDatetimeAsc(date.atStartOfDay(),
+						date.plusDays(1).atStartOfDay())
+				.stream().filter(slot -> slot.getRsvDtDatetime() != null)
+				.filter(slot -> slot.getRsvDtDatetime().isAfter(now))
+				.filter(slot -> allowedTimes.contains(slot.getRsvDtDatetime().toLocalTime())).map(slot -> {
+					long used = repository.countActiveByTimeAndSeatType(slot.getRsvDtNo(), seatTypeNo);
+
+					long remaining = Math.max(0L, capacity - used);
+
+					return Map.<String, Object>of("rsvDtNo", slot.getRsvDtNo(), "timeText",
+							slot.getRsvDtDatetime().toLocalTime().toString(), "remaining", remaining, "full",
+							remaining == 0);
+				}).toList();
+	}
+
+	public Map<String, Object> getResultForMember(Long rsvNo, Integer memNo) {
+
+		ReservationVO reservation = repository.findById(rsvNo)
+				.orElseThrow(() -> new IllegalArgumentException("找不到訂位紀錄"));
+
+		MemberVO member = reservation.getMember();
+
+		if (!member.getMemNo().equals(memNo)) {
+			throw new IllegalArgumentException("無法查看這筆訂位");
+		}
+
+		LocalDateTime diningTime = reservation.getRsvDt().getRsvDtDatetime();
+
+		return Map.<String, Object>of("reservationNo", reservation.getRsvNo(), "dateText",
+				diningTime.toLocalDate().toString().replace('-', '/'), "tableType",
+				reservation.getSeatType().getSeatTypeNo(), "timeText", diningTime.toLocalTime().toString(), "name",
+				member.getMemName() == null ? "" : member.getMemName(), "phone",
+				member.getMemTel() == null ? "" : member.getMemTel(), "email",
+				member.getMemMail() == null ? "" : member.getMemMail(), "note",
+				reservation.getRsvComment() == null ? "" : reservation.getRsvComment());
+	}
+	
+	
+
 }
