@@ -78,28 +78,22 @@ import org.springframework.web.bind.annotation.RequestMapping;
 public class BookingPageController {
 
 	// 訂位步驟一：選擇日期、桌型、時段
-	@GetMapping("/reservation")
-	public String reservationDate() {
-		return "front/reservation/reservation_date";
-	}
+//	@GetMapping("/reservation")
+//	public String reservationDate() {
+//		return "front/reservation/reservation_date";
+//	}
 
 	// 訂位步驟二：填寫聯絡資料
-	@GetMapping("/reservation/contact")
-	public String reservationContact() {
-		return "front/reservation/reservation_contact";
-	}
+//	@GetMapping("/reservation/contact")
+//	public String reservationContact() {
+//		return "front/reservation/reservation_contact";
+//	}
 
 	// 訂位步驟三：訂位成功
-	@GetMapping("/reservation/done")
-	public String reservationDone() {
-		return "front/reservation/reservation_done";
-	}
+	
 
 	// 候位狀況
-	@GetMapping("/waiting")
-	public String waitingStatus() {
-		return "front/waiting/waiting_status";
-	}
+	
 
 	
 

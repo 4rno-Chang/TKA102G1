@@ -257,45 +257,26 @@
          頁面每次重新載入，看到的就是當時資料庫的狀況；查詢候位的對話框打開時則要先停止刷新。 */
     const queueGrid = $('queueGrid');
 
-    // 產生三種桌型的叫號卡片（取消候位之後等待組數會變，所以寫成函式方便重新產生）
-    function renderQueues() {
-        queueGrid.innerHTML = WaitingDemo.queues().map(queue => `
-    <article class="queue-card">
-      <h2 class="queue-head">${queue.tableType} 人桌</h2>
-      <div class="queue-body">
-        <p class="queue-label">目前叫號</p>
-        <p class="queue-no">${queue.callingNo}</p>
-        <p class="queue-info">等待組數 <strong>${queue.waitingCount}</strong> 組</p>
-        <p class="queue-info">預估等候 <strong>${queue.estimate}</strong></p>
-      </div>
-    </article>`).join('');
-    }
-
-    // 每 60 秒重新載入頁面一次。用計時器（而不是 <meta http-equiv="refresh">），
-    // 是因為計時器可以隨時停止：查詢候位的對話框打開時要先停下來，否則客人打字打到一半頁面就被刷新了
     const REFRESH_SECONDS = 60;
     let refreshTimer = null;
+
     function startAutoRefresh() {
         stopAutoRefresh();
-        refreshTimer = setTimeout(() => location.reload(), REFRESH_SECONDS * 1000);
+
+        refreshTimer = setTimeout(
+            () => location.reload(),
+            REFRESH_SECONDS * 1000
+        );
     }
+
     function stopAutoRefresh() {
         clearTimeout(refreshTimer);
         refreshTimer = null;
     }
 
     if (queueGrid) {
-        const open = WaitingDemo.isWaitingOpen();
-        $('waitingBar').classList.toggle('is-closed', !open);
-        setText('waitingTitle', open ? '目前開放取號' : '目前已停止取號');
-
-        const now = new Date();
-        setText('refreshTime', [now.getHours(), now.getMinutes(), now.getSeconds()].map(n => String(n).padStart(2, '0')).join(':'));
-
-        renderQueues();
         startAutoRefresh();
     }
-
 
     /* ========== 5. 現場取號的表單 ==========
        【Thymeleaf 串接】接上資料庫後：
@@ -365,7 +346,7 @@
 
     /* ========== 6. 號碼牌 ==========
        【Thymeleaf 串接】接上資料庫後這一區整個刪掉，HTML 改用 th:text 顯示 Controller 查出來的資料。 */
-    
+
 
 
     /* ========== 7. 查詢候位（候位狀況的頁面） ==========

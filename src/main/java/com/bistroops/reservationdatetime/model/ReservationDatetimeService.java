@@ -42,4 +42,20 @@ public class ReservationDatetimeService {
 				.filter(slot -> allowedTimes.contains(slot.getRsvDtDatetime().toLocalTime())).toList();
 	}
 
+	public List<LocalDate> getOpenDates() {
+		LocalDate today = LocalDate.now();
+
+		Set<LocalTime> allowedTimes = Set.of(LocalTime.of(11, 0), LocalTime.of(12, 30), LocalTime.of(17, 0),
+				LocalTime.of(18, 30));
+
+		LocalDateTime now = LocalDateTime.now();
+
+		return repository
+				.findByRsvDtDatetimeGreaterThanEqualAndRsvDtDatetimeLessThanOrderByRsvDtDatetimeAsc(
+						today.atStartOfDay(), today.plusMonths(3).plusDays(1).atStartOfDay())
+				.stream().filter(slot -> slot.getRsvDtDatetime() != null).map(ReservationDatetimeVO::getRsvDtDatetime)
+				.filter(time -> time.isAfter(now)).filter(time -> allowedTimes.contains(time.toLocalTime()))
+				.map(LocalDateTime::toLocalDate).distinct().sorted().toList();
+	}
+
 }
