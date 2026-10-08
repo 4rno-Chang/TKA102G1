@@ -20,6 +20,12 @@
   font-weight: 500;
 }
 
+/* 欄位下方的紅字（例如：請勿設定過往日期） */
+.ann-field-error { margin: 6px 0 0; color: var(--st-red); font-size: 14px; font-weight: 500; }
+
+/* 公告及QA 外殼：chip 切換列（.chips／.chip 在 staff.css） */
+.ann-tabs { margin-bottom: 18px; }
+
 /* 列表上方：左邊筆數、右邊按鈕 */
 .ann-toolbar {
   display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px;
@@ -76,6 +82,11 @@
   color: var(--st-muted); font-size: 14px;
 }
 .ann-row .staff-btn { min-width: 72px; }
+/* 常見問題列表：沒有縮圖，只有內容和按鈕兩欄 */
+.qa-row { grid-template-columns: minmax(0, 1fr) auto; }
+/* 列表工具列裡的編號查詢：不要撐滿 */
+.ann-toolbar .ann-search { margin-top: 0; }
+.ann-toolbar .ann-search .staff-input { width: 140px; flex: none; }
 
 
 /* ========== 4. 單筆公告（listOneAnn.html） ========== */
@@ -117,6 +128,7 @@ textarea.staff-input:focus { outline: 2px solid var(--st-yellow); outline-offset
   .ann-row { grid-template-columns: 72px minmax(0, 1fr); gap: 12px; }
   .ann-thumb { width: 72px; height: 54px; }
   .ann-row .ann-actions { grid-column: 1 / -1; justify-content: flex-end; }
+  .qa-row { grid-template-columns: minmax(0, 1fr); }
 
   .ann-search { flex-direction: column; }
   .ann-current-img { width: 100%; max-width: 220px; }

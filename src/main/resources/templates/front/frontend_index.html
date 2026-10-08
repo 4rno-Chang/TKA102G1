@@ -11,8 +11,10 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet"
 	href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Noto+Sans+TC:wght@300;400;500;700&family=Noto+Serif+TC:wght@500;600&display=swap">
-<link rel="stylesheet" th:href="@{/css/front/style.css}" />
-<script th:src="@{/js/front/main.js}" defer></script>
+<!-- front.css：前台共用（變數、頁首頁尾）；frontend_index.css：首頁自己的樣式（要寫在 front.css 後面） -->
+<link rel="stylesheet" th:href="@{/css/front/front.css}" />
+<link rel="stylesheet" th:href="@{/css/front/frontend_index.css}" />
+<script th:src="@{/js/front/frontend_index.js}" defer></script>
 <link rel="stylesheet" th:href="@{/css/front/member.css}" />
 <script th:src="@{/js/front/member.js}" defer></script>
 </head>
@@ -28,9 +30,29 @@
 				<p class="eyebrow">Bistro · Table · Wine</p>
 				<h1>Bistroops！</h1>
 				<p>副標題</p>
-				<a href="#" class="btn-outline">立即訂位</a>
+				<a th:href="@{/bistroops/reservation}" class="btn-outline">立即訂位</a>
 			</div>
+	<!-- 輪播：目前是三張固定的示範圖片。
+	圖片固定用 16:9 顯示，並拉開填滿整個框（frontend_index.css 的 .slide img { object-fit: fill }）：
+     其他比例的圖片會被拉成 16:9（會變形），不留白、不裁切。後台活動管理的預覽用的是同樣的設定。
 
+     【Thymeleaf 串接】之後要改成顯示資料庫的活動圖片時：
+     1. 首頁的 Controller（IndexController_inSpringBoot 的 frontIndex）把要輪播的活動放進 Model，例如名稱 promotes。
+        要放哪些活動請自己決定，建議只放「進行中、而且有圖片」的：
+          開始時間 不晚於 現在，而且 結束時間 不早於 現在，而且 promoteImg 不是 null。
+        （活動狀態不存在資料庫，是用時間判斷的，說明在 StaffPageController.java）
+     2. 前台要有自己的輸出圖片的方法，網址放在 /bistroops 底下，例如 GET /bistroops/promote/img?promoteNo=1，
+        寫法和後台的 /staff/promote/img 一樣。不要直接連 /staff 的網址。
+     3. 把下面 carousel-track 裡的三個 <div class="slide"> 換成：
+          <div class="slide" th:each="p : ${promotes}">
+            <img th:src="@{/bistroops/promote/img(promoteNo=${p.promoteNo})}" th:alt="${p.promoteName}">
+          </div>
+        輪播的圓點是 frontend_index.js 依照 slide 的數量自動產生的，不用改。
+     4. 沒有任何活動時輪播會是空的。可以保留一張固定的圖片當預設：
+          <div class="slide" th:if="${#lists.isEmpty(promotes)}">
+            <img th:src="@{/images/promo-reservation.svg}" alt="線上預約訂位現正開放">
+          </div> -->
+		
 			<div class="carousel" id="carousel">
 				<div class="carousel-track">
 					<div class="slide">
@@ -76,8 +98,18 @@
 			<div class="container">
 				<p class="eyebrow">FAQ</p>
 				<h2 class="section-title">常見問題</h2>
-				<!-- 內容由下方 JS 的 faqData 產生；之後可改成從後端（Servlet / AJAX）取得 -->
-				<div class="faq-list" id="faqList"></div>
+				<!-- 內容來自資料庫的 qa 表：${@qaService.getAll()} 直接呼叫 Spring 的 QaService（不經過 Controller）。
+				     點問題展開答案的效果在 frontend_index.js「3. 常見問題」 -->
+				<div class="faq-list" id="faqList" th:with="qaList=${@qaService.getAll()}">
+					<p th:if="${#lists.isEmpty(qaList)}">目前沒有常見問題</p>
+					<div class="faq-item" th:each="qa : ${qaList}">
+						<button class="faq-question" aria-expanded="false">
+							<span th:text="|Q：${qa.qaTitle}|">Q：問題</span>
+							<span class="faq-icon">+</span>
+						</button>
+						<div class="faq-answer"><p th:text="|A：${qa.qaContent}|">A：回答</p></div>
+					</div>
+				</div>
 				<div class="btn-center">
 					<a href="#" class="btn-outline">more→</a>
 				</div>
@@ -87,7 +119,7 @@
 		<!-- ========== 關於我們 ========== -->
 		<section class="section reveal" id="about">
 			<div class="container">
-				<!-- 滑鼠移入或點擊後，會蓋上半透明白底並顯示理念文字（效果在 style.css「8. 關於我們」、點擊在 main.js 第 7 區）
+				<!-- 滑鼠移入或點擊後，會蓋上半透明白底並顯示理念文字（效果在 frontend_index.css「4. 關於我們」、點擊在 main.js 第 7 區）
              之後要放背景圖：在下面這個 div 加上
                th:style="|background-image: url('@{/images/圖片檔名}')|" -->
 				<div class="about-box placeholder" id="aboutBox" role="button"

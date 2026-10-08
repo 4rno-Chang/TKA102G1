@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="zh-Hant" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bistroops 後台｜新增常見問題</title>
+  <link rel="icon" th:href="@{/images/logo-mark.svg}" type="image/svg+xml">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;700&display=swap">
+  <link rel="stylesheet" th:href="@{/css/staff/staff.css}" />
+  <link rel="stylesheet" th:href="@{/css/staff/staff-announcement.css}" />
+  <script th:src="@{/js/staff/staff.js}" defer></script>
+</head>
+
+<!-- 新增常見問題（/staff/qa/insert）
+     送出到 POST /staff/qa/insert，欄位名稱要和 QaController 的 @RequestParam 相同：qaTitle、qaContent。
+     檢查沒通過時，QaController 會帶 errorMsg 和剛才填的 qaTitle、qaContent 回到這一頁 -->
+<body class="staff-layout">
+  <nav th:replace="~{staff/staff_sidebar :: sidebar('announcement-and-qa')}"></nav>
+
+  <main class="staff-main">
+    <header class="staff-header">
+      <div>
+        <a class="ann-back" th:href="@{/staff/qa}">‹ 公告及QA</a>
+        <h1 class="staff-title">新增常見問題</h1>
+      </div>
+      <p class="staff-clock" id="staffClock"></p>
+    </header>
+
+    <p class="ann-alert" th:if="${errorMsg != null}" th:text="${errorMsg}" role="alert">錯誤訊息</p>
+
+    <section class="staff-card">
+      <form class="ann-form" th:action="@{/staff/qa/insert}" method="post">
+        <div class="ann-field">
+          <label class="ann-label" for="qaTitle">問題 <small>最多 30 個字</small></label>
+          <input type="text" class="staff-input" id="qaTitle" name="qaTitle" th:value="${qaTitle}" maxlength="30" required>
+        </div>
+
+        <div class="ann-field">
+          <label class="ann-label" for="qaContent">回答</label>
+          <textarea class="staff-input" id="qaContent" name="qaContent" rows="8" th:text="${qaContent}" required></textarea>
+        </div>
+
+        <div class="ann-form-foot">
+          <a class="staff-btn" th:href="@{/staff/qa}">取消</a>
+          <button type="submit" class="staff-btn btn-pay">新增常見問題</button>
+        </div>
+      </form>
+    </section>
+  </main>
+
+  <div class="staff-toast" id="staffToast" role="status" aria-live="polite"></div>
+</body>
+
+</html>

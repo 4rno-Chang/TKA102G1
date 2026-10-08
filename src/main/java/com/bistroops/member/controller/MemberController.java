@@ -7,7 +7,17 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+import com.bistroops.member.model.CaptchaService;
 
+import java.awt.Color;
+import java.awt.Font;
+import java.awt.Graphics2D;
+import java.awt.image.BufferedImage;
+import java.io.IOException;
+
+import javax.imageio.ImageIO;
+
+import jakarta.servlet.http.HttpServletResponse;
 import com.bistroops.member.model.MemberService;
 import com.bistroops.member.model.MemberVO;
 import java.time.LocalDate;
@@ -21,13 +31,24 @@ public class MemberController {
 	@Autowired
 	MemberService memberService;
 	
+	@Autowired
+	CaptchaService captchaService;
 
 	//會員註冊
 	@PostMapping("/member/register")
 	public String register(
 	        @RequestParam String memTel,
 	        @RequestParam String memPassword,
+	        @RequestParam(required = false) String returnUrl,
 	        RedirectAttributes redirectAttributes) {
+		
+		
+		// 註冊完成或失敗後，回到使用者原本所在的前台頁面
+	    if (returnUrl == null
+	            || !returnUrl.startsWith("/bistroops")
+	            || returnUrl.startsWith("//")) {
+	        returnUrl = "/bistroops";
+	    }
 
 	    // 手機號碼不可空白
 	    if (memTel == null || memTel.isBlank()) {
@@ -35,7 +56,7 @@ public class MemberController {
 	        redirectAttributes.addFlashAttribute("regError", "請輸入手機號碼");
 	        redirectAttributes.addFlashAttribute("startView", "register");
 
-	        return "redirect:/bistroops";
+	        return "redirect:" + returnUrl;
 	    }
 
 	    // 手機號碼必須為 09 開頭，共 10 碼
@@ -44,7 +65,7 @@ public class MemberController {
 	        redirectAttributes.addFlashAttribute("regError", "手機號碼格式錯誤");
 	        redirectAttributes.addFlashAttribute("startView", "register");
 
-	        return "redirect:/bistroops";
+	        return "redirect:" + returnUrl;
 	    }
 
 	    // 密碼不可空白
@@ -53,7 +74,7 @@ public class MemberController {
 	        redirectAttributes.addFlashAttribute("regError", "請輸入密碼");
 	        redirectAttributes.addFlashAttribute("startView", "register");
 
-	        return "redirect:/bistroops";
+	        return "redirect:" + returnUrl;
 	    }
 
 	    // 呼叫 Service 註冊
@@ -73,7 +94,7 @@ public class MemberController {
 	                "login"
 	        );
 
-	        return "redirect:/bistroops";
+	        return "redirect:" + returnUrl;
 
 	    } else {
 
@@ -88,7 +109,7 @@ public class MemberController {
 	                "register"
 	        );
 
-	        return "redirect:/bistroops";
+	        return "redirect:" + returnUrl;
 		    }
 		}
 			// 檢查手機號碼是否已註冊
@@ -212,45 +233,104 @@ public class MemberController {
 
 			    return "OK";
 			}
+			// 產生登入圖片驗證碼
+			@GetMapping("/member/captcha")
+			public void captcha(HttpSession session,
+			                    HttpServletResponse response) throws IOException {
 
+			    // 產生 4 位數驗證碼，並存進 Redis
+			    String code = captchaService.createCaptcha(session.getId());
+
+			    // 建立透明背景的驗證碼圖片
+			    BufferedImage image =
+			            new BufferedImage(104, 46, BufferedImage.TYPE_INT_ARGB);
+
+			    Graphics2D g = image.createGraphics();
+
+			    // 驗證碼文字
+			    g.setColor(new Color(45, 40, 35));
+			    g.setFont(new Font("italic", Font.BOLD | Font.ITALIC, 22));
+
+			    // 每個數字分開畫，做出原本的字距效果
+			    int x = 18;
+
+			    for (char c : code.toCharArray()) {
+			        g.drawString(String.valueOf(c), x, 30);
+			        x += 20;
+			    }
+
+			    g.dispose();
+
+			    // 告訴瀏覽器這是一張 PNG
+			    response.setContentType("image/png");
+
+			    // 不要快取驗證碼圖片
+			    response.setHeader(
+			            "Cache-Control",
+			            "no-store, no-cache, must-revalidate"
+			    );
+
+			    // 把圖片送給瀏覽器
+			    ImageIO.write(image, "png", response.getOutputStream());
+			}		
 	
-	//會員登入
-	@PostMapping("/member/login")
-	public String login(@RequestParam String phone, @RequestParam String password, HttpSession session) {
-	    // 依手機號碼查詢會員
-	    MemberVO member = memberService.login(phone, password);
-	    
-	    if (member != null) {
-	    	
-	    	//登入成功，把會員資料存進Session
-	        session.setAttribute("member", member);
-	        
-	        return "redirect:/bistroops";
-	    	
-	    } else {
-	    	
-	    	//登入失敗
-	        return "redirect:/bistroops";
-	    }
-	}
-	
-	// 會員登出
-	@GetMapping("/member/logout")
-	public String logout(HttpSession session, RedirectAttributes redirectAttributes) {
+			// 會員登入
+			@PostMapping("/member/login")
+			@ResponseBody
+			public String login(@RequestParam String phone,
+			                    @RequestParam String password,
+			                    @RequestParam String captcha,
+			                    HttpSession session) {
 
-	    // 移除 Session 中的會員資料
-	    session.removeAttribute("member");
+			    // 先驗證圖片驗證碼
+			    boolean captchaCorrect =
+			            captchaService.verifyCaptcha(session.getId(), captcha);
 
-	    // 登出後顯示提示
-	    redirectAttributes.addFlashAttribute(
-	            "toastMsg",
-	            "您已登出"
-	    );
+			    if (!captchaCorrect) {
+			        return "CAPTCHA_ERROR";
+			    }
 
-	    // 回到前台首頁
-	    return "redirect:/bistroops";
-	}
-	
+			    // 驗證帳號、密碼
+			    MemberVO member = memberService.login(phone, password);
+
+			    if (member != null) {
+
+			        // 登入成功，把會員資料存進 Session
+			        session.setAttribute("member", member);
+
+			        return "OK";
+			    }
+
+			    // 帳號或密碼錯誤
+			    return "ERROR";
+			}
+			
+			// 會員登出
+			@GetMapping("/member/logout")
+			public String logout(
+			        @RequestParam(required = false) String returnUrl,
+			        HttpSession session,
+			        RedirectAttributes redirectAttributes) {
+
+			    // 登出完成後，回到使用者原本所在的前台頁面
+			    if (returnUrl == null
+			            || !returnUrl.startsWith("/bistroops")
+			            || returnUrl.startsWith("//")) {
+			        returnUrl = "/bistroops";
+			    }
+
+			    // 移除 Session 中的會員資料
+			    session.removeAttribute("member");
+
+			    // 登出後顯示提示
+			    redirectAttributes.addFlashAttribute(
+			            "toastMsg",
+			            "您已登出"
+			    );
+
+			    // 回到原本所在頁面
+			    return "redirect:" + returnUrl;
+			}
 
 	//取得目前登入會員資料
 	@GetMapping("/member/profile")
@@ -273,23 +353,51 @@ public class MemberController {
 	@PostMapping("/member/update")
 	public String updateMember(@RequestParam String name,
 	        @RequestParam String email,
-//	        @RequestParam String memBarcode,
+	        @RequestParam(required = false) String memBarcode,
 //	        @RequestParam String memTag,
 	        @RequestParam(required = false) String birthYear,
 	        @RequestParam(required = false) String birthMonth,
 	        @RequestParam(required = false) String birthDay,
-	        HttpSession session) {
+	        @RequestParam(required = false) String returnUrl,
+	        HttpSession session, RedirectAttributes redirectAttributes) {
+		
+		// 修改會員資料完成或失敗後，回到使用者原本所在的前台頁面
+		if (returnUrl == null
+		        || !returnUrl.startsWith("/bistroops")
+		        || returnUrl.startsWith("//")) {
+		    returnUrl = "/bistroops";
+		}
 
 	    //取得目前登入會員
 	    MemberVO member = (MemberVO) session.getAttribute("member");
 
 	    //沒有登入
 	    if (member == null) {
-	    	return "redirect:/bistroops";
+	    	return "redirect:" + returnUrl;
 	    }
 
 	    //取得目前登入會員的會員編號
 	    Integer memNo = member.getMemNo();
+	    
+	    
+	    // 手機條碼載具格式驗證
+	    if (memBarcode != null && !memBarcode.isBlank()) {
+
+	        if (!memBarcode.matches("^/[A-Za-z0-9]{7}$")) {
+
+	            redirectAttributes.addFlashAttribute(
+	                    "profileError",
+	                    "※手機條碼載具格式錯誤"
+	            );
+
+	            redirectAttributes.addFlashAttribute(
+	                    "startTab",
+	                    "profile"
+	            );
+
+	            return "redirect:" + returnUrl;
+	        }
+	    }
 	    
 	    // 處理生日
 	    LocalDate memBirth = null;
@@ -305,11 +413,9 @@ public class MemberController {
 	        );
 	    }
 	    
-	    // 載具、標籤目前畫面沒有修改功能
-	    // 所以保留會員原本的資料
-	    String memBarcode = member.getMemBarcode();
+	 // 標籤目前畫面沒有修改功能，所以保留會員原本的資料
 	    String memTag = member.getMemTag();
-
+	    
 	    //呼叫 Service 修改資料
 	    boolean result = memberService.updateMember(memNo, name, email, memBarcode, memTag, memBirth);
 
@@ -319,28 +425,39 @@ public class MemberController {
 	        member.setMemName(name);
 	        member.setMemMail(email);
 	        member.setMemBirth(memBirth);  
-//	        member.setMemBarcode(memBarcode);
+	        member.setMemBarcode(memBarcode);
 //	        member.setMemTag(memTag);
 
 	        session.setAttribute("member", member);
+	        
+	        // 修改成功提示
+	        redirectAttributes.addFlashAttribute("toastMsg", "修改完成");
+
 	    }
 	        
 	        
 	    // 修改完回首頁
-	    return "redirect:/bistroops";
+	    return "redirect:" + returnUrl;
 	    
 	}
 
 	// 會員修改密碼
 	@PostMapping("/member/changePassword")
-	public String changePassword(@RequestParam String code, @RequestParam String password, @RequestParam String password2, HttpSession session, RedirectAttributes redirectAttributes) {
-
+	public String changePassword(@RequestParam String code, @RequestParam String password, @RequestParam String password2, @RequestParam(required = false) String returnUrl,  HttpSession session, RedirectAttributes redirectAttributes) {
+		
+	    // 修改密碼完成或失敗後，回到使用者原本所在的前台頁面
+	    if (returnUrl == null
+	            || !returnUrl.startsWith("/bistroops")
+	            || returnUrl.startsWith("//")) {
+	        returnUrl = "/bistroops";
+	    }
+		
 	    // 取得目前登入會員
 	    MemberVO member = (MemberVO) session.getAttribute("member");
 
 	    // 沒有登入
 	    if (member == null) {
-	        return "redirect:/bistroops";
+	    	return "redirect:" + returnUrl;
 	    }
 
 	    // 取得 Session 中的驗證碼
@@ -359,7 +476,7 @@ public class MemberController {
 	                "password"
 	        );
 
-	        return "redirect:/bistroops";
+	        return "redirect:" + returnUrl;
 	    }
 
 	    // 兩次密碼不一致
@@ -375,7 +492,7 @@ public class MemberController {
 	                "password"
 	        );
 
-	        return "redirect:/bistroops";
+	        return "redirect:" + returnUrl;
 	    }
 
 	    // 取得會員編號
@@ -397,25 +514,20 @@ public class MemberController {
 	                "password"
 	        );
 
-	        return "redirect:/bistroops";
+	        return "redirect:" + returnUrl;
 	    }
 
 	    // 驗證碼使用完就刪除
 	    session.removeAttribute("smsCode");
 	    session.removeAttribute("smsPhone");
 
-	    // 修改成功 → 回個人資料頁
-	    redirectAttributes.addFlashAttribute(
-	            "startTab",
-	            "profile"
-	    );
 
 	    redirectAttributes.addFlashAttribute(
 	            "toastMsg",
 	            "修改成功"
 	    );
 
-	    return "redirect:/bistroops";
+	    return "redirect:" + returnUrl;
 	}
 	
 	// 忘記密碼－驗證手機與驗證碼
@@ -459,8 +571,15 @@ public class MemberController {
 	
 	// 忘記密碼－設定新密碼
 	@PostMapping("/member/resetPassword")
-	public String resetPassword(@RequestParam String password, @RequestParam String password2, HttpSession session, RedirectAttributes redirectAttributes) {
-
+	public String resetPassword(@RequestParam String password, @RequestParam String password2, @RequestParam(required = false) String returnUrl, HttpSession session, RedirectAttributes redirectAttributes) {
+		
+		// 修改密碼完成或失敗後，回到使用者原本所在的前台頁面
+		if (returnUrl == null
+		        || !returnUrl.startsWith("/bistroops")
+		        || returnUrl.startsWith("//")) {
+		    returnUrl = "/bistroops";
+		}
+		
 	    // 取得手機驗證成功後存在 Session 的手機號碼
 	    String resetPhone = (String) session.getAttribute("resetPhone");
 
@@ -477,7 +596,7 @@ public class MemberController {
 	                "forgot"
 	        );
 
-	        return "redirect:/bistroops";
+	        return "redirect:" + returnUrl;
 	    }
 
 	    // 兩次密碼不一致
@@ -493,7 +612,7 @@ public class MemberController {
 	                "reset"
 	        );
 
-	        return "redirect:/bistroops";
+	        return "redirect:" + returnUrl;
 	    }
 
 	    // 呼叫 Service 重設密碼
@@ -513,7 +632,7 @@ public class MemberController {
 	                "reset"
 	        );
 
-	        return "redirect:/bistroops";
+	        return "redirect:" + returnUrl;
 	    }
 
 	    // 修改成功，清除忘記密碼流程的 Session
@@ -532,7 +651,7 @@ public class MemberController {
 	            "密碼修改成功，請重新登入"
 	    );
 
-	    return "redirect:/bistroops";
+	    return "redirect:" + returnUrl;
 	}
 
 }

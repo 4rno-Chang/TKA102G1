@@ -6,7 +6,7 @@
   員工後台的左邊選單（每個後台頁面共用）
   其他頁面要使用時，在 <body> 裡加上這一行，括號內填「目前是哪一頁」：
     <nav th:replace="~{staff/staff_sidebar :: sidebar('checkout')}"></nav>
-  可以填的名稱：home / workboard / orders / checkout
+  可以填的名稱：home / workboard / orders / checkout / promote / announcement-and-qa
   填了之後，對應的選單項目會加上 active 這個 class（變成選取中的樣子）。
 
   還沒做的頁面：先用 <button data-coming-soon="名稱">，點了會跳出「尚未開放」的提示。
@@ -46,20 +46,21 @@
     </a>
 
     <!-- 後臺管理：摺疊選單。平常只看得到「後臺管理」這一顆，點了才展開下面的項目
-         （員工管理、會員管理、菜單管理、活動管理、公告管理），再點一次收起。
+         （員工管理、會員管理、菜單管理、活動管理、公告及QA），再點一次收起。
          展開／收起由 staff.js 的「選單的摺疊群組」控制：它會替外層的 staff-group 加上或拿掉 open 這個 class，
          並記住目前是不是展開的，換到別的後台頁面時會維持同樣的狀態。
 
-         公告管理已經做好了，其他幾項的功能還沒做，先用 data-coming-soon。之後某一項做好了，
+         活動管理、公告及QA 已經做好了，其他幾項的功能還沒做，先用 data-coming-soon。之後某一項做好了，
          把那顆 <button type="button" ... data-coming-soon="..."> 換成連結（結尾的 </button> 換成 </a>）：
            <a class="staff-menu-item staff-sub-item" th:href="@{/staff/employees}"
               th:classappend="${active == 'employees'} ? 'active'">
          並在那個頁面引用選單時填對應的名稱，例如 sidebar('employees')。
 
-         【Thymeleaf 串接】停在這三個頁面時，選單應該自動展開。到時候把下面那行 div 改成：
-           <div class="staff-group"
-                th:classappend="${active == 'employees' or active == 'members' or active == 'menu'} ? 'open'"> -->
-    <div class="staff-group">
+         停在這一組裡面的頁面時（目前是活動管理、公告及QA），選單會自動展開：
+         下面那行 div 的 th:classappend 在 active 是這幾個名稱時加上 open。
+         【Thymeleaf 串接】之後員工管理、會員管理、菜單管理做好了，把它們的名稱也加進條件裡，例如
+           th:classappend="${active == 'promote' or active == 'announcement-and-qa' or active == 'employees'} ? 'open'" -->
+    <div class="staff-group" th:classappend="${active == 'promote' or active == 'announcement-and-qa'} ? 'open'">
       <button type="button" class="staff-menu-item staff-group-toggle" data-menu-group aria-expanded="false">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 12h4M12 12h8M4 17h12"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="17" r="2"/></svg>
         <span>後臺管理 <span class="staff-group-arrow" aria-hidden="true">▾</span></span>
@@ -81,16 +82,19 @@
           <span>菜單管理</span>
         </button>
 
-        <!-- 活動管理：頁面還沒做，先用 data-coming-soon。做好後照上面的說明換成連結，
-             例如 th:href="@{/staff/promote}"、名稱用 'promote'（網址與名稱請換成實際的） -->
-        <button type="button" class="staff-menu-item staff-sub-item" data-coming-soon="活動管理">
+        <!-- 活動管理：連到 /staff/promote（頁面是 templates/staff/promote.html，Controller 在 StaffPageController 的 promote）；
+             活動管理的頁面填 sidebar('promote') -->
+        <a class="staff-menu-item staff-sub-item" th:href="@{/staff/promote}" th:classappend="${active == 'promote'} ? 'active'">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12V4h8l10 10-8 8z"/><circle cx="7.500" cy="8.500" r="1.500"/></svg>
           <span>活動管理</span>
-        </button>
+        </a>
 
-        <a class="staff-menu-item staff-sub-item" th:href="@{/staff/announcement}" th:classappend="${active == 'announcement'} ? 'active'">
+        <!-- 公告及QA：連到 /staff/announcement-and-qa，會轉到公告分頁（AnnouncementAndQaController）；
+             公告和常見問題的頁面都填 sidebar('announcement-and-qa')；
+             文字比較長，加 is-compact 讓它在同一行（樣式在 staff.css 的 .staff-sub-item.is-compact） -->
+        <a class="staff-menu-item staff-sub-item is-compact" th:href="@{/staff/announcement-and-qa}" th:classappend="${active == 'announcement-and-qa'} ? 'active'">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10v4a1 1 0 0 0 1 1h2l5 4V5L7 9H5a1 1 0 0 0-1 1z"/><path d="M16 9a4 4 0 0 1 0 6M18.5 6.5a7.500 7.500 0 0 1 0 11"/></svg>
-          <span>公告管理</span>
+          <span>公告及QA</span>
         </a>
       </div>
     </div>
