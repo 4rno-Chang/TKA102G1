@@ -27,6 +27,16 @@
     promote_name      promoteName      活動名稱（最多 10 個字）
     promote_begin     promoteBegin     開始時間（LocalDateTime）
     promote_end       promoteEnd       結束時間（LocalDateTime）
+                                       ★ 畫面上只選「年月日」、也只顯示年月日，不選幾點幾分：
+                                         表單送出的是日期（例如 2026-10-15），由 Java 補上時間再存：
+                                           開始時間 → 那一天的 00:00
+                                           結束時間 → 那一天的 23:59
+                                         例如開始選 10/15、結束選 10/16，活動就是 10/15 00:00 到 10/16 23:59。
+                                       ★ 日期的規則（畫面上已經擋了，Java 存檔前要再檢查一次）：
+                                           開始日期、結束日期都不能早於今天
+                                           結束日期最早是開始日期的「隔天」（不能和開始日期同一天，也不能更早）
+                                           進行中的活動不能修改開始日期（只能改結束日期和其他內容）
+                                           已經結束的活動不能修改
     （活動狀態）      沒有這個欄位     ★ 狀態「不存在資料庫」，是用開始、結束時間和現在的時間比出來的：
                                          現在 早於 開始時間 → 未開始
                                          現在 晚於 結束時間 → 已結束
@@ -148,7 +158,7 @@
                    <img> 的網址是 /staff/promote/img?promoteNo=編號，就是 Controller 那個輸出圖片的方法；
                    那個方法沒寫的話，有圖片的活動這裡會顯示成破圖。
              名稱：活動名稱，旁邊小字是活動編號。
-             期間：用 #temporals.format 把 LocalDateTime 轉成想要的文字格式。
+             期間：用 #temporals.format 把 LocalDateTime 轉成文字，只顯示年月日（'yyyy/MM/dd'），不顯示幾點幾分。
              最下面一排：左邊狀態的標籤，右邊「詳細」。
              詳細：連到 /staff/promote/detail?promoteNo=編號（同時帶著目前的 status、keyword、page），
                    Controller 回傳同一頁並多放 promoteDetail，
@@ -178,8 +188,8 @@
               <span th:text="${p.promoteName}">活動名稱</span><span class="promote-card-no" th:text="|編號 ${p.promoteNo}|">編號 1</span>
             </h3>
             <p class="promote-card-period">
-              <span th:text="${#temporals.format(p.promoteBegin, 'yyyy/MM/dd HH:mm')}">2026/10/01 10:00</span> <small>起</small><br>
-              <span th:text="${#temporals.format(p.promoteEnd, 'yyyy/MM/dd HH:mm')}">2026/10/10 22:00</span> <small>止</small>
+              <span th:text="${#temporals.format(p.promoteBegin, 'yyyy/MM/dd')}">2026/10/01</span> <small>起</small><br>
+              <span th:text="${#temporals.format(p.promoteEnd, 'yyyy/MM/dd')}">2026/10/10</span> <small>止</small>
             </p>
             <div class="promote-card-foot">
               <span class="tag"
@@ -264,6 +274,7 @@
        關閉：背景、右上角的 ×、「關閉」都是連結，回到沒有對話框的 /staff/promote，
              網址帶著 status、keyword、page，所以會回到原本看的那一頁。
        修改：下方的「修改」連到 /staff/promote/edit?promoteNo=編號，會換成下面那個「修改活動」的對話框。
+             ★ 已經結束的活動不能修改，所以狀態是「已結束」時沒有「修改」這顆按鈕，只能看和關閉。
        狀態：和卡片一樣用時間判斷（th:with 裡的 detailStatus），不是從資料庫拿的。
        圖片：有圖片（promoteImg 不是 null）就用 <img> 顯示，沒有就顯示「尚無圖片」。
              ★ <img> 的網址是 /staff/promote/img?promoteNo=編號，Controller 要寫這個「輸出圖片」的方法，
@@ -299,8 +310,8 @@
                       th:text="${detailStatus}">進行中</span>
               </dd>
             </div>
-            <div><dt>開始時間</dt><dd th:text="${#temporals.format(promoteDetail.promoteBegin, 'yyyy/MM/dd HH:mm')}">2026/10/01 10:00</dd></div>
-            <div><dt>結束時間</dt><dd th:text="${#temporals.format(promoteDetail.promoteEnd, 'yyyy/MM/dd HH:mm')}">2026/10/10 22:00</dd></div>
+            <div><dt>開始日期</dt><dd th:text="${#temporals.format(promoteDetail.promoteBegin, 'yyyy/MM/dd')}">2026/10/01</dd></div>
+            <div><dt>結束日期</dt><dd th:text="${#temporals.format(promoteDetail.promoteEnd, 'yyyy/MM/dd')}">2026/10/10</dd></div>
             <div><dt>活動內容</dt><dd class="promote-detail-content" th:text="${promoteDetail.promoteContent}">活動內容</dd></div>
             <div>
               <dt>活動圖片</dt>
@@ -317,7 +328,10 @@
         </div>
 
         <footer class="promote-foot">
-          <a class="staff-btn btn-pay" th:href="@{/staff/promote/edit(promoteNo=${promoteDetail.promoteNo}, status=${status}, keyword=${keyword}, page=${page})}">修改</a>
+          <!-- 已經結束的活動不能修改：狀態是「已結束」時不顯示「修改」（detailStatus 是上面用時間算出來的）。
+               這只是把按鈕藏起來，網址還是可以自己輸入，所以 Controller 的 edit 和 save 也要擋（見 StaffPageController.java） -->
+          <a class="staff-btn btn-pay" th:if="${detailStatus != '已結束'}"
+             th:href="@{/staff/promote/edit(promoteNo=${promoteDetail.promoteNo}, status=${status}, keyword=${keyword}, page=${page})}">修改</a>
           <a class="staff-btn" th:href="@{/staff/promote(status=${status}, keyword=${keyword}, page=${page})}">關閉</a>
         </footer>
       </div>
@@ -339,15 +353,20 @@
              promoteNo        活動編號。新增的時候是空的 → 新增一筆；有值 → 修改那一筆
                               （參數請用 Integer，並加上 required = false）
              promoteName      活動名稱（必填，最多 10 個字，資料表是 VARCHAR(10)）
-             promoteBegin     開始時間、promoteEnd 結束時間。
-                              送過來的文字長這樣：2026-10-01T10:00（日期和時間中間是英文字母 T）。
-                              參數要用 LocalDateTime 接的話，前面加上
-                                @DateTimeFormat(pattern = "yyyy-MM-dd'T'HH:mm")
-                              （用 PromoteVO 當參數直接接整個表單時，這個註解改加在 VO 的 promoteBegin、promoteEnd 上）
+             promoteBegin     開始日期、promoteEnd 結束日期。
+                              ★ 送過來的只有「年月日」，文字長這樣：2026-10-15（沒有幾點幾分）。
+                                所以不能直接用 LocalDateTime 接（會轉換失敗）：請用 LocalDate 接，
+                                再由 Java 補上時間，變成 LocalDateTime 之後才存進 PromoteVO：
+                                  開始 → 那一天的 00:00；結束 → 那一天的 23:59
+                              ★ 進行中的活動不能改開始日期：表單還是會把開始日期送過來（畫面上只是鎖住不能選），
+                                但那個值可以被改，所以修改「進行中」的活動時，Java 要忽略送來的開始日期，
+                                保留資料庫原本的開始時間。
              （沒有活動狀態：狀態是用時間判斷的，不用存，表單也不會送）
              promoteContent   活動內容
              upImg            圖片檔案（MultipartFile；說明在下面的「圖片」）
-           存檔前請在 Controller 再檢查一次（名稱不能空白、結束時間要比開始時間晚）。
+           存檔前請在 Controller（或 Service）再檢查一次：名稱不能空白、開始和結束日期都要有、
+           開始日期不能早於今天（進行中的活動除外，它的開始日期不會改）、結束日期不能早於今天、
+           結束日期最早是開始日期的隔天（不能同一天，也不能更早）。
            頁面上的檢查（必填、promote.js 的 A-1）只是方便使用者，可以被跳過，不能只靠它。
            成功：用 RedirectAttributes 帶 message（例如「已新增活動」）後 return "redirect:/staff/promote";
            失敗：把錯誤訊息放進 Model（名稱 errorMsg），把使用者填的內容放回 promoteForm，
@@ -401,26 +420,55 @@
                    th:value="${promoteForm.promoteName}" placeholder="例如：雙十節活動" autocomplete="off">
           </div>
 
-          <!-- datetime-local 的 value 一定要是 2026-10-01T10:00 這種格式，所以用 #temporals.format 轉。
-               格式裡的 ''T'' 是「在文字裡放一個英文字母 T」的寫法（兩個單引號代表一個單引號）。
-               promoteBegin 是 null（新增）時 #temporals.format 會回傳空的，欄位就是空白。 -->
-          <div class="promote-field-row">
+          <!-- 開始日期、結束日期：自己做的日期選擇（不是瀏覽器內建的），外觀和行為由 promote.js 的 A-3 和 promote.css 處理。
+               一個日期欄位由三個東西組成，包在 <div class="promote-date" data-date-picker="begin 或 end"> 裡：
+                 1. 隱藏欄位（name="promoteBegin"／"promoteEnd"）：真正送到 Controller 的值，格式是 2026-10-15
+                 2. 按鈕：顯示目前選的日期，按了會打開下面的月曆
+                 3. 月曆：一開始藏著，內容由 promote.js 產生
+               只能選年月日，沒有幾點幾分；Java 存檔時開始補 00:00、結束補 23:59。
+
+               th:value：把 LocalDateTime 轉成 2026-10-15 這種格式放進隱藏欄位（修改時帶入原本的日期）。
+                         promoteBegin 是 null（新增）時 #temporals.format 會回傳空的，欄位就是空白。
+
+               ★ 進行中的活動不能改開始日期：下面 th:with 裡的 beginLocked 是「這筆活動是不是進行中」
+                 （有活動編號、現在不早於開始時間、也不晚於結束時間）。是的話，開始日期那一格會多一個 data-locked="yes"，
+                 promote.js 看到它就把按鈕鎖住不能按，下面也會出現一行說明。
+                 隱藏欄位還是會把原本的開始日期送出去，但 Java 修改進行中的活動時不要用它（見上面的說明）。
+
+               日期能選的範圍由 promote.js 決定：開始日期、結束日期都不能早於今天；結束日期最早是開始日期的隔天
+               （不能和開始日期同一天。Java 檢查時要用同樣的規則）。 -->
+          <div class="promote-field-row"
+               th:with="now=${#temporals.createNow()},
+                        beginLocked=${promoteForm.promoteNo != null and promoteForm.promoteBegin != null and !now.isBefore(promoteForm.promoteBegin) and (promoteForm.promoteEnd == null or !now.isAfter(promoteForm.promoteEnd))}">
             <div class="promote-field">
-              <label class="promote-label" for="dbPromoteBegin">開始時間 <b>*</b></label>
-              <input type="datetime-local" class="staff-input" id="dbPromoteBegin" name="promoteBegin" required
-                     th:value="${#temporals.format(promoteForm.promoteBegin, 'yyyy-MM-dd''T''HH:mm')}">
+              <span class="promote-label">開始日期 <b>*</b></span>
+              <div class="promote-date" data-date-picker="begin" th:attr="data-locked=${beginLocked} ? 'yes'">
+                <input type="hidden" name="promoteBegin" id="dbPromoteBegin" th:value="${#temporals.format(promoteForm.promoteBegin, 'yyyy-MM-dd')}">
+                <button type="button" class="promote-date-btn" data-date-toggle aria-label="選擇開始日期">
+                  <span data-date-text>請選擇日期</span>
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M8 3v4M16 3v4"/></svg>
+                </button>
+                <div class="promote-date-panel" data-date-panel hidden></div>
+              </div>
+              <small class="promote-auto" th:if="${beginLocked}">活動進行中，不能修改開始日期。</small>
             </div>
             <div class="promote-field">
-              <label class="promote-label" for="dbPromoteEnd">結束時間 <b>*</b></label>
-              <input type="datetime-local" class="staff-input" id="dbPromoteEnd" name="promoteEnd" required
-                     th:value="${#temporals.format(promoteForm.promoteEnd, 'yyyy-MM-dd''T''HH:mm')}">
+              <span class="promote-label">結束日期 <b>*</b></span>
+              <div class="promote-date" data-date-picker="end">
+                <input type="hidden" name="promoteEnd" id="dbPromoteEnd" th:value="${#temporals.format(promoteForm.promoteEnd, 'yyyy-MM-dd')}">
+                <button type="button" class="promote-date-btn" data-date-toggle aria-label="選擇結束日期">
+                  <span data-date-text>請選擇日期</span>
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M8 3v4M16 3v4"/></svg>
+                </button>
+                <div class="promote-date-panel" data-date-panel hidden></div>
+              </div>
             </div>
           </div>
 
           <!-- 修改的時候顯示「活動狀態」：不用填，會依照上面的開始、結束時間自動判斷 -->
           <div class="promote-field" th:if="${promoteForm.promoteNo != null}">
             <span class="promote-label">活動狀態</span>
-            <span class="promote-auto">依開始與結束時間自動判斷：還沒到開始時間是「未開始」，期間內是「進行中」，過了結束時間是「已結束」。</span>
+            <span class="promote-auto">依開始與結束日期自動判斷：還沒到開始日期是「未開始」，期間內是「進行中」，過了結束日期是「已結束」。</span>
           </div>
 
           <!-- ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
@@ -432,7 +480,7 @@
                功能：按「套用已有活動」→ 出現搜尋的畫面（一開始不列出任何活動）
                      → 輸入活動名稱按「搜尋」→ 顯示符合的「已經結束」的活動（活動名稱和結束時間）
                      → 按某一筆的「套用」→ 回到新增的表單，活動名稱、活動內容、活動圖片都帶進來，
-                     使用者再填開始、結束時間就可以儲存。編號是新的，不會改到原本那個活動。
+                     使用者再選開始、結束日期就可以儲存。編號是新的，不會改到原本那個活動。
 
                【Thymeleaf 串接】不用 JSON 的做法（每一步都是連結或表單，由 Controller 回傳同一頁）：
 
@@ -464,7 +512,7 @@
                         <ul class="promote-pick-list">
                           <li class="promote-pick-item" th:each="p : ${pickList}">
                             <span class="promote-pick-name" th:text="${p.promoteName}">活動名稱</span>
-                            <span class="promote-pick-end" th:text="|${#temporals.format(p.promoteEnd, 'yyyy/MM/dd HH:mm')} 結束|">2026/09/30 22:00 結束</span>
+                            <span class="promote-pick-end" th:text="|${#temporals.format(p.promoteEnd, 'yyyy/MM/dd')} 結束|">2026/09/30 結束</span>
                             <a class="staff-btn" th:href="@{/staff/promote/add(copyFrom=${p.promoteNo})}">套用</a>
                           </li>
                         </ul>
@@ -541,7 +589,7 @@
   <!-- ================================================================
        【假資料】活動的對話框（假資料的「＋ 新增活動」「詳細」會打開它）
        裡面有三個畫面，一次只顯示一個：
-         畫面一「活動詳細」：按卡片上的「詳細」時顯示，下方有「修改」
+         畫面一「活動詳細」：按卡片上的「詳細」時顯示，下方有「修改」（已經結束的活動沒有「修改」）
          畫面二「新增／修改的表單」：按「＋ 新增活動」，或在畫面一按「修改」時顯示
          畫面三「套用已有活動」：在新增的表單按「套用已有活動」時顯示，挑好之後回到畫面二
        開關、切換與內容由 promote.js 的「B. 假資料」控制。
@@ -568,8 +616,8 @@
             <div><dt>活動編號</dt><dd id="detailNo"></dd></div>
             <div><dt>活動名稱</dt><dd class="promote-detail-name" id="detailName"></dd></div>
             <div><dt>活動狀態</dt><dd><span class="tag" id="detailStatus"></span></dd></div>
-            <div><dt>開始時間</dt><dd id="detailBegin"></dd></div>
-            <div><dt>結束時間</dt><dd id="detailEnd"></dd></div>
+            <div><dt>開始日期</dt><dd id="detailBegin"></dd></div>
+            <div><dt>結束日期</dt><dd id="detailEnd"></dd></div>
             <div><dt>活動內容</dt><dd class="promote-detail-content" id="detailContent"></dd></div>
             <div>
               <dt>活動圖片</dt>
@@ -583,6 +631,7 @@
         </div>
 
         <footer class="promote-foot">
+          <!-- 已經結束的活動不能修改：promote.js 會在狀態是「已結束」時把這顆按鈕藏起來 -->
           <button type="button" class="staff-btn btn-pay" id="promoteToEdit">修改</button>
           <button type="button" class="staff-btn" data-promote-close>關閉</button>
         </footer>
@@ -606,21 +655,39 @@
                    placeholder="例如：雙十節活動" autocomplete="off">
           </div>
 
+          <!-- 開始日期、結束日期：自己做的日期選擇，結構和上面【資料庫資料】的相同。
+               隱藏欄位的值、開始日期要不要鎖住，由 promote.js 在打開表單時設定 -->
           <div class="promote-field-row">
             <div class="promote-field">
-              <label class="promote-label" for="promoteBegin">開始時間 <b>*</b></label>
-              <input type="datetime-local" class="staff-input" id="promoteBegin" name="promoteBegin">
+              <span class="promote-label">開始日期 <b>*</b></span>
+              <div class="promote-date" data-date-picker="begin">
+                <input type="hidden" name="promoteBegin" id="promoteBegin">
+                <button type="button" class="promote-date-btn" data-date-toggle aria-label="選擇開始日期">
+                  <span data-date-text>請選擇日期</span>
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M8 3v4M16 3v4"/></svg>
+                </button>
+                <div class="promote-date-panel" data-date-panel hidden></div>
+              </div>
+              <!-- 修改進行中的活動時才顯示 -->
+              <small class="promote-auto" id="promoteBeginLockNote" hidden>活動進行中，不能修改開始日期。</small>
             </div>
             <div class="promote-field">
-              <label class="promote-label" for="promoteEnd">結束時間 <b>*</b></label>
-              <input type="datetime-local" class="staff-input" id="promoteEnd" name="promoteEnd">
+              <span class="promote-label">結束日期 <b>*</b></span>
+              <div class="promote-date" data-date-picker="end">
+                <input type="hidden" name="promoteEnd" id="promoteEnd">
+                <button type="button" class="promote-date-btn" data-date-toggle aria-label="選擇結束日期">
+                  <span data-date-text>請選擇日期</span>
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M8 3v4M16 3v4"/></svg>
+                </button>
+                <div class="promote-date-panel" data-date-panel hidden></div>
+              </div>
             </div>
           </div>
 
           <!-- 修改的時候顯示「活動狀態」：不用填，會依照上面的開始、結束時間自動判斷（顯示或隱藏由 promote.js 控制） -->
           <div class="promote-field" id="promoteStatusField">
             <span class="promote-label">活動狀態</span>
-            <span class="promote-auto">依開始與結束時間自動判斷：還沒到開始時間是「未開始」，期間內是「進行中」，過了結束時間是「已結束」。</span>
+            <span class="promote-auto">依開始與結束日期自動判斷：還沒到開始日期是「未開始」，期間內是「進行中」，過了結束日期是「已結束」。</span>
           </div>
 
           <!-- 新增的時候顯示「套用已有活動」：按了會換到畫面三，挑一個已結束的活動 -->

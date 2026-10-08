@@ -194,8 +194,87 @@
 /* 挑選畫面裡的搜尋列：佔滿整個寬度 */
 .promote-body .promote-search { max-width: none; }
 
-/* 開始、結束時間左右並排 */
-.promote-field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+/* ---------- 日期選擇（開始日期、結束日期）----------
+   自己做的日期選擇，不用瀏覽器內建的。一個日期欄位是 .promote-date，裡面有：
+     .promote-date-btn    顯示日期的按鈕（按了打開月曆）
+     .promote-date-panel  月曆（一開始藏著，內容由 promote.js 的 A-3 產生）。
+                          它是「跳出來浮在畫面上」的小視窗，不佔版面的位置，打開時下面的欄位不會被推開。 */
+.promote-date { min-width: 0; }
+/* 按鈕：外觀和輸入框一樣，左邊是日期、右邊是月曆的圖示 */
+.promote-date-btn {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  width: 100%; height: 48px;
+  padding: 0 14px 0 16px;
+  background: var(--st-card);
+  border: 1px solid var(--st-border);
+  border-radius: 12px;
+  color: var(--st-text);
+  font: inherit; text-align: left;
+  transition: border-color .2s;
+}
+.promote-date-btn:hover { border-color: var(--st-green); }
+.promote-date-btn:focus-visible { outline: 2px solid var(--st-yellow); outline-offset: 1px; }
+.promote-date-btn svg {
+  flex: none;
+  width: 22px; height: 22px;
+  fill: none; stroke: var(--st-muted); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round;
+}
+/* 還沒選日期：文字變淡 */
+.promote-date.is-empty .promote-date-btn span { color: var(--st-muted); }
+/* 月曆打開的時候：外框變色 */
+.promote-date.is-open .promote-date-btn { border-color: var(--st-green); }
+/* 鎖住（進行中的活動不能改開始日期）：變成不能按的樣子 */
+.promote-date-btn:disabled { background: var(--st-soft); color: var(--st-muted); cursor: not-allowed; }
+.promote-date-btn:disabled:hover { border-color: var(--st-border); }
+
+/* 月曆：跳出來的小視窗
+   position: fixed → 浮在整個畫面的最上層，不佔位置；也不會被對話框裡「可以捲動的區域」切掉。
+   要出現在畫面的哪裡（top、left）由 promote.js 在打開時算好：預設貼在日期按鈕的下面，
+   下面放不下就改放上面。z-index 要比對話框（2500）大，才不會被蓋住。 */
+.promote-date-panel {
+  position: fixed; z-index: 2600;
+  width: min(300px, calc(100vw - 24px));   /* 最寬 300px；手機上不超過畫面寬度 */
+  padding: 12px;
+  background: var(--st-card);
+  border: 1px solid var(--st-border);
+  border-radius: 14px;
+  box-shadow: 0 16px 40px rgba(59, 47, 42, .28);   /* 陰影深一點，看得出是浮在上面的 */
+}
+/* 最上面一列：‹ 2026 年 10 月 › */
+.promote-cal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.promote-cal-title { font-family: var(--st-serif); font-size: 17px; font-weight: 700; }
+.promote-cal-nav {
+  display: grid; place-items: center;
+  width: 36px; height: 36px;
+  background: none; border: 0; border-radius: 50%;
+  color: var(--st-red);
+  font-size: 22px; line-height: 1;
+}
+.promote-cal-nav:hover { background: var(--st-soft); }
+.promote-cal-nav:disabled { color: var(--st-border); cursor: not-allowed; background: none; }
+/* 星期的標題和日期都是一列七格 */
+.promote-cal-week,
+.promote-cal-days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.promote-cal-week span { padding: 4px 0; color: var(--st-muted); font-size: 12px; text-align: center; }
+/* 每一天是一顆圓形的按鈕 */
+.promote-cal-day {
+  aspect-ratio: 1;
+  display: grid; place-items: center;
+  background: none; border: 0; border-radius: 50%;
+  color: var(--st-text);
+  font: inherit; font-size: 14px;
+}
+.promote-cal-day:hover { background: var(--st-soft); }
+/* 今天：外面一圈細線 */
+.promote-cal-day.is-today { box-shadow: inset 0 0 0 1px var(--st-green); }
+/* 選到的那一天：實心的綠色 */
+.promote-cal-day.is-selected { background: var(--st-green); color: #fff; font-weight: 700; }
+/* 不能選的日子（今天以前、或早於開始日期）：變淡、不能按 */
+.promote-cal-day:disabled { color: #cfc5b7; cursor: not-allowed; background: none; }
+.promote-cal-hint { margin-top: 8px; color: var(--st-muted); font-size: 12px; }
+
+/* 開始、結束日期左右並排（align-items: start：一邊多了一行說明時，另一邊不會被拉高） */
+.promote-field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }
 /* 欄位下面的小字提示（圖片要用 16:9） */
 .promote-hint { color: var(--st-red); font-size: 13px; line-height: 1.6; }
 
@@ -228,8 +307,39 @@
 }
 .promote-detail-img img,
 .promote-img-box img { display: block; width: 100%; height: 100%; object-fit: fill; }
-/* 選擇圖片檔案的欄位 */
-.promote-field input[type="file"].staff-input { height: auto; padding: 10px 12px; }
+/* 選擇圖片檔案的欄位
+   瀏覽器內建的樣子是一顆灰色的小按鈕加上檔名，這裡把它改成和後台其他按鈕一樣的風格：
+   外面是一個虛線框（和上面的預覽框呼應），裡面左邊是有顏色的「選擇檔案」按鈕，右邊是選到的檔名。
+   按鈕上的文字（選擇檔案）和「未選擇任何檔案」是瀏覽器自己顯示的，會跟著瀏覽器的語言，CSS 改不了。 */
+.promote-field input[type="file"].staff-input {
+  height: auto;
+  padding: 6px;
+  background: var(--st-card);
+  border: 1px dashed var(--st-border);
+  color: var(--st-muted);
+  font-size: 14px;
+  cursor: pointer;
+}
+.promote-field input[type="file"].staff-input:hover { border-color: var(--st-green); }
+/* ::file-selector-button 就是欄位裡那顆「選擇檔案」的按鈕。
+   目前是鼠尾草綠。其他可以試的顏色（括號裡是滑過時的顏色）：
+     磚紅   var(--st-red)（var(--st-red-dark)）
+     芥末黃 var(--st-yellow)（#cc912e）— 這個底色比較淺，字的顏色 color 要改成 #3b2f2a
+     深咖啡 #6b5d54（#574b44） */
+.promote-field input[type="file"].staff-input::file-selector-button {
+  min-height: 36px;
+  margin-right: 12px;
+  padding: 0 14px;
+  background: var(--st-green);   /* 按鈕的顏色。想換的話改這一行和下面 hover 那一行，其他可以試的顏色寫在上面的註解 */
+  border: 0;
+  border-radius: 8px;
+  color: #fff;
+  font: inherit;
+  font-size: 14px; font-weight: 500;
+  cursor: pointer;
+  transition: background-color .2s;
+}
+.promote-field input[type="file"].staff-input::file-selector-button:hover { background: #7d8a5c; }
 
 .promote-foot {
   flex: none;

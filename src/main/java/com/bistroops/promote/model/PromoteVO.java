@@ -4,9 +4,9 @@ import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.Set;
 
+import com.bistroops.ordersdetails.model.OrdersDetailsVO;
 import com.bistroops.promotemeal.model.PromoteMealVO;
 
-import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -15,38 +15,42 @@ import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
+import jakarta.validation.constraints.Size;
+
 
 @Entity
 @Table(name="promote")
 public class PromoteVO {
-	
+
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
+
 	@Column(name="promote_no")
 	private Integer promoteNo;
-	
+
 	@Column(name="promote_name")
+	@Size(max=10, message="活動名稱不得超過 10 個字(含符號)")
 	private String promoteName;
-	
+
 	@Column(name="promote_begin")
 	private LocalDateTime promoteBegin;
-	
+
 	@Column(name="promote_end")
 	private LocalDateTime promoteEnd;
-	
+
 	@Column(name="promote_content", columnDefinition = "mediumtext")
 	private String promoteContent;
-	
+
 	@Column(name="promote_img", columnDefinition = "mediumblob")
 	private byte[] promoteImg;
-	
+
 	@OneToMany(mappedBy = "promote")
 	@OrderBy("promote asc")
 	private Set<PromoteMealVO> promoteMeals;
-	
-//	@OneToMany(mappedBy = "promote")
-//	@OrderBy("ordersNo asc")
-//	private Set<ordersDetails> ordersDetails;
+
+	@OneToMany(mappedBy = "promote")
+	@OrderBy("ordersDetailsNo asc")
+	private Set<OrdersDetailsVO> ordersDetails;
 
 	public PromoteVO() {
 	}
@@ -108,22 +112,13 @@ public class PromoteVO {
 		this.promoteMeals = promoteMeals;
 	}
 
-//	public Set<ordersDetails> getOrdersDetails() {
-//		return ordersDetails;
-//	}
-//
-//	public void setOrdersDetails(Set<ordersDetails> ordersDetails) {
-//		this.ordersDetails = ordersDetails;
-//	}
-
-	@Override
-	public String toString() {
-		return "PromoteVO [promoteNo=" + promoteNo + ", promoteName=" + promoteName + ", promoteBegin=" + promoteBegin
-				+ ", promoteEnd=" + promoteEnd + ", promoteContent="+ promoteContent + ", promoteImg=" + Arrays.toString(promoteImg) + ", promoteMeals=" + promoteMeals
-				+ "]";
+	public Set<OrdersDetailsVO> getOrdersDetails() {
+		return ordersDetails;
 	}
-	
-	
-	
+
+	public void setOrdersDetails(Set<OrdersDetailsVO> ordersDetails) {
+		this.ordersDetails = ordersDetails;
+	}
+
 
 }
