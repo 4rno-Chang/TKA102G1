@@ -47,11 +47,11 @@ public class OrdersDetailsVO {
 
 	@ManyToOne
 	@JoinColumn(name="meal_no" ,referencedColumnName="meal_no", nullable=false)
-	private MealVO mealNo;
+	private MealVO meal;
 
 	@ManyToOne
 	@JoinColumn(name="promote_no" ,referencedColumnName="promote_no")
-	private PromoteVO promoteNo;
+	private PromoteVO promote;
 
 	@Column(name = "od_meal_num")
 	private Integer odMealNum;
@@ -96,19 +96,19 @@ public class OrdersDetailsVO {
 	}
 
 	public MealVO getMealNo() {
-		return mealNo;
+		return meal;
 	}
 
 	public void setMealNo(MealVO mealNo) {
-		this.mealNo = mealNo;
+		this.meal = mealNo;
 	}
 
 	public PromoteVO getPromoteNo() {
-		return promoteNo;
+		return promote;
 	}
 
 	public void setPromoteNo(PromoteVO promoteNo) {
-		this.promoteNo = promoteNo;
+		this.promote = promoteNo;
 	}
 
 	public Integer getOdMealNum() {

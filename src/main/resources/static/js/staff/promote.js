@@ -5,7 +5,7 @@
    需要先載入 staff.js（用到裡面的 escapeHtml、staffToast）
 
    這個檔案分成兩區：
-     A. 資料庫的畫面也會用到的程式（保留）：送出表單前的檢查、選了圖片之後顯示預覽
+     A. 資料庫的畫面也會用到的程式（保留）：送出表單前的檢查、選了圖片之後顯示預覽、日期選擇
      B. 假資料：只控制 promote.html 裡標示【假資料】的卡片和對話框
 
    【Thymeleaf 串接】資料庫的版本確認沒問題後：
@@ -22,22 +22,53 @@
    這一區和資料無關：
      A-1. 送出表單前先檢查一次，有問題就把訊息顯示在表單上方、不送出
      A-2. 選了圖片之後，在預覽框顯示新選的那一張
+     A-3. 日期選擇：自己做的月曆（只選年月日，不能選今天以前，結束日期最早是開始日期的隔天）
    注意：這些只是方便使用者，Controller 收到資料後還是要自己再檢查一次。
    ===================================================================== */
+
+/* ---------- 日期的小工具（A-1 的檢查和 A-3 的月曆都會用到） ----------
+   活動的開始、結束只選「年月日」，不選幾點幾分。表單送出的日期是 '2026-10-15' 這種文字。
+   文字的格式都一樣（年-月-日，月和日都補成兩位數），所以直接比文字的大小就等於比日期的先後。 */
+
+// Date 物件 → '2026-10-15'
+function toDateText(date) {
+  const two = n => String(n).padStart(2, '0');   // 個位數前面補 0
+  return date.getFullYear() + '-' + two(date.getMonth() + 1) + '-' + two(date.getDate());
+}
+// 今天，格式 '2026-10-15'
+function todayText() {
+  return toDateText(new Date());
+}
+// 把日期往後移幾天：addDays('2026-10-31', 1) → '2026-11-01'
+function addDays(dateText, days) {
+  const [y, m, d] = dateText.split('-').map(Number);
+  return toDateText(new Date(y, m - 1, d + days));
+}
+// 開始日期是不是被鎖住（進行中的活動不能改開始日期，HTML 會在那一格加上 data-locked="yes"）
+function isBeginLocked(form) {
+  const picker = form.querySelector('[data-date-picker="begin"]');
+  return Boolean(picker && picker.dataset.locked === 'yes');
+}
+
 
 /* ---------- A-1. 送出前的檢查 ---------- */
 
 // 檢查表單的內容。沒問題回傳空字串，有問題回傳要顯示的訊息。
 // form 裡的欄位用 name 取得：promoteName、promoteBegin、promoteEnd（和 PromoteVO 的屬性同名）
+// ★ 這些規則 Java 存檔前也要再檢查一次（頁面上的檢查可以被跳過）
 function checkPromoteForm(form) {
   const name = form.promoteName.value.trim();
-  const begin = form.promoteBegin.value;   // 格式是 2026-10-01T10:00
+  const begin = form.promoteBegin.value;   // 格式是 2026-10-15（只有年月日）
   const end = form.promoteEnd.value;
+  const today = todayText();
   if (!name) return '請輸入活動名稱';
   if (name.length > 10) return '活動名稱最多 10 個字';
-  if (!begin || !end) return '請選擇開始時間與結束時間';
-  // 兩個時間的格式相同，所以直接比文字的大小就等於比時間的先後
-  if (end <= begin) return '結束時間要比開始時間晚';
+  if (!begin || !end) return '請選擇開始日期與結束日期';
+  // 開始日期不能早於今天。進行中的活動開始日期是鎖住的（本來就在今天以前），所以不檢查
+  if (!isBeginLocked(form) && begin < today) return '開始日期不能早於今天';
+  if (end < today) return '結束日期不能早於今天';
+  // 結束日期最早是開始日期的隔天（不能同一天）。addDays(begin, 1) 就是開始日期的隔天
+  if (end < addDays(begin, 1)) return '結束日期最早是開始日期的隔天';
   return '';
 }
 
@@ -109,6 +140,213 @@ document.querySelectorAll('[data-img-input]').forEach(input => {
 });
 
 
+/* ---------- A-3. 日期選擇：自己做的月曆 ----------
+   不用瀏覽器內建的日期欄位（每個瀏覽器長得不一樣，也不好限制），改成自己畫的月曆。
+   月曆是「跳出來浮在畫面上」的小視窗，不佔版面的位置：按日期的按鈕就出現在按鈕旁邊，
+   選了日期、點到別的地方、或捲動畫面時會自己關掉。
+
+   HTML 的寫法（資料庫和假資料的表單都一樣）：
+     <div class="promote-date" data-date-picker="begin">      ← begin 是開始日期，end 是結束日期
+       <input type="hidden" name="promoteBegin">              ← 真正送出去的值，格式 2026-10-15
+       <button type="button" class="promote-date-btn" data-date-toggle><span data-date-text></span>…</button>
+       <div class="promote-date-panel" data-date-panel hidden></div>   ← 月曆（跳出來的小視窗），內容和位置由這裡決定
+     </div>
+
+   可以選的範圍：
+     開始日期：不能早於今天
+     結束日期：不能早於今天，而且最早是開始日期的隔天（不能和開始日期同一天）
+   選了開始日期之後，如果原本的結束日期變成不能選的，會把結束日期清掉，請使用者重選。
+   進行中的活動不能改開始日期：那一格有 data-locked="yes"，按鈕會鎖住。
+
+   ★ 這裡只是讓使用者「選不到」不對的日期。隱藏欄位的值還是可以被改，所以 Java 存檔前要用同樣的規則再檢查一次。
+   ★ 送到 Controller 的只有年月日；幾點幾分由 Java 補（開始 00:00、結束 23:59）。 */
+const WEEKDAYS = '日一二三四五六';
+
+// '2026-10-15' → '2026/10/15（四）'
+function dateLabel(dateText) {
+  const [y, m, d] = dateText.split('-').map(Number);
+  return dateText.split('-').join('/') + '（' + WEEKDAYS[new Date(y, m - 1, d).getDay()] + '）';
+}
+
+// 這個日期欄位最早可以選哪一天
+function minDateOf(picker) {
+  const today = todayText();
+  if (picker.dataset.datePicker !== 'end') return today;   // 開始日期：今天
+  // 結束日期：今天，或「開始日期的隔天」，看哪一個比較晚
+  const form = picker.closest('form');
+  const begin = form ? form.promoteBegin.value : '';
+  if (!begin) return today;
+  const afterBegin = addDays(begin, 1);   // 開始日期的隔天
+  return afterBegin > today ? afterBegin : today;
+}
+
+// 依照隱藏欄位的值，更新按鈕上的文字和鎖住的狀態
+function refreshDatePicker(picker) {
+  const input = picker.querySelector('input[type="hidden"]');
+  const button = picker.querySelector('[data-date-toggle]');
+  picker.querySelector('[data-date-text]').textContent = input.value ? dateLabel(input.value) : '請選擇日期';
+  picker.classList.toggle('is-empty', !input.value);
+  button.disabled = picker.dataset.locked === 'yes';
+}
+
+// 關掉月曆
+function closeDatePanel(picker) {
+  picker.querySelector('[data-date-panel]').hidden = true;
+  picker.classList.remove('is-open');
+}
+
+// 決定跳出來的月曆要出現在畫面的哪裡：預設貼在日期按鈕的下面，下面放不下就改放上面。
+// 月曆是 position: fixed（見 promote.css），所以位置是用「離畫面上緣、左緣多遠」來指定
+function placeDatePanel(picker) {
+  const panel = picker.querySelector('[data-date-panel]');
+  // getBoundingClientRect() 會告訴我們按鈕現在在畫面上的位置（top、bottom、left 都是離畫面邊緣的距離）
+  const button = picker.querySelector('[data-date-toggle]').getBoundingClientRect();
+  const GAP = 6;       // 月曆和按鈕之間的距離
+  const MARGIN = 10;   // 月曆離畫面邊緣至少要留多少
+
+  // 上下：先試下面；下面會超出畫面、而且上面放得下，就放上面
+  let top = button.bottom + GAP;
+  const fitsBelow = top + panel.offsetHeight <= window.innerHeight - MARGIN;
+  const topIfAbove = button.top - GAP - panel.offsetHeight;
+  if (!fitsBelow && topIfAbove >= MARGIN) top = topIfAbove;
+  // 上下都放不下（畫面很矮）：盡量留在畫面裡
+  top = Math.max(MARGIN, Math.min(top, window.innerHeight - panel.offsetHeight - MARGIN));
+
+  // 左右：左邊對齊按鈕；會超出畫面右邊就往左移
+  let left = Math.min(button.left, window.innerWidth - panel.offsetWidth - MARGIN);
+  left = Math.max(MARGIN, left);
+
+  panel.style.top = top + 'px';
+  panel.style.left = left + 'px';
+}
+
+// 畫出某一年某一月的月曆。month 是 0～11（JavaScript 的月份從 0 開始）
+function drawDatePanel(picker, year, month) {
+  const panel = picker.querySelector('[data-date-panel]');
+  const value = picker.querySelector('input[type="hidden"]').value;
+  const min = minDateOf(picker);
+  const today = todayText();
+
+  const firstWeekday = new Date(year, month, 1).getDay();      // 這個月 1 號是星期幾（0 是星期日）
+  const daysInMonth = new Date(year, month + 1, 0).getDate();   // 這個月有幾天（下個月的第 0 天＝這個月最後一天）
+
+  // 1 號前面的空格
+  let days = '';
+  for (let i = 0; i < firstWeekday; i++) days += '<span></span>';
+  // 每一天一顆按鈕；早於 min 的不能按
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateText = toDateText(new Date(year, month, d));
+    const classes = ['promote-cal-day'];
+    if (dateText === today) classes.push('is-today');
+    if (dateText === value) classes.push('is-selected');
+    days += `<button type="button" class="${classes.join(' ')}" data-date-day="${dateText}"${dateText < min ? ' disabled' : ''}>${d}</button>`;
+  }
+
+  // 上一個月的最後一天如果早於 min，就沒有可以選的日子，「上個月」不能按
+  const prevDisabled = toDateText(new Date(year, month, 0)) < min;
+  const hint = picker.dataset.datePicker === 'end'
+    ? '結束日期至少需和開始日期相隔一天' : '開始日期不能早於今天';
+
+  panel.dataset.year = year;
+  panel.dataset.month = month;
+  panel.innerHTML = `
+    <div class="promote-cal-head">
+      <button type="button" class="promote-cal-nav" data-date-nav="-1" aria-label="上個月"${prevDisabled ? ' disabled' : ''}>‹</button>
+      <span class="promote-cal-title">${year} 年 ${month + 1} 月</span>
+      <button type="button" class="promote-cal-nav" data-date-nav="1" aria-label="下個月">›</button>
+    </div>
+    <div class="promote-cal-week">${WEEKDAYS.split('').map(w => `<span>${w}</span>`).join('')}</div>
+    <div class="promote-cal-days">${days}</div>
+    <p class="promote-cal-hint">${hint}</p>`;
+
+  // 月曆開著的時候（例如按了上個月、下個月），每個月的列數不一樣、高度會變，所以重新算一次位置
+  if (!panel.hidden) placeDatePanel(picker);
+}
+
+// 打開月曆：顯示「已經選的那個月」；還沒選就顯示最早可以選的那個月
+function openDatePanel(picker) {
+  document.querySelectorAll('[data-date-picker]').forEach(other => { if (other !== picker) closeDatePanel(other); });
+  const value = picker.querySelector('input[type="hidden"]').value;
+  const min = minDateOf(picker);
+  const [y, m] = (value && value >= min ? value : min).split('-').map(Number);
+  // 先讓月曆出現，再畫內容：要先出現，瀏覽器才量得到它的高度，位置才算得出來（drawDatePanel 最後會算位置）
+  picker.querySelector('[data-date-panel]').hidden = false;
+  picker.classList.add('is-open');
+  drawDatePanel(picker, y, m - 1);
+}
+
+// 把所有打開的月曆關掉
+function closeAllDatePanels() {
+  document.querySelectorAll('[data-date-picker].is-open').forEach(closeDatePanel);
+}
+
+// 更新一個表單裡所有的日期欄位（頁面載入時、或程式改了隱藏欄位的值之後呼叫）
+function refreshDatePickers(root) {
+  root.querySelectorAll('[data-date-picker]').forEach(picker => {
+    closeDatePanel(picker);
+    refreshDatePicker(picker);
+  });
+}
+
+document.addEventListener('click', e => {
+  // (1) 按日期的按鈕：打開或關掉月曆
+  const toggle = e.target.closest('[data-date-toggle]');
+  if (toggle) {
+    const picker = toggle.closest('[data-date-picker]');
+    if (picker.querySelector('[data-date-panel]').hidden) openDatePanel(picker);
+    else closeDatePanel(picker);
+    return;
+  }
+
+  // (2) 按「上個月」「下個月」
+  const nav = e.target.closest('[data-date-nav]');
+  if (nav) {
+    const picker = nav.closest('[data-date-picker]');
+    const panel = picker.querySelector('[data-date-panel]');
+    // new Date 會自動處理跨年：12 月的下個月會變成隔年 1 月
+    const target = new Date(Number(panel.dataset.year), Number(panel.dataset.month) + Number(nav.dataset.dateNav), 1);
+    drawDatePanel(picker, target.getFullYear(), target.getMonth());
+    return;
+  }
+
+  // (3) 選了某一天：把日期放進隱藏欄位、關掉月曆
+  const day = e.target.closest('[data-date-day]');
+  if (day) {
+    const picker = day.closest('[data-date-picker]');
+    const form = picker.closest('form');
+    picker.querySelector('input[type="hidden"]').value = day.dataset.dateDay;
+    closeDatePanel(picker);
+    refreshDatePicker(picker);
+
+    // 改了開始日期：結束日期如果變成不能選的（比開始日期早），就清掉請使用者重選
+    if (picker.dataset.datePicker === 'begin' && form) {
+      const endPicker = form.querySelector('[data-date-picker="end"]');
+      const endInput = endPicker.querySelector('input[type="hidden"]');
+      if (endInput.value && endInput.value < minDateOf(endPicker)) endInput.value = '';
+      refreshDatePicker(endPicker);
+    }
+    if (form) showFormError(form, '');
+    return;
+  }
+
+  // (4) 點到月曆以外的地方：把打開的月曆關掉
+  if (!e.target.closest('[data-date-picker]')) closeAllDatePanels();
+});
+
+// 月曆是固定浮在畫面上的，按鈕的位置一變（捲動對話框的內容、平板轉向、視窗大小改變），
+// 月曆就會和按鈕對不上，所以這些時候直接把它關掉，要選再按一次。
+// 第三個參數 true：連「對話框裡面那一塊」的捲動也收得到（一般的寫法只收得到整個頁面的捲動）
+window.addEventListener('scroll', closeAllDatePanels, true);
+window.addEventListener('resize', closeAllDatePanels);
+// 按 Esc 也關掉月曆
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeAllDatePanels();
+});
+
+// 頁面載入時：資料庫的表單（Thymeleaf 已經把日期放進隱藏欄位了）先把按鈕上的文字顯示出來
+refreshDatePickers(document);
+
+
 // ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
 // ▼▼▼  【假資料・刪除範圍 開始】                                          ▼▼▼
 // ▼▼▼   串接完成、確認資料庫的畫面沒問題後，從這一行開始刪，               ▼▼▼
@@ -132,8 +370,9 @@ if (!promoteList) return;
    一筆活動的格式（欄位名稱和 PromoteVO 的屬性相同）：
      promoteNo       活動編號（新增時自動往下編）
      promoteName     活動名稱（最多 10 個字）
-     promoteBegin    開始時間，格式 '2026-10-01T10:00'
-     promoteEnd      結束時間，格式同上
+     promoteBegin    開始時間，格式 '2026-10-01T00:00'（畫面只選年月日，時間固定是那一天的 00:00）
+     promoteEnd      結束時間，格式 '2026-10-10T23:59'（時間固定是那一天的 23:59）
+                     資料庫的版本也是這樣：表單只送年月日，由 Java 補上 00:00 和 23:59 再存。
      promoteImg      活動圖片。假資料沒有資料庫可以存檔案，所以存成一段很長的文字（data URL，
                      用 "data:image/jpeg;base64," 開頭），<img> 的 src 可以直接用它顯示。沒有圖片是空字串。
                      資料庫的版本存的是檔案的內容（byte[]），不會用到這種文字。
@@ -144,35 +383,35 @@ if (!promoteList) return;
    新增、修改是表單送到 POST /staff/promote/save。寫在 promote.html 的【資料庫資料】。 */
 const PromoteDemo = (() => {
   // 示範資料的內容有修改時，把最後的數字加 1，瀏覽器就會改用新的示範資料（舊的暫存不再使用）
-  const STORAGE_KEY = 'bistroopsStaffDemoPromotes5';
+  const STORAGE_KEY = 'bistroopsStaffDemoPromotes6';
 
   // 一開始的示範活動（12 筆，一頁 8 筆，所以會有兩頁）。狀態會跟著今天的日期變：
   // 結束時間已經過了的是「已結束」，還沒到開始時間的是「未開始」，其他是「進行中」
   function defaultPromotes() {
     return [
-      { promoteNo: 1, promoteName: '週年慶活動', promoteBegin: '2026-09-01T10:00', promoteEnd: '2026-09-30T22:00',
+      { promoteNo: 1, promoteName: '週年慶活動', promoteBegin: '2026-09-01T00:00', promoteEnd: '2026-09-30T23:59',
         promoteContent: '週年慶期間，指定主餐享優惠價。' },
-      { promoteNo: 2, promoteName: '中秋節活動', promoteBegin: '2026-09-20T10:00', promoteEnd: '2026-10-06T22:00',
+      { promoteNo: 2, promoteName: '中秋節活動', promoteBegin: '2026-09-20T00:00', promoteEnd: '2026-10-06T23:59',
         promoteContent: '中秋節限定套餐，四人同行招待甜點一份。' },
-      { promoteNo: 3, promoteName: '雙十節活動', promoteBegin: '2026-10-01T10:00', promoteEnd: '2026-10-10T22:00',
+      { promoteNo: 3, promoteName: '雙十節活動', promoteBegin: '2026-10-01T00:00', promoteEnd: '2026-10-10T23:59',
         promoteContent: '雙十國慶期間，指定前菜與飲品第二件半價。' },
-      { promoteNo: 4, promoteName: '平日午間優惠', promoteBegin: '2026-10-01T11:00', promoteEnd: '2026-12-31T14:00',
+      { promoteNo: 4, promoteName: '平日午間優惠', promoteBegin: '2026-10-01T00:00', promoteEnd: '2026-12-31T23:59',
         promoteContent: '週一至週五 11:00–14:00，商業午餐 85 折。' },
-      { promoteNo: 5, promoteName: '夏季消暑活動', promoteBegin: '2026-07-01T11:00', promoteEnd: '2026-08-31T21:00',
+      { promoteNo: 5, promoteName: '夏季消暑活動', promoteBegin: '2026-07-01T00:00', promoteEnd: '2026-08-31T23:59',
         promoteContent: '夏季限定冰品與冷湯，第二份八折。' },
-      { promoteNo: 6, promoteName: '聖誕節活動', promoteBegin: '2026-12-18T10:00', promoteEnd: '2026-12-25T22:00',
+      { promoteNo: 6, promoteName: '聖誕節活動', promoteBegin: '2026-12-18T00:00', promoteEnd: '2026-12-25T23:59',
         promoteContent: '聖誕限定雙人套餐，需提前訂位。' },
-      { promoteNo: 7, promoteName: '開幕慶活動', promoteBegin: '2026-03-01T10:00', promoteEnd: '2026-03-31T22:00',
+      { promoteNo: 7, promoteName: '開幕慶活動', promoteBegin: '2026-03-01T00:00', promoteEnd: '2026-03-31T23:59',
         promoteContent: '開幕期間全品項九折。' },
-      { promoteNo: 8, promoteName: '母親節活動', promoteBegin: '2026-05-01T10:00', promoteEnd: '2026-05-10T22:00',
+      { promoteNo: 8, promoteName: '母親節活動', promoteBegin: '2026-05-01T00:00', promoteEnd: '2026-05-10T23:59',
         promoteContent: '母親節當週，媽媽用餐招待甜點。' },
-      { promoteNo: 9, promoteName: '父親節活動', promoteBegin: '2026-08-01T10:00', promoteEnd: '2026-08-08T22:00',
+      { promoteNo: 9, promoteName: '父親節活動', promoteBegin: '2026-08-01T00:00', promoteEnd: '2026-08-08T23:59',
         promoteContent: '父親節限定牛排套餐。' },
-      { promoteNo: 10, promoteName: '萬聖節活動', promoteBegin: '2026-10-25T10:00', promoteEnd: '2026-10-31T22:00',
+      { promoteNo: 10, promoteName: '萬聖節活動', promoteBegin: '2026-10-25T00:00', promoteEnd: '2026-10-31T23:59',
         promoteContent: '變裝入場招待特調飲品一杯。' },
-      { promoteNo: 11, promoteName: '感恩節活動', promoteBegin: '2026-11-20T10:00', promoteEnd: '2026-11-26T22:00',
+      { promoteNo: 11, promoteName: '感恩節活動', promoteBegin: '2026-11-20T00:00', promoteEnd: '2026-11-26T23:59',
         promoteContent: '感恩節烤雞分享餐，需提前三天預訂。' },
-      { promoteNo: 12, promoteName: '跨年活動', promoteBegin: '2026-12-31T18:00', promoteEnd: '2027-01-01T02:00',
+      { promoteNo: 12, promoteName: '跨年活動', promoteBegin: '2026-12-31T00:00', promoteEnd: '2027-01-01T23:59',
         promoteContent: '跨年夜限定套餐，含香檳一杯。' }
     ];
   }
@@ -258,8 +497,7 @@ let currentPage = 1;      // 第幾頁（從 1 開始）
 function nowText() {
   const now = new Date();
   const two = n => String(n).padStart(2, '0');   // 個位數前面補 0
-  return now.getFullYear() + '-' + two(now.getMonth() + 1) + '-' + two(now.getDate())
-    + 'T' + two(now.getHours()) + ':' + two(now.getMinutes());
+  return toDateText(now) + 'T' + two(now.getHours()) + ':' + two(now.getMinutes());
 }
 
 // ★ 判斷一筆活動的狀態：用開始、結束時間和現在的時間比較
@@ -278,9 +516,10 @@ function statusClass(status) {
   return 'tag-gray';
 }
 
-// '2026-10-01T10:00' → '2026/10/01 10:00'
-function showDateTime(text) {
-  return String(text || '').replace('T', ' ').split('-').join('/');
+// 畫面上只顯示年月日：'2026-10-01T00:00' → '2026/10/01'
+// （slice(0, 10) 是拿前面 10 個字，也就是「年-月-日」的部分）
+function showDate(text) {
+  return String(text || '').slice(0, 10).split('-').join('/');
 }
 
 // 模擬後端的查詢：依狀態、關鍵字篩選 → 依結束時間排序 → 只拿第 page 頁的 8 筆。
@@ -332,8 +571,8 @@ function render() {
       <div class="promote-card-body">
         <h3 class="promote-card-name">${escapeHtml(p.promoteName)}<span class="promote-card-no">編號 ${escapeHtml(p.promoteNo)}</span></h3>
         <p class="promote-card-period">
-          ${escapeHtml(showDateTime(p.promoteBegin))} <small>起</small><br>
-          ${escapeHtml(showDateTime(p.promoteEnd))} <small>止</small>
+          ${escapeHtml(showDate(p.promoteBegin))} <small>起</small><br>
+          ${escapeHtml(showDate(p.promoteEnd))} <small>止</small>
         </p>
         <div class="promote-card-foot">
           <span class="tag ${statusClass(statusOf(p))}">${escapeHtml(statusOf(p))}</span>
@@ -369,6 +608,7 @@ promoteNext.addEventListener('click', () => { currentPage += 1; render(); });
 /* ========== B-3. 活動的對話框（假資料）：活動詳細、新增／修改的表單、套用已有活動 ==========
    對話框裡有三個畫面，一次只顯示一個：
      畫面一「活動詳細」：按卡片上的「詳細」打開，顯示這筆活動全部的資訊，下方有「修改」
+                         （已經結束的活動不能修改，沒有「修改」這顆按鈕）
      畫面二「表單」    ：按「＋ 新增活動」打開，或在畫面一按「修改」換過來
      畫面三「套用已有活動」：在新增的表單按「套用已有活動」打開，挑一個已結束的活動，
                              把它的名稱、內容、圖片帶進表單（程式在 B-4）
@@ -463,12 +703,14 @@ function openDetail(promote) {
   document.getElementById('promoteModalTitle').textContent = '活動詳細';
   document.getElementById('detailNo').textContent = promote.promoteNo;
   document.getElementById('detailName').textContent = promote.promoteName;
-  document.getElementById('detailBegin').textContent = showDateTime(promote.promoteBegin);
-  document.getElementById('detailEnd').textContent = showDateTime(promote.promoteEnd);
+  document.getElementById('detailBegin').textContent = showDate(promote.promoteBegin);
+  document.getElementById('detailEnd').textContent = showDate(promote.promoteEnd);
   document.getElementById('detailContent').textContent = promote.promoteContent || '（沒有填寫）';
   const tag = document.getElementById('detailStatus');
   tag.textContent = status;
   tag.className = 'tag ' + statusClass(status);   // 標籤的顏色跟著狀態換
+  // 已經結束的活動不能修改：把「修改」藏起來，只能看和關閉
+  document.getElementById('promoteToEdit').hidden = status === '已結束';
   showImgPreview(document.getElementById('detailImg'), promote.promoteImg);   // 有圖片就顯示，沒有就是「尚無圖片」
 
   showView('detail');
@@ -484,8 +726,16 @@ function openPromote(promote) {
   document.getElementById('promoteNoText').textContent = promote ? promote.promoteNo : '';
 
   promoteForm.promoteName.value = promote ? promote.promoteName : '';
-  promoteForm.promoteBegin.value = promote ? promote.promoteBegin : '';
-  promoteForm.promoteEnd.value = promote ? promote.promoteEnd : '';
+  // 日期：表單只用年月日（slice(0, 10) 拿掉後面的時間）
+  promoteForm.promoteBegin.value = promote ? promote.promoteBegin.slice(0, 10) : '';
+  promoteForm.promoteEnd.value = promote ? promote.promoteEnd.slice(0, 10) : '';
+  // 進行中的活動不能修改開始日期：把開始日期那一格鎖住，並顯示說明
+  const beginLocked = Boolean(promote) && statusOf(promote) === '進行中';
+  const beginPicker = promoteForm.querySelector('[data-date-picker="begin"]');
+  if (beginLocked) beginPicker.dataset.locked = 'yes';
+  else delete beginPicker.dataset.locked;
+  document.getElementById('promoteBeginLockNote').hidden = !beginLocked;
+  refreshDatePickers(promoteForm);   // 把按鈕上的文字更新成上面設定的日期（A-3）
   promoteForm.promoteContent.value = promote ? promote.promoteContent : '';
 
   // 圖片：清掉上一次選的檔案和上一次套用的圖片，預覽框顯示這筆活動目前的圖片
@@ -523,9 +773,10 @@ promoteList.addEventListener('click', e => {
 });
 
 // 「活動詳細」下方的「修改」：換成表單，並帶入這筆活動目前的內容
+// （已結束的活動這顆按鈕是藏起來的；這裡再檢查一次，資料庫的版本 Controller 也要做同樣的檢查）
 document.getElementById('promoteToEdit').addEventListener('click', () => {
   const promote = PromoteDemo.find(viewingNo);
-  if (promote) openPromote(promote);
+  if (promote && statusOf(promote) !== '已結束') openPromote(promote);
 });
 
 // 點背景、右上角的 ×、「取消」都會關閉
@@ -548,11 +799,15 @@ promoteForm.addEventListener('submit', e => {
   if (error) return;
 
   const isNew = editingNo === null;
+  const original = isNew ? null : PromoteDemo.find(editingNo);
+  // 表單只有年月日，存的時候補上時間：開始是那一天的 00:00，結束是那一天的 23:59（Java 存檔時也要這樣補）。
+  // 進行中的活動不能改開始時間：不管表單送什麼，一律保留原本的（Java 也要這樣做，因為表單的值可以被改）
+  const keepBegin = original && statusOf(original) === '進行中';
   const saved = PromoteDemo.save({
     promoteNo: editingNo,
     promoteName: promoteForm.promoteName.value.trim(),
-    promoteBegin: promoteForm.promoteBegin.value,
-    promoteEnd: promoteForm.promoteEnd.value,
+    promoteBegin: keepBegin ? original.promoteBegin : promoteForm.promoteBegin.value + 'T00:00',
+    promoteEnd: promoteForm.promoteEnd.value + 'T23:59',
     promoteContent: promoteForm.promoteContent.value.trim(),
     // 有選新的圖片就用新的；沒有選：修改時保留原本的，新增時用「套用已有活動」帶進來的（沒有套用就是沒有圖片）
     promoteImg: pendingImg !== null ? pendingImg : currentDemoImg()
@@ -572,7 +827,7 @@ promoteForm.addEventListener('submit', e => {
 
 /* ========== B-4. 套用已有活動（假資料） ==========
    新增活動時，可以從「已經結束」的活動裡挑一個，把它的活動名稱、活動內容、活動圖片帶進表單，
-   再填開始、結束時間就可以儲存（會是一筆新的活動，不會改到原本那一個）。
+   再選開始、結束日期就可以儲存（會是一筆新的活動，不會改到原本那一個）。
 
    畫面的流程：表單的「套用已有活動」→ 畫面三（一開始是空的）→ 輸入活動名稱按「搜尋」→ 顯示結果
                → 按「套用」→ 回到表單，三個欄位已經帶好。
@@ -609,7 +864,7 @@ function renderPickList() {
   promotePickList.innerHTML = ended.map(p => `
     <li class="promote-pick-item">
       <span class="promote-pick-name">${escapeHtml(p.promoteName)}</span>
-      <span class="promote-pick-end">${escapeHtml(showDateTime(p.promoteEnd))} 結束</span>
+      <span class="promote-pick-end">${escapeHtml(showDate(p.promoteEnd))} 結束</span>
       <button type="button" class="staff-btn" data-apply-promote="${escapeHtml(p.promoteNo)}">套用</button>
     </li>`).join('');
 }
@@ -635,7 +890,7 @@ function backToAddForm() {
 }
 document.getElementById('promotePickBack').addEventListener('click', backToAddForm);
 
-// 按某一筆的「套用」：把名稱、內容、圖片帶進表單。開始、結束時間不帶（那是新活動自己的）
+// 按某一筆的「套用」：把名稱、內容、圖片帶進表單。開始、結束日期不帶（那是新活動自己的）
 promotePickList.addEventListener('click', e => {
   const btn = e.target.closest('[data-apply-promote]');
   if (!btn) return;
@@ -652,7 +907,7 @@ promotePickList.addEventListener('click', e => {
   showImgPreview(promoteImgPreview, appliedImg);
 
   document.getElementById('promoteApplyNote').textContent =
-    `已套用「${source.promoteName}」的活動名稱、活動內容${appliedImg ? '和活動圖片' : '（這個活動沒有圖片）'}，請再填寫開始與結束時間。`;
+    `已套用「${source.promoteName}」的活動名稱、活動內容${appliedImg ? '和活動圖片' : '（這個活動沒有圖片）'}，請再選擇開始與結束日期。`;
   showFormError(promoteForm, '');
   backToAddForm();
 });

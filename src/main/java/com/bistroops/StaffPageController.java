@@ -133,7 +133,10 @@ public class StaffPageController {
 	//     (3) 查不到資料要放「空的清單」，不要放 null（null 會讓資料庫那一份整塊不出現）。
 	//     (4) save 的參數建議都加 required = false，再自己用 if 檢查。
 	//         原因：少了必填的參數，或時間的格式不對，Spring 會直接顯示 400 錯誤頁，使用者看不到我們寫的錯誤訊息。
-	//     (5) 時間一定要加 @DateTimeFormat(pattern = "yyyy-MM-dd'T'HH:mm")，不然文字轉不成 LocalDateTime。
+	//     (5) ★ 日期：表單送來的開始、結束只有「年月日」（文字長這樣：2026-10-15），沒有幾點幾分。
+	//         所以不能直接用 LocalDateTime 接（會轉換失敗、變成 400 錯誤頁）。
+	//         要用「只有日期」的型別（LocalDate）接，並用 @DateTimeFormat 指定格式是 年-月-日；
+	//         接到之後再由 Java 補上時間，變成 LocalDateTime 才放進 PromoteVO。完整的規則見下面的「日期與時間的規則」。
 	//     (6) 修改時不要 new 一個新的 PromoteVO 來存：先用 promoteNo 查出原本那一筆，改它的欄位再存。
 	//         new 一個新的來存，沒有設定到的欄位（例如圖片）會被存成 null，原本的圖片就不見了。
 	//     (7) 檢查不通過、要回到表單時，使用者剛剛選的圖片檔案會不見（瀏覽器不能幫忙填回檔案欄位），要請他重選。
@@ -152,13 +155,37 @@ public class StaffPageController {
 	//           org.springframework.web.multipart.MultipartFile
 	//           org.springframework.web.servlet.mvc.support.RedirectAttributes
 	//           org.springframework.http.ResponseEntity、MediaType、HttpHeaders
-	//           java.time.LocalDateTime、java.io.IOException、java.util.List
+	//           java.time.LocalDate、java.time.LocalDateTime、java.io.IOException、java.util.List
 	//           com.bistroops.promote.model.PromoteVO
 	//         另外還需要活動的 Repository／Service（目前 promote 只有 PromoteVO，這兩個要自己新增），
 	//         寫法可以參考 announcement 資料夾裡的 AnnouncementRepository 和 AnnouncementService。
 	//
-	//   要做的事（依照順序）：
+	//   ★★ 日期與時間的規則（畫面上已經擋了，但畫面的檢查可以被跳過，Java 一定要再做一次）★★
+	//     畫面只讓使用者選「年月日」，也只顯示年月日；資料表存的還是完整的時間，幾點幾分由 Java 決定：
+	//       開始時間 ＝ 使用者選的開始日期 的 00:00
+	//       結束時間 ＝ 使用者選的結束日期 的 23:59
+	//     例如開始選 10/15、結束選 10/16，存進去的就是 10/15 00:00 到 10/16 23:59。
 	//
+	//     存檔前要檢查的事（新增和修改都要）：
+	//       a. 開始日期、結束日期都要有。
+	//       b. 開始日期不能早於今天。（例外：進行中的活動，見 d）
+	//       c. 結束日期不能早於今天，而且最早是開始日期的「隔天」（不能和開始日期同一天，也不能更早）。
+	//          畫面上（promote.js）用的是同樣的規則，兩邊要一樣。
+	//       d. 進行中的活動「不能修改開始時間」：
+	//            畫面上開始日期是鎖住的，但表單還是會把它送過來，而且那個值可以被改。
+	//            所以修改時，先查出資料庫原本那一筆，用「原本的時間」判斷它是不是進行中；
+	//            是的話，不管表單送什麼開始日期，都保留原本的開始時間，只更新結束時間和其他欄位。
+	//       e. 已經結束的活動不能修改（一樣用資料庫原本的時間判斷）。
+	//     判斷「今天」要用伺服器的日期，不要相信表單送來的任何「現在是幾號」。
+	//
+	//     顯示：畫面一律只顯示年月日（promote.html 已經用只有年月日的格式轉好了），Java 不用另外處理。
+	//           放進 Model 的還是 PromoteVO 原本的 LocalDateTime，不要先轉成文字。
+	//
+	//     查詢與狀態不受影響：未開始、進行中、已結束還是用「完整的時間」和現在比
+	//     （結束時間是 23:59，所以活動在結束日期當天整天都算進行中，隔天才變成已結束）。
+	//
+	//   要做的事（依照順序）：
+//
 	//   1. 查詢（改下面這個方法）
 	//        ★★ 搜尋、狀態、分頁、排序全部由 Java 去資料庫查，而且一次只查一頁（8 筆）★★
 	//           畫面上按「搜尋」、換狀態、按上一頁／下一頁，都是帶著條件重新連到這個方法，查好再顯示。
@@ -242,21 +269,38 @@ public class StaffPageController {
 	//        和查詢一樣查出那一頁並放 promotes、status、keyword、page、totalPages（呼叫 putList），再把那一筆活動放進去：
 	//        model.addAttribute("promoteForm", 用 promoteNo 查出來的 PromoteVO);
 	//        查不到那一筆（例如網址被改過）就 return "redirect:/staff/promote";
+	//        ★ 已經結束的活動不能修改。畫面上「活動詳細」在狀態是已結束時不顯示「修改」，
+	//          但網址可以自己輸入，所以這裡要再擋一次：查出來的活動如果已經結束
+	//          （promote.getPromoteEnd() != null && LocalDateTime.now().isAfter(promote.getPromoteEnd())），
+	//          就不要打開修改的表單，帶一個訊息回去：
+	//            redirectAttributes.addFlashAttribute("message", "已結束的活動不能修改");
+	//            return "redirect:/staff/promote";
+	//        ★ 進行中的活動可以打開修改的表單，但不能改開始日期。
+	//          這裡不用特別處理：promote.html 會自己用時間判斷這筆是不是進行中，是的話把開始日期鎖住並顯示說明。
+	//          要放進 promoteForm 的，就是查出來的那一筆（開始、結束時間維持原本的 LocalDateTime）。
+	//          真正要擋的地方在儲存（步驟 5）。
 	//        return "staff/promote";
 	//
 	//   5. 儲存（新增一個方法）
 	//        @PostMapping("/promote/save")，表單會送來這些參數（名稱和 PromoteVO 的屬性相同）：
 	//          @RequestParam(required = false) Integer promoteNo        新增時是空的，修改時是活動編號
 	//          @RequestParam(required = false) String promoteName        活動名稱，最多 10 個字（資料表是 VARCHAR(10)）
-	//          @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd'T'HH:mm") LocalDateTime promoteBegin   開始時間
-	//          @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd'T'HH:mm") LocalDateTime promoteEnd     結束時間
+	//          promoteBegin   開始日期。★ 只有年月日（2026-10-15）：用 LocalDate 接，加上 required = false 和指定「年-月-日」格式的 @DateTimeFormat
+	//          promoteEnd     結束日期。同上
 	//          （沒有 promoteStatus：狀態是用時間判斷的，表單不會送，也不用存）
 	//          @RequestParam(required = false) String promoteContent     活動內容
 	//          @RequestParam(value = "upImg", required = false) MultipartFile upImg   活動圖片（沒有選檔案時 upImg.isEmpty() 是 true）
 	//          另外還要 Model model（不通過時用）和 RedirectAttributes redirectAttributes（通過時用）
-	//        （時間送過來的文字長這樣：2026-10-01T10:00，所以要用 @DateTimeFormat 告訴 Spring 怎麼轉成 LocalDateTime）
+	//        （日期送過來的文字長這樣：2026-10-15，沒有幾點幾分；格式不對時 Spring 轉不出來，
+	//          加了 required = false 的話會拿到 null，就可以用下面的檢查顯示自己的錯誤訊息）
 	//        檢查：名稱不能是 null 或空白（promoteName == null || promoteName.isBlank()）、不能超過 10 個字；
-	//              開始和結束時間不能是 null；結束時間要比開始時間晚（promoteEnd.isAfter(promoteBegin)）。
+	//              日期的部分照上面「日期與時間的規則」的 a～e。
+	//        補時間：檢查通過之後，把開始日期補成那一天的 00:00、結束日期補成那一天的 23:59，再放進 PromoteVO。
+	//                修改進行中的活動時，開始時間不要補、也不要換，保留資料庫原本的。
+	//        建議：檢查和補時間寫在 PromoteService，這裡只負責把結果（成功，或錯誤訊息）顯示出來。
+	//        ★ 修改（promoteNo 有值）的時候，先查出原本那一筆；它如果已經結束，就不要存，
+	//          一樣帶「已結束的活動不能修改」的訊息 redirect 回 /staff/promote（理由同步驟 4：表單可以被直接送出）。
+	//          注意是看「資料庫裡原本的結束時間」，不是表單送來的新時間，不然把時間改晚一點就能繞過去。
 	//        通過：promoteNo 是 null → 新增一筆；有值 → 先查出原本那一筆再改欄位（這樣原本的圖片不會被清掉），然後存檔。
 	//              redirectAttributes.addFlashAttribute("message", "已新增活動");   ← 修改時換成「已修改活動」
 	//              return "redirect:/staff/promote";
@@ -330,6 +374,7 @@ public class StaffPageController {
 	//                      PageRequest.of(0, 20, Sort.by("promoteEnd").descending())).getContent()
 	//        (c) 有 copyFrom → 查出那個活動。查不到，或它還沒結束（結束時間不早於現在），就當作沒有 copyFrom。
 	//            new 一個新的 PromoteVO，只設定活動名稱和活動內容（不要設定編號、開始、結束時間、圖片），當作 promoteForm；
+	//            開始、結束日期留空讓使用者自己選（原本的日期都已經過了，本來也不能用）；
 	//            再 model.addAttribute("copyFrom", copyFrom);   ← 表單的隱藏欄位和預覽圖片要用
 	//        (d) save 方法多收 @RequestParam(required = false) Integer copyFrom，決定圖片的順序：
 	//              有上傳新的檔案                              → 用上傳的
