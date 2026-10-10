@@ -80,6 +80,12 @@
 		    <artifactId>spring-boot-starter-data-redis</artifactId>
 		</dependency>
 		
+		<!-- BCrypt 密碼加密 -->
+		<dependency>
+		    <groupId>org.springframework.security</groupId>
+		    <artifactId>spring-security-crypto</artifactId>
+		</dependency>
+		
 		<!-- ========================================================================================== -->
 		<!-- ●前面的jpa已經包含有hibernate，以下為純 hibernate 使用● -->
 
