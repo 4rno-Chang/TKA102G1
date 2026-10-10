@@ -1,12 +1,13 @@
 package com.bistroops.orders.model;
 
 import java.time.LocalDateTime;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.List;
 
-import com.bistroops.feedback.model.FeedBackVO;
+import org.springframework.data.annotation.Transient;
+
 import com.bistroops.ordersdetails.model.OrdersDetailsVO;
 //import com.bistroops.seat.model.SeatVO;
+import com.bistroops.seat.model.SeatVO;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -40,12 +41,12 @@ public class OrdersVO {
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	@Column(name="orders_no")
-	private Integer ordersNo;
+	private Integer orders;
 	
 	//桌號
-//	@ManyToOne
-//	@JoinColumn(name="seat_no",nullable=false)
-//	private SeatVO seatNo;
+	@ManyToOne
+	@JoinColumn(name="seat_no",nullable=false)
+	private SeatVO seatNo;
 	
 	@Column(name="member_no")
 	private Integer memberNo;
@@ -67,33 +68,37 @@ public class OrdersVO {
 	
 	//訂單明細
 	@OneToMany(mappedBy = "orders", fetch = FetchType.EAGER)
-	private Set<OrdersDetailsVO> ordersDetails;
+	private List<OrdersDetailsVO> ordersDetails;
 	
-	//回饋
+//	//回饋
 //	@OneToMany(mappedBy="orders")
-//	private Set<FeedBackVO> feedBack = new HashSet<>();
+//	private List<FeedBackVO> feedBack;
 	
 	
 	
 	public OrdersVO() {
 		super();
 	}
-
-	public Integer getOrdersNo() {
-		return ordersNo;
+	
+	public void setOrders(Integer orders) {
+		this.orders = orders;
+	}
+	
+	public Integer getOrders() {
+		return orders;
 	}
 
-	public void setOrdersNo(Integer ordersNo) {
-		this.ordersNo = ordersNo;
+	public void setOrdersNo(Integer orders) {
+		this.orders = orders;
 	}
 
-//	public SeatVO getSeatNo() {
-//		return seatNo;
-//	}
-//
-//	public void setSeatNo(SeatVO seatNo) {
-//		this.seatNo = seatNo;
-//	}
+	public SeatVO getSeatNo() {
+		return seatNo;
+	}
+
+	public void setSeatNo(SeatVO seatNo) {
+		this.seatNo = seatNo;
+	}
 
 
 	public Integer getMemberNo() {
@@ -144,13 +149,32 @@ public class OrdersVO {
 		this.ordersPay = ordersPay;
 	}
 
-//	public Set<OrdersDetailsVO> getOrdersDetails() {
-//		return ordersDetails;
-//	}
-//
-//	public void setOrdersDetails(Set<OrdersDetailsVO> orders) {
-//		this.ordersDetails = orders;
-//	}
+	public List<OrdersDetailsVO> getOrdersDetails() {
+		return ordersDetails;
+	}
+
+	public void setOrdersDetails(List<OrdersDetailsVO> orders) {
+		this.ordersDetails = orders;
+	}
+	
+	@Transient 
+	public String getStatus() {
+		boolean hasItem=false ,allCancelled=true,allServed =true;
+		for(OrdersDetailsVO item :ordersDetails) {  
+			hasItem =true; 
+			if (!"已取消".equals(item.getOdStatus())) { //不是已取消
+				allCancelled=false;
+				if(!"已送達".equals(item.getOdStatus())) allServed=false;//不是已送達
+			}
+		}
+		if(hasItem &&allCancelled) return "CANCELLED";
+		if(!hasItem || !allServed)return "ACTIVE"; //有明細或沒有全部已送達
+		return (ordersPay != null && !ordersPay.isEmpty()) ?"PAID"  :"DONE"; //已結帳或是完畢
+		
+		
+		//CANCELLED 取消/ACTIVE 用餐中 /PAID 已付款 /DONE 餐點送完未付款 
+	}
+
 
 
 }

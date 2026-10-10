@@ -99,18 +99,18 @@ public class StaffPageController {
 	// 訂單管理：查詢所有訂單
 	// 【Thymeleaf 串接】加上 @RequestParam(required = false) String status、String keyword、String date 和 Model，
 	//   查出符合條件的訂單放進 Model（見 orders.html 的篩選、日期切換與清單）
-	@GetMapping("/orders")
-	public String orders() {
-		return "staff/orders";
-	}
+//	@GetMapping("/orders")
+//	public String orders() {
+//		return "staff/orders";
+//	}
 
 	// 結帳
 	// 【Thymeleaf 串接】加上 @RequestParam(required = false) String order 和 Model，
 	//   放入未結帳的訂單清單；有帶 order 時，把那一筆也放進去（見 checkout.html）
-	@GetMapping("/checkout")
-	public String checkout() {
-		return "staff/checkout";
-	}
+//	@GetMapping("/checkout")
+//	public String checkout() {
+//		return "staff/checkout";
+//	}
 
 	// 活動管理：查詢、新增、修改活動（資料表 promote，VO 是 com.bistroops.promote.model.PromoteVO）
 	// 畫面上每個活動是一張卡片（上面圖片，下面名稱、期間、狀態、「詳細」），按「詳細」看全部的資訊，再從詳細裡按「修改」。
