@@ -197,5 +197,27 @@ public class ReservationService {
 	}
 	
 	
+	public List<ReservationVO> getByMemberNo(Integer memNo) {
+	    return repository.findByMemberNo(memNo);
+	}
+	
+	@Transactional
+	public void cancelForMember(Long rsvNo, Integer memNo) {
+
+	    ReservationVO reservation = repository.findById(rsvNo)
+	            .orElseThrow(() ->
+	                    new IllegalArgumentException("找不到訂位紀錄"));
+
+	    if (!reservation.getMember().getMemNo().equals(memNo)) {
+	        throw new IllegalArgumentException("只能取消自己的訂位");
+	    }
+
+	    if (!"預約".equals(reservation.getRsvStatus())) {
+	        throw new IllegalArgumentException("只有預約中的訂位可以取消");
+	    }
+
+	    reservation.setRsvStatus("取消");
+	    repository.save(reservation);
+	}
 
 }
