@@ -1,0 +1,156 @@
+
+<!DOCTYPE html>
+<html lang="zh-Hant" xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bistroops 後台｜員工管理</title>
+
+<link rel="icon" th:href="@{/images/logo-mark.svg}" type="image/svg+xml">
+<!-- 後台共用樣式 -->
+<link rel="stylesheet" th:href="@{/css/staff/staff.css}">
+
+<!-- 員工管理專用樣式 -->
+<link rel="stylesheet" th:href="@{/css/staff/employees.css}">
+<script th:src="@{/js/staff/staff.js}" defer></script>
+<script th:src="@{/js/staff/employees.js}" defer></script>
+</head>
+
+<body class="staff-layout">
+
+	<!-- 共用後台側邊欄 -->
+	<nav th:replace="~{staff/staff_sidebar :: sidebar('employees')}"></nav>
+
+	<main class="staff-main">
+		<header class="staff-header">
+			<div>
+				<p class="staff-eyebrow">Employee Management</p>
+				<h1 class="staff-title">員工管理</h1>
+			</div>
+			<p class="staff-clock" id="staffClock"></p>
+		</header>
+
+
+		<section class="staff-card">
+			<div class="employee-list-header">
+				<h2 class="staff-card-title">員工列表</h2>
+
+				<button type="button" class="employee-primary-btn"
+					id="addEmployeeBtn">＋ 新增員工</button>
+			</div>
+
+			<div style="overflow-x: auto;">
+				<table class="receipt-table">
+					<thead>
+						<tr>
+							<th>員工照片</th>
+							<th>員工編號</th>
+							<th>員工姓名</th>
+							<th>手機號碼</th>
+							<th>薪資</th>
+							<th>在職狀態</th>
+							<th>操作</th>
+						</tr>
+					</thead>
+					<tbody id="employeeTableBody">
+						<tr>
+							<td colspan="7">正在載入員工資料...</td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+		</section>
+
+	</main>
+
+
+	<!-- 新增員工視窗 -->
+	<div id="employeeModal" class="employee-modal" hidden>
+		<div class="employee-modal-content">
+
+			<div class="employee-modal-header">
+				<h2 id="employeeModalTitle">新增員工</h2>
+				<button type="button" id="closeEmployeeModal"
+					class="employee-close-btn">×</button>
+			</div>
+
+			<form id="employeeForm">
+
+				<div class="employee-form-group">
+					<label for="empName">員工姓名 *</label> <input type="text" id="empName"
+						name="empName" maxlength="30" required>
+				</div>
+
+				<div class="employee-form-group">
+					<label for="empTel">手機號碼 *</label> <input type="tel" id="empTel"
+						name="empTel" maxlength="10" pattern="09[0-9]{8}" required>
+				</div>
+
+				<div class="employee-form-group">
+					<label for="empIce">緊急聯絡人</label> <input type="text" id="empIce"
+						name="empIce" maxlength="30">
+				</div>
+
+				<div class="employee-form-group">
+					<label for="empIcetel">緊急聯絡電話</label> <input type="tel"
+						id="empIcetel" name="empIcetel" maxlength="10">
+				</div>
+
+				<div class="employee-form-group">
+					<label for="empAdd">員工地址</label> <input type="text" id="empAdd"
+						name="empAdd" maxlength="100">
+				</div>
+
+				<div class="employee-form-group">
+					<label for="empSal">員工薪資 *</label> <input type="number" id="empSal"
+						name="empSal" min="0" step="1" required>
+				</div>
+
+				<div class="employee-form-group">
+					<label for="empPhoto">員工照片（選填）</label> <input type="file"
+						id="empPhoto" name="photo"
+						accept="image/jpeg,image/png,image/webp"> <img
+						id="employeePhotoPreview" class="employee-photo-preview"
+						alt="員工照片預覽" hidden>
+				</div>
+
+				<div class="employee-form-actions">
+					<button type="button" id="cancelEmployeeBtn">取消</button>
+					<button type="submit" class="employee-primary-btn">儲存員工</button>
+				</div>
+
+			</form>
+		</div>
+	</div>
+
+
+	<!-- 員工權限設定視窗 -->
+	<div id="employeePermissionModal" class="employee-modal" hidden>
+		<div class="employee-modal-content">
+
+			<div class="employee-modal-header">
+				<h2 id="employeePermissionTitle">員工權限設定</h2>
+				<button type="button" id="closePermissionModal"
+					class="employee-close-btn">×</button>
+			</div>
+
+			<form id="employeePermissionForm">
+
+				<div id="employeePermissionList">正在載入權限資料...</div>
+
+				<div class="employee-form-actions">
+					<button type="button" id="cancelPermissionBtn">取消</button>
+					<button type="submit" class="employee-primary-btn">儲存權限</button>
+				</div>
+
+			</form>
+		</div>
+	</div>
+
+
+
+	<div class="staff-toast" id="staffToast" role="status"
+		aria-live="polite"></div>
+
+</body>
+</html>
