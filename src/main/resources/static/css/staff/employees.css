@@ -1,0 +1,282 @@
+/* 員工管理 */
+.employee-list-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 16px;
+	margin-bottom: 20px;
+}
+
+.employee-primary-btn {
+	background: #a52a2a;
+	color: white;
+	border: none;
+	border-radius: 8px;
+	padding: 10px 18px;
+	cursor: pointer;
+}
+
+.employee-modal[hidden], .employee-photo-preview[hidden] {
+	display: none;
+}
+
+.employee-modal {
+	position: fixed;
+	inset: 0;
+	z-index: 1000;
+	background: rgba(0, 0, 0, 0.55);
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	padding: 20px;
+}
+
+.employee-modal-content {
+	background: white;
+	border-radius: 12px;
+	width: 100%;
+	max-width: 540px;
+	max-height: 90vh;
+	overflow-y: auto;
+	clip-path: inset(0 round 12px);
+	padding: 24px;
+}
+
+.employee-modal-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 20px;
+}
+
+.employee-close-btn {
+	border: none;
+	background: none;
+	font-size: 28px;
+	cursor: pointer;
+}
+
+.employee-form-group {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	margin-bottom: 16px;
+}
+
+.employee-form-group input {
+	padding: 10px;
+	border: 1px solid #ddd;
+	border-radius: 6px;
+}
+
+.employee-photo-preview {
+	width: 100px;
+	height: 100px;
+	object-fit: cover;
+	border-radius: 8px;
+	margin-top: 8px;
+}
+
+.employee-form-actions {
+	display: flex;
+	justify-content: flex-end;
+	gap: 12px;
+	margin-top: 24px;
+}
+
+/* ===== 員工權限勾選清單 ===== */
+#employeePermissionList {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 12px;
+	margin: 20px 0;
+}
+
+.employee-permission-item {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 10px 12px;
+	border: 1px solid #ddd;
+	border-radius: 8px;
+	cursor: pointer;
+}
+
+.employee-permission-item input[type="checkbox"] {
+	width: 16px;
+	height: 16px;
+	cursor: pointer;
+	flex-shrink: 0;
+}
+
+@media ( max-width : 600px) {
+	#employeePermissionList {
+		grid-template-columns: 1fr;
+	}
+}
+
+/* 員工列表操作按鈕 */
+button[data-action="edit"], button[data-action="permissions"], button[data-action="disable"]
+	{
+	background: #a52a2a;
+	color: white;
+	border: none;
+	border-radius: 8px;
+	padding: 10px 18px;
+	cursor: pointer;
+	margin-right: 6px;
+}
+
+/* ===== 員工管理按鈕：統一滑鼠互動效果 ===== */
+
+/* 新增、編輯、權限、停用、儲存 */
+.employee-primary-btn, button[data-action="edit"], button[data-action="permissions"],
+	button[data-action="disable"] {
+	transition: background-color 0.2s ease, box-shadow 0.2s ease, transform
+		0.2s ease;
+}
+
+.employee-primary-btn:hover, button[data-action="edit"]:hover, button[data-action="permissions"]:hover,
+	button[data-action="disable"]:hover {
+	background-color: #8b2020;
+	box-shadow: 0 5px 12px rgba(165, 42, 42, 0.3);
+	transform: translateY(-2px);
+}
+
+/* 取消按鈕：白底、紅字、紅色邊框 */
+.employee-form-actions button[type="button"] {
+	background-color: #fff;
+	color: #a52a2a;
+	border: 1px solid #a52a2a;
+	border-radius: 8px;
+	padding: 10px 18px;
+	cursor: pointer;
+	transition: background-color 0.2s ease, color 0.2s ease, box-shadow 0.2s
+		ease, transform 0.2s ease;
+}
+
+.employee-form-actions button[type="button"]:hover {
+	background-color: #a52a2a;
+	color: white;
+	box-shadow: 0 5px 12px rgba(165, 42, 42, 0.3);
+	transform: translateY(-2px);
+}
+
+/* 右上角 X 關閉按鈕 */
+.employee-close-btn {
+	width: 40px;
+	height: 40px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 8px;
+	color: #a52a2a;
+	transition: background-color 0.2s ease, box-shadow 0.2s ease, transform
+		0.2s ease;
+}
+
+.employee-close-btn:hover {
+	background-color: #fff1ef;
+	box-shadow: 0 4px 10px rgba(165, 42, 42, 0.2);
+	transform: translateY(-2px);
+}
+
+/* 按下時稍微縮小 */
+.employee-primary-btn:active, .employee-form-actions button[type="button"]:active,
+	.employee-close-btn:active, button[data-action="edit"]:active, button[data-action="permissions"]:active,
+	button[data-action="disable"]:active {
+	transform: scale(0.97);
+}
+
+/* ===== 員工列表照片尺寸 ===== */
+#employeeTableBody img {
+	width: 94px;
+	height: 94px;
+	max-width: 94px;
+	max-height: 94px;
+	object-fit: cover;
+	border-radius: 10px;
+	display: block;
+	flex-shrink: 0;
+}
+
+/* ===== 員工權限：勾選互動效果 ===== */
+
+/* 未勾選：白底灰框，滑鼠移入有動畫 */
+.employee-permission-item {
+	transition: background-color 0.2s ease, border-color 0.2s ease, color
+		0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+/* 滑鼠移入：淡紅背景、紅色邊框、微微上浮 */
+.employee-permission-item:hover {
+	background-color: #fff1ef;
+	border-color: #a52a2a;
+	box-shadow: 0 4px 10px rgba(165, 42, 42, 0.15);
+	transform: translateY(-2px);
+}
+
+/* 已勾選：整格變成淡紅色 */
+.employee-permission-item:has(input:checked) {
+	background-color: #fff1ef;
+	border-color: #a52a2a;
+	color: #a52a2a;
+	font-weight: 600;
+}
+
+/* 已勾選且滑鼠移入：陰影加深 */
+.employee-permission-item:has(input:checked):hover {
+	box-shadow: 0 5px 12px rgba(165, 42, 42, 0.25);
+}
+
+/* 勾選框改成 Bistroops 紅色 */
+.employee-permission-item input[type="checkbox"] {
+	accent-color: #a52a2a;
+}
+
+/* 按下時縮小，與儲存按鈕一致 */
+.employee-permission-item:active {
+	transform: scale(0.97);
+}
+
+
+/* ===== 員工列表：停用與復職按鈕樣式 ===== */
+
+/* 取消停用：沿用原本紅色按鈕風格 */
+#employeeTableBody button[data-action="enable"] {
+    background-color: #a52a2a;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 18px;
+    margin-right: 6px;
+    cursor: pointer;
+    transition: background-color 0.2s ease,
+                box-shadow 0.2s ease,
+                transform 0.2s ease;
+}
+
+/* 取消停用：滑鼠移入動畫 */
+#employeeTableBody button[data-action="enable"]:not(:disabled):hover {
+    background-color: #8b2020;
+    box-shadow: 0 5px 12px rgba(165, 42, 42, 0.3);
+    transform: translateY(-2px);
+}
+
+/* 取消停用：按下動畫 */
+#employeeTableBody button[data-action="enable"]:not(:disabled):active {
+    transform: scale(0.97);
+}
+
+/* 停用員工的編輯、權限按鈕：灰色且不可操作 */
+#employeeTableBody button.employee-action-btn:disabled,
+#employeeTableBody button.employee-action-btn:disabled:hover,
+#employeeTableBody button.employee-action-btn:disabled:active {
+    background-color: #e4e4e4;
+    color: #929292;
+    border: none;
+    box-shadow: none;
+    transform: none;
+    transition: none;
+    cursor: not-allowed;
+}

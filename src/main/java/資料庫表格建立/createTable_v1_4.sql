@@ -94,14 +94,14 @@ CREATE TABLE IF NOT EXISTS promote_meal(
 CREATE TABLE IF NOT EXISTS employee(
   emp_no INT UNSIGNED AUTO_INCREMENT COMMENT '員工編號',
   emp_name VARCHAR(30) NOT NULL COMMENT '姓名',
-  emp_password VARCHAR(16) NOT NULL COMMENT '密碼',
+  emp_password VARCHAR(100) NOT NULL COMMENT '密碼',
   emp_tel VARCHAR(10) NOT NULL COMMENT '本人電話',
   emp_ice VARCHAR(30) COMMENT '緊急聯絡人',
   emp_icetel VARCHAR(10) COMMENT '緊急聯絡人電話',
   emp_add VARCHAR(100) COMMENT '地址',
   emp_sal INTEGER NOT NULL COMMENT '月薪',
-  emp_status VARCHAR(2) NOT NULL COMMENT '員工狀態',
-  emp_pic MEDIUMBLOB COMMENT '員工照片',
+  emp_status VARCHAR(2) NOT NULL COMMENT '員工狀態：1在職、2停用',
+  emp_photo MEDIUMBLOB COMMENT '員工照片',
   PRIMARY KEY (emp_no)
 ) COMMENT '員工';
 
@@ -447,12 +447,12 @@ VALUES
     (3, 3, 6, '2026-08-24 20:45:00', '預約', '6人慶生聚餐');
 
 -- 13. 員工 (employee)
-INSERT INTO employee (emp_name, emp_password, emp_tel, emp_ice, emp_icetel, emp_add, emp_sal, emp_status, emp_pic) VALUES
-('陳小心', '12345678', '0987878787', '', '', '', 30000,'在職',null),
-('カイル', '910111213', '0911223344', '愛蜜莉雅', '0987654321', '露格尼卡王國', 40000,'在職',null),
-('張學長', '11111111', '0987654321', '', '', '電腦市程式碼街最強社區666號', 100000,'離職',null),
-('李木子', 'abcdefgh', '0900111222', '', '', '快樂縣可愛鄉聰明路102號', 40000,'在職',null),
-('強滾滾', 'poiuytrew', '0933445566', '張學長', '0987654321', '電腦市程式碼街最強社區666號', 50000, '在職',null);
+INSERT INTO employee (emp_name, emp_password, emp_tel, emp_ice, emp_icetel, emp_add, emp_sal, emp_status, emp_photo) VALUES
+('陳小心', '12345678', '0987878787', '', '', '', 30000,'1',null),
+('カイル', '910111213', '0911223344', '愛蜜莉雅', '0987654321', '露格尼卡王國', 40000,'1',null),
+('張學長', '11111111', '0987654321', '', '', '電腦市程式碼街最強社區666號', 100000,'2',null),
+('李木子', 'abcdefgh', '0900111222', '', '', '快樂縣可愛鄉聰明路102號', 40000,'1',null),
+('強滾滾', 'poiuytrew', '0933445566', '張學長', '0987654321', '電腦市程式碼街最強社區666號', 50000, '1',null);
 
 -- 14. 權限 (permission)
 INSERT INTO permission (perm_exp) VALUES

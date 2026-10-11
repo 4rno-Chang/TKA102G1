@@ -2,6 +2,8 @@ package com.bistroops.employee.model;
 
 import java.util.Set;
 
+import jakarta.persistence.Lob;
+
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -46,6 +48,13 @@ public class EmployeeVO {
 	
 	@Column(name = "emp_status")
 	private String empStatus;
+	
+
+	@JsonIgnore
+	@Lob
+	@Column(name = "emp_photo", columnDefinition = "MEDIUMBLOB")
+	private byte[] empPhoto;
+
 	
 	@JsonIgnore
 	@OneToMany(mappedBy = "employee", cascade = CascadeType.ALL,orphanRemoval = true)
@@ -155,6 +164,15 @@ public class EmployeeVO {
 
 	public void setEmployeepermissions(Set<EmployeePermissionVO> employeepermissions) {
 		this.employeepermissions = employeepermissions;
+	}
+
+
+	public byte[] getEmpPhoto() {
+	    return empPhoto;
+	}
+	
+	public void setEmpPhoto(byte[] empPhoto) {
+	    this.empPhoto = empPhoto;
 	}
 
 
