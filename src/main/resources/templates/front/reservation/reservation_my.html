@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="zh-Hant" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bistroops｜我的訂位</title>
+
+<link rel="stylesheet" th:href="@{/css/front/style.css}">
+<link rel="stylesheet" th:href="@{/css/front/member.css}">
+<link rel="stylesheet" th:href="@{/css/front/reservation.css}">
+<script th:src="@{/js/front/member.js}" defer></script>
+</head>
+
+<body>
+	<div th:replace="~{front/member/member_modals :: modals}"></div>
+	<header th:replace="~{front/front_layout :: header('reservation')}"></header>
+
+	<main class="booking">
+		<div class="container">
+
+			<header class="booking-head">
+				<p class="eyebrow">My Reservations</p>
+				<h1 class="booking-title">我的訂位</h1>
+			</header>
+
+			<section class="booking-card">
+
+				<p th:if="${message != null}" th:text="${message}"></p>
+
+				<p class="form-msg error" th:if="${error != null}"
+					th:text="${error}"></p>
+
+				<p th:if="${#lists.isEmpty(reservations)}">目前沒有訂位紀錄。</p>
+
+				<div style="overflow-x: auto;"
+					th:unless="${#lists.isEmpty(reservations)}">
+
+					<table style="width: 100%; border-collapse: collapse;">
+						<thead>
+							<tr>
+								<th scope="col">訂位編號</th>
+								<th scope="col">用餐日期與時間</th>
+								<th scope="col">桌型</th>
+								<th scope="col">狀態</th>
+								<th scope="col">備註</th>
+								<th scope="col">操作</th>
+							</tr>
+						</thead>
+
+						<tbody>
+							<tr th:each="r : ${reservations}">
+								<td th:text="${r.rsvNo}"></td>
+
+								<td
+									th:text="${#temporals.format(
+        r.rsvDt.rsvDtDatetime, 'yyyy/MM/dd HH:mm')}">
+								</td>
+
+								<td th:text="|${r.seatType.seatTypeNo} 人桌|"></td>
+
+								<td th:text="${r.rsvStatus}"></td>
+
+								<!-- 備註欄位 -->
+								<td
+									th:text="${#strings.isEmpty(r.rsvComment)
+                  ? '無' : r.rsvComment}">
+								</td>
+
+								<!-- 新增的操作欄位：與備註 td 並列 -->
+								<td>
+									<form th:if="${r.rsvStatus == '預約'}"
+										th:action="@{/bistroops/reservation/cancel}" method="post">
+
+										<input type="hidden" name="rsvNo" th:value="${r.rsvNo}">
+
+										<button type="submit" class="btn-outline">取消訂位</button>
+									</form> <span th:unless="${r.rsvStatus == '預約'}">—</span>
+								</td>
+							</tr>
+						</tbody>
+					</table>
+
+				</div>
+
+				<p>
+					<a class="btn-outline" th:href="@{/bistroops/reservation}">
+						前往訂位 </a>
+				</p>
+
+			</section>
+		</div>
+	</main>
+
+	<footer th:replace="~{front/front_layout :: footer}"></footer>
+	<button th:replace="~{front/front_layout :: backToTop}"></button>
+</body>
+
+</html>
