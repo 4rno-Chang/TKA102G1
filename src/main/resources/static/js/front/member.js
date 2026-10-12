@@ -855,6 +855,54 @@ const profileForm = $('profileForm');
 const profileError = $('profileError');
 // 注意：不能寫 profileForm.name，那會取到表單自己的 name 屬性，所以姓名欄位用 id 取得
 const profileName = $('profileName');
+const profileNameMsg = $('profileNameMsg');
+
+const profileEmail = $('profileEmail');
+const profileEmailMsg = $('profileEmailMsg');
+
+// 姓名只能輸入中文、英文
+const NAME_RE = /^[\u3400-\u9FFF\uF900-\uFAFFa-zA-Z]+(?: [\u3400-\u9FFF\uF900-\uFAFFa-zA-Z]+)*$/;
+
+// 檢查姓名
+function checkProfileName() {
+  const name = profileName.value.trim();
+
+  if (name === '') {
+    setMsg(profileNameMsg, '');
+    return true;
+  }
+
+  if (!NAME_RE.test(name)) {
+    setMsg(profileNameMsg, '※姓名只能輸入中文或英文', 'error');
+    return false;
+  }
+
+  setMsg(profileNameMsg, '');
+  return true;
+}
+
+// 檢查 Email
+function checkProfileEmail() {
+  const email = profileEmail.value.trim();
+
+  if (email === '') {
+    setMsg(profileEmailMsg, '');
+    return true;
+  }
+
+  if (!EMAIL_RE.test(email)) {
+    setMsg(profileEmailMsg, '※Email 格式不正確', 'error');
+    return false;
+  }
+
+  setMsg(profileEmailMsg, '');
+  return true;
+}
+
+// 離開欄位時，自動檢查
+profileName.addEventListener('blur', checkProfileName);
+profileEmail.addEventListener('blur', checkProfileEmail);
+
 const birthYear = $('birthYear');
 const birthMonth = $('birthMonth');
 const birthDay = $('birthDay');
@@ -944,17 +992,21 @@ profileForm.addEventListener('submit', e => {
   e.preventDefault();
   setMsg(profileError, '');
 
-  const email = profileForm.email.value.trim();
-  
-  // 載具格式錯誤，不允許送出
-  if (!checkBarcode()) {
-    profileBarcode.focus();
+  // 姓名格式錯誤，不允許送出
+  if (!checkProfileName()) {
+    profileName.focus();
     return;
   }
 
-  // Email 有填才檢查格式
-  if (email !== '' && !EMAIL_RE.test(email)) {
-    setMsg(profileError, '※Email 格式不正確', 'error');
+  // Email 格式錯誤，不允許送出
+  if (!checkProfileEmail()) {
+    profileEmail.focus();
+    return;
+  }
+
+  // 載具格式錯誤，不允許送出
+  if (!checkBarcode()) {
+    profileBarcode.focus();
     return;
   }
 

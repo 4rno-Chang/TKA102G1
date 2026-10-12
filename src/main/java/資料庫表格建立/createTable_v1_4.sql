@@ -177,7 +177,7 @@ CREATE TABLE IF NOT EXISTS member (
   mem_tel CHAR(10) NOT NULL COMMENT '電話',
   mem_name VARCHAR(30) COMMENT '姓名',
   mem_account VARCHAR(16) COMMENT '帳號',
-  mem_password VARCHAR(16) COMMENT '密碼',
+  mem_password VARCHAR(100) COMMENT '密碼',
   mem_mail VARCHAR(30) COMMENT 'Email',
   mem_barcode CHAR(8) COMMENT '載具條碼',
   mem_tag VARCHAR(50) COMMENT '客戶備註',
@@ -318,12 +318,12 @@ INSERT INTO member (
     mem_status
 ) VALUES
 (
-    '0985510798',
+    '0912345678',
     '王小明',
     'wangming01',
-    'Test1234',
+    '{bcrypt}$2y$10$ESZlY8Y.MzLF766jXF.4CuB9qzoXm0/YDTdSpbQGom60rnTwKKDtO',
     'wangming01@example.com',
-    'AB123456',
+    '/AB12345',
     '喜歡靠窗座位',
     '1995-03-15',
     'wang.ming',
@@ -336,9 +336,9 @@ INSERT INTO member (
     '0985510798',
     '陳小華',
     'chenhua02',
-    'Test5678',
+    '{bcrypt}$2y$10$wluGpbXL8u4rOUKBLjjGU.BsiJURH6BK970uv2UlKBByQMx7H2862',
     'chenhua02@example.com',
-    'CD234567',
+    '/CD23456',
     '不吃香菜',
     '1998-07-22',
     NULL,
@@ -348,12 +348,12 @@ INSERT INTO member (
     '已驗證'
 ),
 (
-    '0985510798',
+    '0911111111',
     '林小美',
     'linmei03',
-    'Test9012',
+    '{bcrypt}$2y$10$nd.4i4UlqHTSVHjsH604CegjjzH3EAPhRBOJyFb.4ox4SPMVwxpBq',
     'linmei03@example.com',
-    'EF345678',
+    '/EF34567',
     '生日用餐',
     '2000-11-08',
     'lin.meimei',
@@ -447,12 +447,30 @@ VALUES
     (3, 3, 6, '2026-08-24 20:45:00', '預約', '6人慶生聚餐');
 
 -- 13. 員工 (employee)
-INSERT INTO employee (emp_name, emp_password, emp_tel, emp_ice, emp_icetel, emp_add, emp_sal, emp_status, emp_photo) VALUES
-('陳小心', '12345678', '0987878787', '', '', '', 30000,'1',null),
-('カイル', '910111213', '0911223344', '愛蜜莉雅', '0987654321', '露格尼卡王國', 40000,'1',null),
-('張學長', '11111111', '0987654321', '', '', '電腦市程式碼街最強社區666號', 100000,'2',null),
-('李木子', 'abcdefgh', '0900111222', '', '', '快樂縣可愛鄉聰明路102號', 40000,'1',null),
-('強滾滾', 'poiuytrew', '0933445566', '張學長', '0987654321', '電腦市程式碼街最強社區666號', 50000, '1',null);
+INSERT INTO employee
+(emp_name, emp_password, emp_tel, emp_ice,
+ emp_icetel, emp_add, emp_sal, emp_status, emp_photo)
+VALUES
+('陳小心',
+ '{bcrypt}$2y$10$6SYYr3G35GKj0Ekhw6UKd.y6sUTmCBp4/jWfykkSo0YHlJ0r1qa9q',
+ '0987878787', '', '', '', 30000, '1', NULL),
+
+('カイル',
+ '{bcrypt}$2y$10$BEoKQ7peCLE37..771PRgece9Vv/bzU1jQXGoSvGphSzIJz/BJ11S',
+ '0911223344', '愛蜜莉雅', '0987654321', '露格尼卡王國', 40000, '1', NULL),
+
+('張學長',
+ '{bcrypt}$2y$10$Nxb9YSwhmDWc58oUYd1KWumgnHseCQlDJgaLEMyVWpqprQ.rnuck.',
+ '0987654321', '', '', '電腦市程式碼街最強社區666號', 100000, '2', NULL),
+
+('李木子',
+ '{bcrypt}$2y$10$OMPcRNLstLX4WZVQne5LcuXvTudI5K89ZRHW7lC5bremWmKZ5tod2',
+ '0900111222', '', '', '快樂縣可愛鄉聰明路102號', 40000, '1', NULL),
+
+('強滾滾',
+ '{bcrypt}$2y$10$4hmVp4LxpKKQ.A5XlbhnIOTUfu9p4cmY.fGKpBLOJjtAgSR5YmiSK',
+ '0933445566', '張學長', '0987654321',
+ '電腦市程式碼街最強社區666號', 50000, '1', NULL);
 
 -- 14. 權限 (permission)
 INSERT INTO permission (perm_exp) VALUES
