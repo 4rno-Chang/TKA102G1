@@ -14,6 +14,7 @@ import java.awt.Font;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
+import java.security.SecureRandom;
 
 import javax.imageio.ImageIO;
 
@@ -204,6 +205,163 @@ public class MemberController {
 			    return "ERROR";
 			}
 			
+			// 會員中心：發送手機認證碼
+			@PostMapping("/member/sendVerifyPhoneCode")
+			@ResponseBody
+			public String sendVerifyPhoneCode(HttpSession session) {
+
+			    // 取得目前登入會員
+			    MemberVO member = (MemberVO) session.getAttribute("member");
+
+			    // 尚未登入
+			    if (member == null) {
+			        return "NOT_LOGIN";
+			    }
+
+			    // 已經驗證過
+			    if ("已驗證".equals(member.getMemStatus())) {
+			        return "ALREADY_VERIFIED";
+			    }
+			    
+			    // 限制 60 秒內不可重複發送
+			    Long lastSendTime = (Long) session.getAttribute("memberVerifyLastSendTime");
+
+			    long now = System.currentTimeMillis();
+
+			    if (lastSendTime != null && now - lastSendTime < 60_000L) {
+			        return "TOO_FAST";
+			    }
+
+			    // 產生六位數驗證碼
+			    SecureRandom random = new SecureRandom();
+			    String code = String.format("%06d", random.nextInt(1000000));
+
+			    // 使用獨立 Session，避免影響忘記密碼、修改密碼
+			    session.setAttribute("memberVerifyCode", code);
+			    session.setAttribute("memberVerifyPhone", member.getMemTel());
+			    session.setAttribute("memberVerifyExpireAt",
+			            System.currentTimeMillis() + 5 * 60 * 1000L);
+			    
+			    // 記錄本次發送時間
+			    session.setAttribute("memberVerifyLastSendTime", now);
+			    
+			    // 新驗證碼發送成功，錯誤次數歸零
+			    session.setAttribute("memberVerifyErrorCount", 0);
+
+			    // 測試階段：驗證碼印在 Eclipse Console
+			    System.out.println("會員手機認證：" + member.getMemTel());
+			    System.out.println("會員認證碼：" + code);
+
+			    return "OK";
+			}
+			
+			// 會員中心：確認手機驗證碼
+			@PostMapping("/member/verifyPhone")
+			@ResponseBody
+			public String verifyPhone( @RequestParam String code,  HttpSession session) {
+
+			    // 取得目前登入會員
+			    MemberVO member = (MemberVO) session.getAttribute("member");
+
+			    if (member == null) {
+			        return "NOT_LOGIN";
+			    }
+
+			    // 從資料庫取得最新會員資料
+			    MemberVO currentMember =
+			            memberService.getMemNoQuery(member.getMemNo());
+
+			    if (currentMember == null) {
+			        return "NOT_LOGIN";
+			    }
+
+			    // 已經驗證過
+			    if ("已驗證".equals(currentMember.getMemStatus())) {
+			        return "ALREADY_VERIFIED";
+			    }
+
+			    // 取得 Session 中的驗證碼、手機、過期時間
+			    String savedCode =
+			            (String) session.getAttribute("memberVerifyCode");
+
+			    String savedPhone =
+			            (String) session.getAttribute("memberVerifyPhone");
+
+			    Long expireAt =
+			            (Long) session.getAttribute("memberVerifyExpireAt");
+
+			    // 尚未發送驗證碼
+			    if (savedCode == null || savedPhone == null || expireAt == null) {
+			        return "NO_CODE";
+			    }
+
+			    // 驗證碼已過期
+			    if (System.currentTimeMillis() > expireAt) {
+			        session.removeAttribute("memberVerifyCode");
+			        session.removeAttribute("memberVerifyPhone");
+			        session.removeAttribute("memberVerifyExpireAt");
+
+			        return "EXPIRED";
+			    }
+
+			    // 確認驗證碼對應的是目前登入會員的手機
+			    if (!savedPhone.equals(currentMember.getMemTel())) {
+			        return "PHONE_ERROR";
+			    }
+
+			    // 驗證碼錯誤次數
+			    Integer errorCount =
+			            (Integer) session.getAttribute("memberVerifyErrorCount");
+
+			    if (errorCount == null) {
+			        errorCount = 0;
+			    }
+
+			    // 已經錯誤 5 次，禁止繼續驗證
+			    if (errorCount >= 5) {
+			        return "TOO_MANY_ERRORS";
+			    }
+
+			    // 驗證碼錯誤
+			    if (!savedCode.equals(code)) {
+
+			        errorCount++;
+
+			        session.setAttribute("memberVerifyErrorCount", errorCount);
+
+			        // 第 5 次錯誤，立即使驗證碼失效
+			        if (errorCount >= 5) {
+			            session.removeAttribute("memberVerifyCode");
+			            session.removeAttribute("memberVerifyPhone");
+			            session.removeAttribute("memberVerifyExpireAt");
+
+			            return "TOO_MANY_ERRORS";
+			        }
+
+			        return "ERROR";
+			    }
+
+			    // 驗證成功，更新 MySQL
+			    boolean result =
+			            memberService.verifyMemberPhone(currentMember.getMemNo());
+
+			    if (!result) {
+			        return "UPDATE_ERROR";
+			    }
+
+			    // 同步更新 Session 中的會員狀態
+			    currentMember.setMemStatus("已驗證");
+			    session.setAttribute("member", currentMember);
+
+			    // 驗證碼使用完畢，立即刪除
+			    session.removeAttribute("memberVerifyCode");
+			    session.removeAttribute("memberVerifyPhone");
+			    session.removeAttribute("memberVerifyExpireAt");
+			    session.removeAttribute("memberVerifyErrorCount");
+
+			    return "OK";
+			}
+			
 			// 忘記密碼－即時驗證手機與驗證碼
 			@PostMapping("/member/verifyForgotCode")
 			@ResponseBody
@@ -321,6 +479,13 @@ public class MemberController {
 
 			    // 移除 Session 中的會員資料
 			    session.removeAttribute("member");
+			    
+			    // 登出時一併清除會員手機認證資料
+			    session.removeAttribute("memberVerifyCode");
+			    session.removeAttribute("memberVerifyPhone");
+			    session.removeAttribute("memberVerifyExpireAt");
+			    session.removeAttribute("memberVerifyLastSendTime");
+			    session.removeAttribute("memberVerifyErrorCount");
 
 			    // 登出後顯示提示
 			    redirectAttributes.addFlashAttribute(
@@ -374,6 +539,22 @@ public class MemberController {
 	    //沒有登入
 	    if (member == null) {
 	    	return "redirect:" + returnUrl;
+	    }
+	    
+	    // 從資料庫取得最新會員狀態
+	    MemberVO currentMember =
+	            memberService.getMemNoQuery(member.getMemNo());
+
+	    // 未驗證會員禁止修改個人資料
+	    if (currentMember == null ||
+	            !"已驗證".equals(currentMember.getMemStatus())) {
+
+	        redirectAttributes.addFlashAttribute(
+	                "toastMsg",
+	                "請先完成手機驗證，才能修改會員資料"
+	        );
+
+	        return "redirect:" + returnUrl;
 	    }
 
 	    //取得目前登入會員的會員編號
@@ -452,12 +633,28 @@ public class MemberController {
 	        returnUrl = "/bistroops";
 	    }
 		
-	    // 取得目前登入會員
+	 // 取得目前登入會員
 	    MemberVO member = (MemberVO) session.getAttribute("member");
 
 	    // 沒有登入
 	    if (member == null) {
-	    	return "redirect:" + returnUrl;
+	        return "redirect:" + returnUrl;
+	    }
+
+	    // 從資料庫取得最新會員狀態
+	    MemberVO currentMember =
+	            memberService.getMemNoQuery(member.getMemNo());
+
+	    // 未驗證會員禁止修改密碼
+	    if (currentMember == null ||
+	            !"已驗證".equals(currentMember.getMemStatus())) {
+
+	        redirectAttributes.addFlashAttribute(
+	                "toastMsg",
+	                "請先完成手機驗證，才能修改密碼"
+	        );
+
+	        return "redirect:" + returnUrl;
 	    }
 
 	    // 取得 Session 中的驗證碼

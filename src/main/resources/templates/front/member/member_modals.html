@@ -349,14 +349,25 @@
 				<div class="member-body">
 					<!-- 左側選單 -->
 					<nav class="member-nav" aria-label="會員中心選單">
+
 						<button type="button" data-member-tab="profile">個人資料</button>
-						<button type="button" data-member-tab="orders">歷史訂單</button>
-						<button type="button" data-member-tab="reservations">預約紀錄</button>
-						<button type="button" data-member-tab="coupons">優惠券</button>
+
+						<button type="button" data-member-tab="orders"
+							th:disabled="${session.member == null or session.member.memStatus != '已驗證'}">歷史訂單</button>
+
+						<button type="button" data-member-tab="reservations"
+							th:disabled="${session.member == null or session.member.memStatus != '已驗證'}">預約紀錄</button>
+
+						<button type="button" data-member-tab="coupons"
+							th:disabled="${session.member == null or session.member.memStatus != '已驗證'}">優惠券</button>
+
 						<button type="button" data-logout>登出</button>
+
 					</nav>
 
 					<div class="member-content">
+
+
 
 						<!-- ---------- 個人資料 ---------- -->
 						<section class="member-panel" data-panel="profile">
@@ -379,44 +390,92 @@
 								method="post"
 								th:attr="data-birthday=${session.member?.memBirth}" novalidate>
 								<input type="hidden" id="profileReturnUrl" name="returnUrl">
-								
+
 								<div class="field">
-									<label for="profileName">姓名</label> <input type="text" id="profileName" name="name" maxlength="20" autocomplete="name" th:value="${session.member?.memName}">
-									<p class="form-msg error" id="profileNameMsg" hidden> ※姓名只能輸入中文或英文</p>
+									<label for="profileName">姓名</label> <input type="text"
+										id="profileName" name="name" maxlength="20"
+										autocomplete="name" th:value="${session.member?.memName}"
+										th:disabled="${session.member == null or session.member.memStatus != '已驗證'}">
+									<p class="form-msg error" id="profileNameMsg" hidden>
+										※姓名只能輸入中文或英文</p>
 								</div>
 
 								<div class="field">
-								    <label for="profileEmail">Email</label>
-								    <input type="email" id="profileEmail" name="email"  placeholder="填寫可獲取最新消息通知"  autocomplete="email"								           th:value="${session.member?.memMail}">
-								    <p class="form-msg error" id="profileEmailMsg" hidden> ※Email 格式不正確</p>
+									<label for="profileEmail">Email</label> <input type="email"
+										id="profileEmail" name="email" placeholder="填寫可獲取最新消息通知"
+										autocomplete="email" th:value="${session.member?.memMail}"
+										th:disabled="${session.member == null or session.member.memStatus != '已驗證'}">
+									<p class="form-msg error" id="profileEmailMsg" hidden>
+										※Email 格式不正確</p>
 								</div>
 
 								<div class="field">
 									<label for="profilePhone">手機</label>
-									<!-- 手機是登入帳號，這裡只顯示不開放修改 -->
-									<input type="tel" id="profilePhone" name="phone" th:value="${session.member?.memTel}" readonly>
-								</div>
 
+									<div class="field-row">
+										<input type="tel" id="profilePhone" name="phone"
+											th:value="${session.member?.memTel}" readonly>
+
+										<button type="button" class="btn-small"
+											id="verifyPhoneSendCode"
+											th:if="${session.member != null and session.member.memStatus != '已驗證'}">
+											發送驗證碼</button>
+
+										<span class="field-static verified" th:if="${session.member != null and session.member.memStatus == '已驗證'}">已驗證</span>
+									</div>
+
+									<div
+										th:if="${session.member != null and session.member.memStatus != '已驗證'}">
+										<label for="verifyPhoneCode">輸入驗證碼</label>
+
+										<div class="field-row">
+											<input type="text" id="verifyPhoneCode" inputmode="numeric"
+												maxlength="6" autocomplete="one-time-code"
+												placeholder="請輸入六位數驗證碼">
+
+											<button type="button" class="btn-small"
+												id="verifyPhoneSubmit">確認驗證</button>
+										</div>
+
+										<p class="form-msg" id="verifyPhoneMsg" hidden></p>
+									</div>
+								</div>
 								<!-- 手機條碼載具 -->
 								<div class="field">
-									<label for="profileBarcode">手機條碼載具</label> <input type="text" id="profileBarcode" name="memBarcode" maxlength="8" placeholder="/ABC1234" th:value="${session.member?.memBarcode}">
+									<label for="profileBarcode">手機條碼載具</label> <input type="text"
+										id="profileBarcode" name="memBarcode" maxlength="8"
+										placeholder="/ABC1234"
+										th:value="${session.member?.memBarcode}"
+										th:disabled="${session.member == null or session.member.memStatus != '已驗證'}">
 									<p class="form-msg" id="profileBarcodeMsg" hidden></p>
 								</div>
 
 								<div class="field">
 									<label for="birthYear">生日</label>
 									<div class="birthday-row">
-										<select id="birthYear" name="birthYear" aria-label="年"></select><span>年</span>
-										<select id="birthMonth" name="birthMonth" aria-label="月"></select><span>月</span>
-										<select id="birthDay" name="birthDay" aria-label="日"></select><span>日</span>
+										<select id="birthYear" name="birthYear" aria-label="年"
+											th:disabled="${session.member == null or session.member.memStatus != '已驗證'}"></select><span>年</span>
+
+										<select id="birthMonth" name="birthMonth" aria-label="月"
+											th:disabled="${session.member == null or session.member.memStatus != '已驗證'}"></select><span>月</span>
+
+										<select id="birthDay" name="birthDay" aria-label="日"
+											th:disabled="${session.member == null or session.member.memStatus != '已驗證'}"></select><span>日</span>
 									</div>
 								</div>
 
-								<p class="form-msg error" id="profileError" th:text="${profileError}" th:hidden="${profileError == null}"></p>
+								<p class="form-msg error" id="profileError"
+									th:text="${profileError}" th:hidden="${profileError == null}"></p>
 
 								<div class="form-actions">
-									<button type="button" class="btn-outline" data-member-tab="password">更改密碼</button>
-									<button type="submit" class="btn-solid">送出</button>
+
+									<button type="button" class="btn-outline"
+										data-member-tab="password"
+										th:disabled="${session.member == null or session.member.memStatus != '已驗證'}">更改密碼</button>
+
+									<button type="submit" class="btn-solid"
+										th:disabled="${session.member == null or session.member.memStatus != '已驗證'}">送出</button>
+
 								</div>
 							</form>
 						</section>
@@ -444,7 +503,8 @@
 									<span class="field-label">電話</span>
 
 									<div class="field-row">
-										<span class="field-static" id="changePwPhone" th:text="${session.member?.memTel}">09XXXXXXXX</span>
+										<span class="field-static" id="changePwPhone"
+											th:text="${session.member?.memTel}">09XXXXXXXX</span>
 										<button type="button" class="btn-small" id="changePwSendCode">發送驗證碼</button>
 									</div>
 
@@ -452,15 +512,19 @@
 								</div>
 
 								<div class="field">
-									<label for="changePwCode">輸入驗證碼</label> <input type="text" id="changePwCode" name="code" inputmode="numeric" maxlength="6" autocomplete="one-time-code">
+									<label for="changePwCode">輸入驗證碼</label> <input type="text"
+										id="changePwCode" name="code" inputmode="numeric"
+										maxlength="6" autocomplete="one-time-code">
 									<p class="form-msg" id="changePwCodeMsg" hidden></p>
 								</div>
 
 								<div class="field">
 									<label for="changePwNew">更改新密碼</label>
 									<div class="input-wrap">
-										<input type="password" id="changePwNew" name="password" data-pw autocomplete="new-password">
-										<button type="button" class="pw-toggle" data-pw-toggle aria-label="顯示密碼">
+										<input type="password" id="changePwNew" name="password"
+											data-pw autocomplete="new-password">
+										<button type="button" class="pw-toggle" data-pw-toggle
+											aria-label="顯示密碼">
 											<svg viewBox="0 0 24 24" aria-hidden="true">
 												<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" />
 												<circle cx="12" cy="12" r="3" />
@@ -476,8 +540,10 @@
 								<div class="field">
 									<label for="changePwNew2">再次輸入新密碼</label>
 									<div class="input-wrap">
-										<input type="password" id="changePwNew2" name="password2" data-pw-confirm autocomplete="new-password">
-										<button type="button" class="pw-toggle" data-pw-toggle aria-label="顯示密碼">
+										<input type="password" id="changePwNew2" name="password2"
+											data-pw-confirm autocomplete="new-password">
+										<button type="button" class="pw-toggle" data-pw-toggle
+											aria-label="顯示密碼">
 											<svg viewBox="0 0 24 24" aria-hidden="true">
 												<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" />
 												<circle cx="12" cy="12" r="3" />
@@ -487,7 +553,8 @@
 									<p class="form-msg error" data-pw-mismatch hidden>※與密碼不相符請重新輸入</p>
 								</div>
 
-								<p class="form-msg error" id="changePwError" th:text="${changePwError}" th:hidden="${changePwError == null}"></p>
+								<p class="form-msg error" id="changePwError"
+									th:text="${changePwError}" th:hidden="${changePwError == null}"></p>
 
 								<div class="form-actions">
 									<button type="submit" class="btn-solid">送出</button>
