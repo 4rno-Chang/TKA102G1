@@ -16,7 +16,7 @@ import com.bistroops.reservationdatetime.model.ReservationDatetimeRepository;
 import com.bistroops.reservationdatetime.model.ReservationDatetimeVO;
 import com.bistroops.seattype.model.SeatTypeRepository;
 import com.bistroops.seattype.model.SeatTypeVO;
-
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 @Service
@@ -195,29 +195,252 @@ public class ReservationService {
 				member.getMemMail() == null ? "" : member.getMemMail(), "note",
 				reservation.getRsvComment() == null ? "" : reservation.getRsvComment());
 	}
-	
-	
+
 	public List<ReservationVO> getByMemberNo(Integer memNo) {
-	    return repository.findByMemberNo(memNo);
+		return repository.findByMemberNo(memNo);
 	}
-	
+
+	// 會員取消自己的訂位。
+	// 保留資料，只將狀態改為「取消」。
 	@Transactional
 	public void cancelForMember(Long rsvNo, Integer memNo) {
 
-	    ReservationVO reservation = repository.findById(rsvNo)
-	            .orElseThrow(() ->
-	                    new IllegalArgumentException("找不到訂位紀錄"));
+		ReservationVO reservation = getOwnedReservationForUpdate(rsvNo, memNo);
 
-	    if (!reservation.getMember().getMemNo().equals(memNo)) {
-	        throw new IllegalArgumentException("只能取消自己的訂位");
-	    }
+		requireFutureReservation(reservation);
 
-	    if (!"預約".equals(reservation.getRsvStatus())) {
-	        throw new IllegalArgumentException("只有預約中的訂位可以取消");
-	    }
+		reservation.setRsvStatus("取消");
+	}
 
-	    reservation.setRsvStatus("取消");
-	    repository.save(reservation);
+	// 後台修改訂位備註。
+	// 此方法保留原本名稱，既有 Controller 可繼續使用。
+	@Transactional
+	public void updateComment(Long rsvNo, String rsvComment) {
+
+		ReservationVO reservation = getReservationForUpdate(rsvNo);
+
+		if (!Set.of("預約", "實到").contains(reservation.getRsvStatus())) {
+			throw new IllegalArgumentException("只有預約或實到的訂位可以修改備註");
+		}
+
+		reservation.setRsvComment(normalizeComment(rsvComment));
+	}
+
+	// 會員查詢自己的一筆訂位明細。
+	public ReservationVO getOneForMember(Long rsvNo, Integer memNo) {
+
+		checkMemberNo(memNo);
+		checkReservationNo(rsvNo);
+
+		ReservationVO reservation = repository.findById(rsvNo)
+				.orElseThrow(() -> new IllegalArgumentException("找不到訂位紀錄"));
+
+		requireOwner(reservation, memNo);
+
+		return reservation;
+	}
+
+	// 會員修改自己的訂位備註。
+	// 日期、時段與桌型維持原訂位內容。
+	@Transactional
+	public void updateCommentForMember(Long rsvNo, Integer memNo, String rsvComment) {
+
+		ReservationVO reservation = getOwnedReservationForUpdate(rsvNo, memNo);
+
+		requireFutureReservation(reservation);
+
+		reservation.setRsvComment(normalizeComment(rsvComment));
+	}
+
+	// 後台查詢一筆訂位明細。
+	public ReservationVO getOneReservation(Long rsvNo) {
+
+		checkReservationNo(rsvNo);
+
+		return repository.findById(rsvNo).orElseThrow(() -> new IllegalArgumentException("找不到訂位紀錄"));
+	}
+
+	// 後台取消尚未結束的訂位。
+	// 與會員取消不同，員工可處理已到用餐時間的預約。
+	@Transactional
+	public void cancelByStaff(Long rsvNo) {
+
+		ReservationVO reservation = getReservationForUpdate(rsvNo);
+
+		requireReserved(reservation);
+
+		reservation.setRsvStatus("取消");
+	}
+
+	// 後台將訂位標記為「實到」。
+	// 這裡只更新到店狀態，不分配桌號、不建立訂單。
+	@Transactional
+	public void markArrivedByStaff(Long rsvNo) {
+
+		ReservationVO reservation = getReservationForUpdate(rsvNo);
+
+		requireReserved(reservation);
+
+		LocalDateTime diningTime = reservation.getRsvDt().getRsvDtDatetime();
+
+		if (diningTime == null) {
+			throw new IllegalArgumentException("訂位缺少用餐時間");
+		}
+
+		if (!diningTime.toLocalDate().equals(LocalDate.now())) {
+			throw new IllegalArgumentException("只能將今日的訂位標記為實到");
+		}
+
+		reservation.setRsvStatus("實到");
+	}
+
+	// 後台將已到用餐時間的預約標記為「未到」。
+	@Transactional
+	public void markNoShowByStaff(Long rsvNo) {
+
+		ReservationVO reservation = getReservationForUpdate(rsvNo);
+
+		requireReserved(reservation);
+
+		LocalDateTime diningTime = reservation.getRsvDt().getRsvDtDatetime();
+
+		if (diningTime == null) {
+			throw new IllegalArgumentException("訂位缺少用餐時間");
+		}
+
+		if (diningTime.isAfter(LocalDateTime.now())) {
+			throw new IllegalArgumentException("尚未到用餐時間，不能標記為未到");
+		}
+
+		reservation.setRsvStatus("未到");
+	}
+
+	// 會員中心使用的訂位清單。
+	// current：尚未到用餐時間且仍為「預約」。
+	// history：其餘紀錄，包括取消、實到、未到與已過時間的預約。
+	public Map<String, List<ReservationVO>> getMemberReservationGroups(Integer memNo) {
+
+		checkMemberNo(memNo);
+
+		List<ReservationVO> reservations = repository.findByMemberNo(memNo);
+
+		LocalDateTime now = LocalDateTime.now();
+
+		List<ReservationVO> current = reservations.stream()
+				.filter(reservation -> isCurrentReservation(reservation, now)).toList();
+
+		List<ReservationVO> history = reservations.stream()
+				.filter(reservation -> !isCurrentReservation(reservation, now)).toList();
+
+		return Map.of("current", current, "history", history);
+	}
+
+	// 後台首頁的訂位摘要。
+	// 「最近一輪」定義為今日尚未開始、仍有預約的最近時段。
+	// 不包含候位統計。
+	public Map<String, Object> getStaffReservationSummary() {
+
+		LocalDateTime now = LocalDateTime.now();
+		LocalDateTime tomorrow = now.toLocalDate().plusDays(1).atStartOfDay();
+
+		List<ReservationVO> upcoming = repository.findUpcomingReservations(now, tomorrow);
+
+		Map<String, Object> summary = new LinkedHashMap<>();
+
+		if (upcoming.isEmpty()) {
+			summary.put("nextRoundTime", "今日無後續訂位");
+			summary.put("nextRoundCount", 0L);
+
+			return summary;
+		}
+
+		LocalDateTime nextTime = upcoming.get(0).getRsvDt().getRsvDtDatetime();
+
+		long nextRoundCount = upcoming.stream()
+				.filter(reservation -> nextTime.equals(reservation.getRsvDt().getRsvDtDatetime())).count();
+
+		summary.put("nextRoundTime", nextTime.toLocalTime().toString());
+
+		summary.put("nextRoundCount", nextRoundCount);
+
+		return summary;
+	}
+
+	// 以下為共用檢查方法。
+
+	private ReservationVO getReservationForUpdate(Long rsvNo) {
+
+		checkReservationNo(rsvNo);
+
+		return repository.findByIdForUpdate(rsvNo).orElseThrow(() -> new IllegalArgumentException("找不到訂位紀錄"));
+	}
+
+	private ReservationVO getOwnedReservationForUpdate(Long rsvNo, Integer memNo) {
+
+		checkMemberNo(memNo);
+
+		ReservationVO reservation = getReservationForUpdate(rsvNo);
+
+		requireOwner(reservation, memNo);
+
+		return reservation;
+	}
+
+	private void requireOwner(ReservationVO reservation, Integer memNo) {
+
+		if (reservation.getMember() == null || !memNo.equals(reservation.getMember().getMemNo())) {
+			throw new IllegalArgumentException("你無法操作這筆訂位");
+		}
+	}
+
+	private void requireReserved(ReservationVO reservation) {
+
+		if (!"預約".equals(reservation.getRsvStatus())) {
+			throw new IllegalArgumentException("只有預約中的訂位可以執行此操作");
+		}
+	}
+
+	private void requireFutureReservation(ReservationVO reservation) {
+
+		requireReserved(reservation);
+
+		LocalDateTime diningTime = reservation.getRsvDt().getRsvDtDatetime();
+
+		if (diningTime == null || !diningTime.isAfter(LocalDateTime.now())) {
+			throw new IllegalArgumentException("已到用餐時間，請聯絡餐廳處理");
+		}
+	}
+
+	private boolean isCurrentReservation(ReservationVO reservation, LocalDateTime now) {
+
+		LocalDateTime diningTime = reservation.getRsvDt().getRsvDtDatetime();
+
+		return "預約".equals(reservation.getRsvStatus()) && diningTime != null && diningTime.isAfter(now);
+	}
+
+	private String normalizeComment(String rsvComment) {
+
+		String comment = rsvComment == null ? "" : rsvComment.trim();
+
+		if (comment.codePointCount(0, comment.length()) > 50) {
+			throw new IllegalArgumentException("備註最多50個字元");
+		}
+
+		return comment;
+	}
+
+	private void checkReservationNo(Long rsvNo) {
+
+		if (rsvNo == null || rsvNo <= 0) {
+			throw new IllegalArgumentException("訂位編號必須大於零");
+		}
+	}
+
+	private void checkMemberNo(Integer memNo) {
+
+		if (memNo == null || memNo <= 0) {
+			throw new IllegalArgumentException("請先登入有效會員");
+		}
 	}
 
 }

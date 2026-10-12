@@ -1132,82 +1132,65 @@ memberContent.addEventListener('click', e => {
 // ---------- 預約紀錄 ----------
 const resvList = $('resvList');
 const resvTabs = memberModal.querySelectorAll('[data-resv-tab]');
-let resvTab = 'current';   // 目前顯示：current 當前訂位／history 歷史訂位
 
-// 【Thymeleaf 串接】預約紀錄
-//   「當前訂位」和「歷史訂位」兩份清單都由 HTML 的 th:each 先產生好
-//   （見 member_modals.html 的 resvList），JS 只負責切換要顯示哪一份。
-//   把整個函式換成：
-//
-//     function loadReservations() {
-//       resvTabs.forEach(btn => btn.classList.toggle('active', btn.dataset.resvTab === resvTab));
-//       $('resvCurrent').hidden = resvTab !== 'current';
-//       $('resvHistory').hidden = resvTab !== 'history';
-//     }
-async function loadReservations() {
-  const reservations = await memberApi.getReservations();
-  const list = reservations[resvTab];
-  resvTabs.forEach(btn => btn.classList.toggle('active', btn.dataset.resvTab === resvTab));
+let resvTab = 'current';
 
-  if (list.length === 0) {
-    resvList.innerHTML = `<p class="empty-text">目前沒有${resvTab === 'current' ? '進行中的' : '歷史'}訂位</p>`;
-    return;
+function loadReservations() {
+  resvTabs.forEach(button => {
+    const selected = button.dataset.resvTab === resvTab;
+
+    button.classList.toggle('active', selected);
+    button.setAttribute('aria-pressed', String(selected));
+  });
+
+  const currentList = $('resvCurrent');
+  const historyList = $('resvHistory');
+
+  if (currentList) {
+    currentList.hidden = resvTab !== 'current';
   }
 
-  resvList.innerHTML = list.map(resv => `
-    <div class="record-item">
-      <div class="record-head">
-        <span class="record-info">
-          <span>${escapeHtml(formatDate(resv.date))}</span>
-          <span>${escapeHtml(resv.time)}</span>
-          <span>${escapeHtml(resv.people)} 人</span>
-        </span>
-        <span class="record-actions">
-          <button type="button" class="btn-small" data-toggle-record aria-expanded="false">訂位明細</button>
-          ${resvTab === 'current'
-            ? `<button type="button" class="btn-small danger" data-cancel-resv="${escapeHtml(resv.id)}">取消訂位</button>`
-            : ''}
-        </span>
-      </div>
-      <div class="record-body" hidden>
-        <p>訂位編號：${escapeHtml(resv.id)}</p>
-        <p>用餐時間：${escapeHtml(formatDate(resv.date))} ${escapeHtml(resv.time)}</p>
-        <p>用餐人數：${escapeHtml(resv.people)} 人</p>
-        <p>備註：${escapeHtml(resv.note || '無')}</p>
-      </div>
-    </div>`).join('');
+  if (historyList) {
+    historyList.hidden = resvTab !== 'history';
+  }
 }
 
-resvTabs.forEach(btn => {
-  btn.addEventListener('click', () => {
-    resvTab = btn.dataset.resvTab;
+resvTabs.forEach(button => {
+  button.addEventListener('click', () => {
+    resvTab = button.dataset.resvTab;
     loadReservations();
   });
 });
 
-// 【Thymeleaf 串接】取消訂位
-//   HTML 裡每筆訂位的「取消訂位」按鈕會各自包在一個小表單內（見 member_modals.html 的 resvList），
-//   按下去就直接送到 Controller。JS 只要在送出前跳確認視窗，把下面整段換成：
-//
-//     resvList.addEventListener('submit', e => {
-//       if (!confirm('確定要取消這筆訂位嗎？')) e.preventDefault();   // 按「取消」就不送出
-//     });
-//
-//   Controller 要做的事：取消訂位後，帶 startTab="reservations"、toastMsg="已取消訂位" redirect 回頁面
-resvList.addEventListener('click', async e => {
-  const btn = e.target.closest('[data-cancel-resv]');
-  if (!btn) return;
-  if (!confirm('確定要取消這筆訂位嗎？')) return;
+let reservationSubmitting = false;
 
-  btn.disabled = true;
-  const result = await memberApi.cancelReservation(btn.dataset.cancelResv);
-  if (!result.ok) {
-    btn.disabled = false;
-    showToast(result.message || '取消失敗，請稍後再試');
+resvList.addEventListener('submit', event => {
+  const form = event.target;
+
+  if (!(form instanceof HTMLFormElement)) return;
+
+  if (reservationSubmitting) {
+    event.preventDefault();
     return;
   }
-  await loadReservations();
-  showToast('已取消訂位');
+
+  if (form.hasAttribute('data-reservation-cancel')) {
+    if (!confirm('確定要取消這筆訂位嗎？')) {
+      event.preventDefault();
+      return;
+    }
+  }
+
+  reservationSubmitting = true;
+  form.setAttribute('aria-busy', 'true');
+});
+
+window.addEventListener('pageshow', () => {
+  reservationSubmitting = false;
+
+  resvList.querySelectorAll('form').forEach(form => {
+    form.removeAttribute('aria-busy');
+  });
 });
 
 // ---------- 優惠券 ----------

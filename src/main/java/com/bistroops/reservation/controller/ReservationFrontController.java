@@ -169,52 +169,8 @@ public class ReservationFrontController {
 	}
 	
 	
-	@RequestMapping(value = "/my", method = RequestMethod.GET)
-	public String showMyReservations(
-	        HttpSession session,
-	        Model model,
-	        RedirectAttributes redirectAttributes) {
-
-	    MemberVO member = (MemberVO) session.getAttribute("member");
-
-	    if (member == null) {
-	        redirectAttributes.addFlashAttribute("error", "請先登入會員");
-	        return "redirect:/bistroops/reservation";
-	    }
-
-	    model.addAttribute(
-	            "reservations",
-	            reservationService.getByMemberNo(member.getMemNo()));
-
-	    return "front/reservation/reservation_my";
-	}
 	
-	@RequestMapping(value = "/cancel", method = RequestMethod.POST)
-	public String cancel(
-	        @RequestParam(name = "rsvNo") Long rsvNo,
-	        HttpSession session,
-	        RedirectAttributes redirectAttributes) {
 
-	    MemberVO member = (MemberVO) session.getAttribute("member");
-
-	    if (member == null) {
-	        redirectAttributes.addFlashAttribute("error", "請先登入會員");
-	        return "redirect:/bistroops/reservation";
-	    }
-
-	    try {
-	        reservationService.cancelForMember(
-	                rsvNo, member.getMemNo());
-
-	        redirectAttributes.addFlashAttribute(
-	                "message", "訂位已取消");
-
-	    } catch (IllegalArgumentException e) {
-	        redirectAttributes.addFlashAttribute(
-	                "error", e.getMessage());
-	    }
-
-	    return "redirect:/bistroops/reservation/my";
-	}
+	   
 
 }
