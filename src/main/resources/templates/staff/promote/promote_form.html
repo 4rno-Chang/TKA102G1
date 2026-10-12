@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="zh-Hant" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bistroops 後台｜活動管理</title>
+  <link rel="icon" th:href="@{/images/logo-mark.svg}" type="image/svg+xml">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;700&display=swap">
+  <link rel="stylesheet" th:href="@{/css/staff/staff.css}" />
+  <link rel="stylesheet" th:href="@{/css/staff/promote.css}" />
+  <script th:src="@{/js/staff/staff.js}" defer></script>
+  <script th:src="@{/js/staff/promote.js}" defer></script>
+</head>
+
+
+<body class="staff-layout">
+  <nav th:replace="~{staff/staff_sidebar :: sidebar('promote')}"></nav>
+
+  <main class="staff-main">
+    <header class="staff-header">
+      <div>
+        <p class="staff-eyebrow">Promote</p>
+        <h1 class="staff-title">活動管理</h1>
+      </div>
+      <p class="staff-clock" id="staffClock"></p>
+    </header>
+
+    <div class="source-block" th:if="${promoteForm != null}"
+         th:with="formEnded=${promoteForm.promoteNo != null and promoteForm.promoteEnd != null and #temporals.createNow().isAfter(promoteForm.promoteEnd)}">
+      <p class="source-line"><span class="source-tag source-db">資料庫資料</span></p>
+
+      <section class="promote-panel" th:if="${formEnded}">
+        <header class="promote-head">
+          <div class="promote-head-text">
+            <h2 class="promote-title">修改活動</h2>
+            <p class="promote-sub">這個活動已經結束，不能修改。</p>
+          </div>
+          <a class="promote-back" th:href="@{/staff/promote(status=${param.status}, keyword=${param.keyword}, page=${param.page})}">← 返回活動列表</a>
+        </header>
+        <div class="promote-body">
+          <p class="promote-alert">
+            「<span th:text="${promoteForm.promoteName}">活動名稱</span>」已經在
+            <span th:text="${#temporals.format(promoteForm.promoteEnd, 'yyyy/MM/dd')}">2026/09/30</span> 結束，已結束的活動只能查看，不能修改。
+          </p>
+        </div>
+      </section>
+
+      <!-- 還沒結束的活動（或新增）：顯示表單 -->
+      <section class="promote-panel" th:unless="${formEnded}">
+        <header class="promote-head">
+          <div class="promote-head-text">
+            <h2 class="promote-title" th:text="${promoteForm.promoteNo == null} ? '新增活動' : '修改活動'">新增活動</h2>
+            <p class="promote-sub">標示 <b>*</b> 的欄位必填。活動圖片會顯示在首頁的輪播。</p>
+          </div>
+          <a class="promote-back" th:href="@{/staff/promote(status=${param.status}, keyword=${param.keyword}, page=${param.page})}">← 返回活動列表</a>
+        </header>
+
+        <form class="promote-form" id="dbPromoteForm" th:action="@{/staff/promote/save}" method="post" enctype="multipart/form-data">
+          <input type="hidden" name="promoteNo" th:value="${promoteForm.promoteNo}">
+          <input type="hidden" name="status" th:value="${param.status}">
+          <input type="hidden" name="keyword" th:value="${param.keyword}">
+          <input type="hidden" name="page" th:value="${param.page}">
+
+          <div class="promote-body">
+            <p class="promote-alert" th:if="${errorMsg != null}" th:text="${errorMsg}">錯誤訊息</p>
+            <p class="promote-alert" data-form-error hidden></p>
+
+            <div class="promote-cols">
+            <div class="promote-col">
+
+            <div class="promote-field" th:if="${promoteForm.promoteNo != null}">
+              <span class="promote-label">活動編號</span>
+              <span th:text="${promoteForm.promoteNo}">1</span>
+            </div>
+
+            <div class="promote-field">
+              <label class="promote-label" for="dbPromoteName">活動名稱 <b>*</b><small>最多 10 個字</small></label>
+              <input type="text" class="staff-input" id="dbPromoteName" name="promoteName" maxlength="10" required
+                     th:value="${promoteForm.promoteName}" placeholder="例如：雙十節活動" autocomplete="off">
+            </div>
+
+            <div class="promote-field-row"
+                 th:with="now=${#temporals.createNow()},
+                          beginLocked=${promoteForm.promoteNo != null and promoteForm.promoteBegin != null and !now.isBefore(promoteForm.promoteBegin) and (promoteForm.promoteEnd == null or !now.isAfter(promoteForm.promoteEnd))}">
+              <div class="promote-field">
+                <span class="promote-label">開始日期 <b>*</b></span>
+                <div class="promote-date" data-date-picker="begin" th:attr="data-locked=${beginLocked} ? 'yes'">
+                  <input type="hidden" data-date-value id="dbPromoteBegin" th:value="${#temporals.format(promoteForm.promoteBegin, 'yyyy-MM-dd')}">
+                  <input type="hidden" name="promoteBegin" data-date-full th:value="${#temporals.format(promoteForm.promoteBegin, 'yyyy-MM-dd''T''HH:mm')}">
+                  <button type="button" class="promote-date-btn" data-date-toggle aria-label="選擇開始日期">
+                    <span data-date-text>請選擇日期</span>
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M8 3v4M16 3v4"/></svg>
+                  </button>
+                  <div class="promote-date-panel" data-date-panel hidden></div>
+                </div>
+                <small class="promote-auto" th:if="${beginLocked}">活動進行中，不能修改開始日期。</small>
+              </div>
+              <div class="promote-field">
+                <span class="promote-label">結束日期 <b>*</b></span>
+                <div class="promote-date" data-date-picker="end">
+                  <input type="hidden" data-date-value id="dbPromoteEnd" th:value="${#temporals.format(promoteForm.promoteEnd, 'yyyy-MM-dd')}">
+                  <input type="hidden" name="promoteEnd" data-date-full th:value="${#temporals.format(promoteForm.promoteEnd, 'yyyy-MM-dd''T''HH:mm')}">
+                  <button type="button" class="promote-date-btn" data-date-toggle aria-label="選擇結束日期">
+                    <span data-date-text>請選擇日期</span>
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M8 3v4M16 3v4"/></svg>
+                  </button>
+                  <div class="promote-date-panel" data-date-panel hidden></div>
+                </div>
+              </div>
+            </div>
+
+
+            <div class="promote-field" th:if="${promoteForm.promoteNo != null}">
+              <span class="promote-label">活動狀態</span>
+              <span class="promote-auto">依開始與結束日期自動判斷：還沒到開始日期是「未開始」，期間內是「進行中」，過了結束日期是「已結束」。</span>
+            </div>
+
+            <div class="promote-field" th:if="${promoteForm.promoteNo == null}">
+              <span class="promote-label">套用已有活動</span>
+              <div class="promote-apply">
+                <button type="button" class="staff-btn" data-coming-soon="套用已有活動">套用已有活動</button>
+                <span class="promote-auto">可從已經結束的活動套用其活動名稱和活動內容（不會套用圖片）。請先套用，再選擇日期。</span>
+              </div>
+            </div>
+
+            <div class="promote-field">
+              <label class="promote-label" for="dbPromoteContent">活動內容</label>
+              <textarea class="staff-input" id="dbPromoteContent" name="promoteContent" rows="6"
+                        th:text="${promoteForm.promoteContent}" placeholder="活動的說明文字"></textarea>
+            </div>
+
+            </div>
+            <div class="promote-col promote-col-side">
+            <div class="promote-field">
+              <label class="promote-label" for="dbPromoteImg">活動圖片</label>
+
+              <div class="promote-img-box" data-img-preview>
+                <img th:if="${promoteForm.promoteImg != null}"
+                     th:src="@{/staff/promote/img(promoteNo=${promoteForm.promoteNo})}" alt="目前的活動圖片">
+                <th:block th:if="${promoteForm.promoteImg == null}">尚無圖片</th:block>
+              </div>
+              <input type="file" class="staff-input" id="dbPromoteImg" name="upImg" accept="image/*" data-img-input>
+              <small class="promote-hint">這張圖會顯示在首頁的輪播，建議使用 16:9 的圖片（例如 1600×900）。其他比例的圖片顯示時會被拉成 16:9（會變形），不留白、不裁切；上面的預覽就是它在首頁上的樣子。檔案最大 5MB。</small>
+            </div>
+            </div>
+            </div>
+          </div>
+
+          <footer class="promote-foot">
+            <a class="staff-btn" th:href="@{/staff/promote(status=${param.status}, keyword=${param.keyword}, page=${param.page})}">取消</a>
+            <button type="submit" class="staff-btn btn-pay">儲存</button>
+          </footer>
+        </form>
+      </section>
+    </div>
+  </main>
+
+
+  <div class="promote-modal" id="promotePickModal" hidden>
+    <div class="promote-backdrop" data-pick-close></div>
+
+    <section class="promote-dialog" role="dialog" aria-modal="true" aria-labelledby="promotePickHeading">
+      <header class="promote-head">
+        <h2 class="promote-title" id="promotePickHeading">
+          套用已有活動
+          <span class="source-tag" th:if="${promoteForm != null}">假資料</span>
+        </h2>
+        <button type="button" class="promote-close" data-pick-close aria-label="關閉">×</button>
+      </header>
+
+      <div class="promote-view">
+        <div class="promote-body">
+          <form class="promote-search" id="promotePickForm">
+            <input type="search" class="staff-input" id="promotePickSearch" placeholder="搜尋活動名稱" aria-label="搜尋已結束的活動">
+            <button type="submit" class="staff-btn">搜尋</button>
+          </form>
+          <p class="promote-auto">只會搜尋已經結束的活動，結果依結束時間排序（最近結束的在最上面）。</p>
+          <ul class="promote-pick-list" id="promotePickList"></ul>
+        </div>
+
+        <footer class="promote-foot">
+          <button type="button" class="staff-btn" data-pick-close>← 返回</button>
+        </footer>
+      </div>
+    </section>
+  </div>
+
+  <div class="staff-toast" id="staffToast" role="status" aria-live="polite"></div>
+</body>
+
+</html>

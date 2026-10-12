@@ -95,20 +95,20 @@ public class OrdersDetailsVO {
 		this.orders = orders;
 	}
 
-	public MealVO getMealNo() {
+	public MealVO getMeal() {
 		return meal;
 	}
 
-	public void setMealNo(MealVO mealNo) {
-		this.meal = mealNo;
+	public void setMeal(MealVO meal) {
+		this.meal = meal;
 	}
 
-	public PromoteVO getPromoteNo() {
+	public PromoteVO getPromote() {
 		return promote;
 	}
 
-	public void setPromoteNo(PromoteVO promoteNo) {
-		this.promote = promoteNo;
+	public void setPromote(PromoteVO promote) {
+		this.promote = promote;
 	}
 
 	public Integer getOdMealNum() {

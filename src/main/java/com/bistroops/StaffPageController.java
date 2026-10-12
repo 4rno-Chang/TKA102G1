@@ -410,10 +410,6 @@ public class StaffPageController {
 	//
 	// 1～6 全部做好、確認資料庫的畫面沒問題後，照 promote.html 開頭的步驟刪掉假資料
 	// （第 7 項可以在刪掉假資料之前或之後做；之後做的話，假資料的樣子就看不到了，建議先做）。
-	@GetMapping("/promote")
-	public String promote() {
-		return "staff/promote";
-	}
 
 	// 員工管理頁面
 	@GetMapping("/employees")

@@ -1,7 +1,11 @@
 /* =========================================================
-   Bistroops 員工後台：活動管理（promote.html）
+   Bistroops 員工後台：活動管理
+   兩個頁面共用這一個檔案（都在 templates/staff/promote/）：
+     promote_list.html   列表頁：工具列、卡片、分頁、「活動詳細」的對話框
+     promote_form.html   表單頁：新增／修改活動的表單、「套用已有活動」的對話框
    需要先載入 staff.css（使用它的 --st-* 變數，以及 .staff-card、.staff-btn、.staff-input、.chip、.tag、.source-tag）
-   內容：1. 訊息　2. 工具列（狀態、搜尋、新增）　3. 活動的卡片與分頁　4. 對話框（活動詳細、新增／修改）　5. 手機
+   內容：1. 訊息　2. 工具列（狀態、搜尋、新增）　3. 活動的卡片與分頁　4. 對話框、活動詳細、表單　5. 表單頁的版面　6. 手機
+   列表頁用到 1～4（對話框、活動詳細的部分）；表單頁用到 1、4（表單、對話框的部分）、5。
    ========================================================= */
 
 
@@ -115,7 +119,9 @@
 .promote-pager-btn.is-disabled { color: var(--st-border); cursor: not-allowed; background: var(--st-card); }
 
 
-/* ========== 4. 對話框（活動詳細、新增／修改的表單） ========== */
+/* ========== 4. 對話框、活動詳細、表單 ==========
+   對話框（.promote-modal）有兩個地方在用：列表頁的「活動詳細」、表單頁的「套用已有活動」。
+   新增／修改的表單（.promote-form）在表單頁，放在一張卡片（.promote-panel，見第 5 段）裡，不是對話框。 */
 .promote-modal {
   position: fixed; inset: 0; z-index: 2500;
   display: flex;
@@ -152,8 +158,9 @@
 }
 .promote-close:hover { background: var(--st-card); }
 
-/* 對話框裡的一個畫面（promote-view 是「活動詳細」、promote-form 是表單）：
-   佔滿標題以下的空間，裡面是「中間的內容（可捲動）＋下面的按鈕」 */
+/* 標題以下的部分（promote-view 是對話框的內容、promote-form 是表單頁的表單）：
+   佔滿標題以下的空間，裡面是「中間的內容＋下面的按鈕」。
+   在對話框裡，內容太長時只有中間那一塊會捲動；在表單頁的卡片裡不限制高度，跟著整個頁面捲動。 */
 .promote-form,
 .promote-view { flex: 1; display: flex; flex-direction: column; min-height: 0; }
 .promote-body {
@@ -223,12 +230,14 @@
 .promote-date.is-empty .promote-date-btn span { color: var(--st-muted); }
 /* 月曆打開的時候：外框變色 */
 .promote-date.is-open .promote-date-btn { border-color: var(--st-green); }
+/* 必填但沒有選（按了儲存才會出現）：紅色的外框，選了日期之後會自己消失 */
+.promote-date.is-invalid .promote-date-btn { border-color: var(--st-red); box-shadow: 0 0 0 2px rgba(196, 83, 59, .15); }
 /* 鎖住（進行中的活動不能改開始日期）：變成不能按的樣子 */
 .promote-date-btn:disabled { background: var(--st-soft); color: var(--st-muted); cursor: not-allowed; }
 .promote-date-btn:disabled:hover { border-color: var(--st-border); }
 
 /* 月曆：跳出來的小視窗
-   position: fixed → 浮在整個畫面的最上層，不佔位置；也不會被對話框裡「可以捲動的區域」切掉。
+   position: fixed → 浮在整個畫面的最上層，不佔位置；也不會被外面那張卡片（overflow: hidden）切掉。
    要出現在畫面的哪裡（top、left）由 promote.js 在打開時算好：預設貼在日期按鈕的下面，
    下面放不下就改放上面。z-index 要比對話框（2500）大，才不會被蓋住。 */
 .promote-date-panel {
@@ -347,14 +356,102 @@
   padding: 14px 22px;
   border-top: 1px solid var(--st-border);
 }
+/* 按鈕列裡要靠左的那一個（「活動詳細」的「刪除」）：margin-right: auto 會把它推到最左邊，其他按鈕留在右邊。
+   資料庫的版本它是一個 <form>（裡面一顆按鈕），假資料的版本是按鈕本身，兩種都用這個 class */
+.promote-foot-left { margin-right: auto; }
+form.promote-foot-left { display: flex; }
 
 
-/* ========== 5. 手機（640px 以下） ==========
+/* ========== 5. 表單頁的版面（promote_form.html） ==========
+   表單頁是一張卡片（.promote-panel）。卡片裡由上到下：
+     .promote-head   左邊是標題（新增活動／修改活動）和一行說明，右邊是「← 返回活動列表」的按鈕
+     .promote-body   欄位。分成左右兩欄（.promote-cols）：左欄是文字的欄位，右欄是活動圖片
+     .promote-foot   最下面的按鈕列（取消、儲存） */
+
+/* 「← 返回活動列表」：做成一顆圓角的小按鈕，在卡片標題那一格的右邊 */
+.promote-back {
+  flex: none;   /* 不要被左邊的標題擠小 */
+  display: inline-flex; align-items: center;
+  min-height: 44px;
+  padding: 0 18px;
+  background: var(--st-card);
+  border: 1px solid var(--st-border);
+  border-radius: 999px;   /* 很大的數字 → 兩端變成半圓 */
+  color: var(--st-red);
+  font-weight: 500;
+  transition: background-color .2s;
+}
+.promote-back:hover { background: var(--st-soft); }
+
+/* 放表單的卡片。max-width 是卡片最寬到多少：平板上會佔滿整個寬度，大螢幕上不會拉得太寬。
+   想讓卡片在畫面中間，加上 margin-inline: auto; */
+.promote-panel {
+  max-width: 1080px;
+  background: var(--st-card);
+  border: 1px solid var(--st-border);
+  border-top: 4px solid #354536;   /* 最上面一條線：和 logo 一樣的深綠色（images/logo-mark.svg 的底色） */
+  border-radius: var(--st-radius);
+  box-shadow: 0 10px 30px rgba(90, 60, 30, .10);
+  overflow: hidden;   /* 讓標題那一條的上面兩個角跟著卡片一起變圓 */
+}
+
+/* 卡片的標題那一格：左邊是標題和說明（上下排），右邊是「← 返回活動列表」。
+   左右排、兩邊靠邊對齊是 .promote-head 原本就有的設定（display: flex; justify-content: space-between）。
+   底色和卡片一樣（對話框的標題是深一階的底色，這裡蓋掉） */
+.promote-panel .promote-head {
+  flex-wrap: wrap;   /* 畫面很窄、放不下的時候，按鈕會換到下一行 */
+  padding: 20px 28px 4px;
+  background: var(--st-card);
+  border-bottom: 0;   /* 標題和欄位之間不要分隔線（對話框的標題有，這裡拿掉） */
+}
+.promote-head-text { min-width: 0; }
+.promote-panel .promote-title { font-size: 26px; }
+.promote-sub { margin-top: 4px; color: var(--st-muted); font-size: 14px; }
+.promote-sub b { color: var(--st-red); }
+
+/* 卡片裡的欄位：不用自己捲動（對話框才需要），跟著整個頁面捲；留白比對話框大一點 */
+.promote-panel .promote-body { gap: 20px; padding: 24px 28px 28px; overflow: visible; }
+
+/* 左右兩欄。左欄寬一點（1.2 : 1）；minmax(0, …) 是讓欄位裡的長文字不會把欄撐寬 */
+.promote-cols {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  gap: 28px;
+  align-items: start;   /* 兩欄各自的高度，不互相拉高 */
+}
+/* 一欄裡的欄位由上往下排 */
+.promote-col { display: grid; gap: 18px; align-content: start; min-width: 0; }
+/* 右欄（活動圖片）：鋪一層淺色的底，和左邊的文字欄位分開 */
+.promote-col-side {
+  padding: 18px;
+  background: var(--st-bg);
+  border: 1px solid var(--st-border);
+  border-radius: 14px;
+}
+/* 活動內容的輸入框高一點，和右邊的圖片比較平衡 */
+.promote-panel .promote-field textarea.staff-input { min-height: 170px; }
+
+/* 最下面的按鈕列：底色和卡片一樣，「儲存」寬一點比較好按 */
+.promote-panel .promote-foot {
+  padding: 0 28px 24px;
+  background: var(--st-card);
+  border-top: 0;   /* 欄位和按鈕之間不要分隔線 */
+}
+.promote-panel .promote-foot .staff-btn { min-width: 110px; }
+.promote-panel .promote-foot .btn-pay { min-width: 150px; }
+
+/* 畫面比較窄（900px 以下，例如平板直放）：兩欄改成上下排，圖片在文字欄位的下面 */
+@media (max-width: 900px) {
+  .promote-cols { grid-template-columns: 1fr; gap: 20px; }
+}
+
+
+/* ========== 6. 手機（640px 以下） ==========
    卡片不用另外寫：它每張最少 260px 寬，畫面變窄時一列放的張數會自動變少，手機就是一張一列。 */
 @media (max-width: 640px) {
   .promote-search { max-width: none; flex-basis: 100%; }
   .promote-tools .staff-btn { flex: 1; }
-  /* 對話框佔滿整個畫面，開始與結束時間改成上下排 */
+  /* 對話框佔滿整個畫面，開始與結束日期改成上下排 */
   .promote-modal { padding: 0; }
   .promote-dialog { width: 100%; height: 100%; border-radius: 0; }
   .promote-body { padding: 16px; }
@@ -365,5 +462,14 @@
   .promote-pick-item .staff-btn { grid-column: 2; grid-row: 1 / span 2; }
   .promote-detail > div { grid-template-columns: 1fr; gap: 2px; }   /* 詳細：標題在上、內容在下 */
   .promote-foot { padding: 12px 16px; }
+  /* 表單頁的卡片：留白縮小 */
+  .promote-panel .promote-head { padding: 16px 16px 0; }
+  .promote-panel .promote-title { font-size: 22px; }
+  .promote-panel .promote-body { padding: 16px; }
+  .promote-panel .promote-foot { padding: 0 16px 16px; }
+  .promote-col-side { padding: 14px; }
   .promote-foot .staff-btn { flex: 1; }
+  /* 「刪除」在手機上和其他按鈕一樣平均分配寬度，不特別靠左 */
+  .promote-foot-left { margin-right: 0; }
+  form.promote-foot-left { flex: 1; }
 }
