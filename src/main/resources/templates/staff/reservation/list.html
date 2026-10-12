@@ -43,11 +43,96 @@
 					<button type="button" class="rsv-tab" data-coming-soon="候位管理">
 						候位</button>
 
-					<button type="button" class="rsv-tab" data-coming-soon="現場登記">
-						現場</button>
+
 				</div>
 
-				<div class="rsv-editor-empty" th:if="${selectedReservation == null}">
+				<a class="staff-btn btn-pay rsv-new-link"
+					th:href="@{/staff/reservations/new(date=${selectedDate})}"> ＋
+					新增訂位 </a>
+
+				<section class="rsv-create-panel" th:if="${staffCreateMode == true}">
+
+					<h2>新增訂位</h2>
+
+					<p class="rsv-editor-hint">輸入會員電話，由員工代為建立訂位。</p>
+
+					<form th:action="@{/staff/reservations/new}" method="get"
+						class="rsv-create-form" data-rsv-create>
+
+						<label for="staffCreatePhone">會員電話</label> <input type="tel"
+							id="staffCreatePhone" name="phone" inputmode="numeric"
+							maxlength="10" autocomplete="tel" placeholder="09XXXXXXXX"
+							th:value="${staffCreatePhone != null
+                   ? staffCreatePhone : createPhone}">
+
+						<label for="staffCreateDate">用餐日期</label> <input type="date"
+							id="staffCreateDate" name="date" required
+							th:min="${createMinDate}" th:max="${createMaxDate}"
+							th:value="${createDate}"> <label
+							for="staffCreateTableType">桌型</label> <select
+							id="staffCreateTableType" name="tableType">
+							<option value="2" th:selected="${createTableType == 2}">
+								2 人桌</option>
+
+							<option value="4" th:selected="${createTableType == 4}">
+								4 人桌</option>
+
+							<option value="6" th:selected="${createTableType == 6}">
+								6 人桌</option>
+						</select>
+
+						<button type="submit" class="staff-btn">查詢可訂時段</button>
+
+						<p class="rsv-editor-hint"
+							th:if="${!#lists.contains(createOpenDates,
+               #temporals.createDate(createDate))}">
+							此日期沒有開放可預約時段。</p>
+
+						<label for="staffCreateSlot">用餐時段</label> <select
+							id="staffCreateSlot" name="rsvDtNo">
+							<option value="">請選擇時段</option>
+
+							<option th:each="slot : ${createSlots}"
+								th:value="${slot.rsvDtNo}" th:disabled="${slot.full}"
+								th:text="${slot.full
+                        ? slot.timeText + '（額滿）'
+                        : slot.timeText + '（剩餘 '
+                            + slot.remaining + ' 桌）'}">
+							</option>
+						</select> <label for="staffCreateNote">備註</label>
+
+						<textarea id="staffCreateNote" name="note" rows="4" maxlength="50"
+							placeholder="最多50個字元"
+							th:text="${staffCreateNote != null
+                      ? staffCreateNote : createNote}"></textarea>
+
+
+
+						<a class="staff-btn"
+							th:href="@{/staff/reservations(date=${selectedDate})}"> 返回管理
+						</a>
+					</form>
+
+					<form th:action="@{/staff/reservations/create}" method="post"
+						class="rsv-create-submit-form" data-rsv-create-post>
+
+						<input type="hidden" name="phone"> <input type="hidden"
+							name="note"> <input type="hidden" name="rsvDtNo">
+
+						<input type="hidden" name="date" th:value="${createDate}">
+
+						<input type="hidden" name="tableType"
+							th:value="${createTableType}">
+
+						<button type="submit" class="staff-btn btn-pay rsv-save">
+							確認新增訂位</button>
+					</form>
+
+				</section>
+
+				<div class="rsv-editor-empty"
+					th:if="${selectedReservation == null
+         and staffCreateMode != true}">
 					<span class="rsv-empty-icon" aria-hidden="true">▤</span>
 					<h2>選擇一筆訂位</h2>
 					<p>點擊右側訂位卡片，在這裡查看資料與管理訂位。</p>
@@ -144,8 +229,7 @@
 						<button type="button" class="rsv-tab" data-coming-soon="候位查詢">
 							候位查詢</button>
 
-						<button type="button" class="rsv-tab" data-coming-soon="現場查詢">
-							現場查詢</button>
+
 					</div>
 
 					<form th:action="@{/staff/reservations}" method="get"

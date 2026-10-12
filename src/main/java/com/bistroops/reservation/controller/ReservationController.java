@@ -17,6 +17,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import com.bistroops.reservation.model.ReservationService;
 import com.bistroops.reservation.model.ReservationVO;
+import com.bistroops.reservationdatetime.model.ReservationDatetimeService;
 
 @Controller
 @RequestMapping("/staff/reservations")
@@ -27,10 +28,13 @@ public class ReservationController {
 	private static final Set<String> PERIODS = Set.of("all", "lunch", "dinner");
 
 	private final ReservationService reservationService;
+	private final ReservationDatetimeService reservationDatetimeService;
 
-	public ReservationController(ReservationService reservationService) {
+	public ReservationController(ReservationService reservationService,
+			ReservationDatetimeService reservationDatetimeService) {
 
 		this.reservationService = reservationService;
+		this.reservationDatetimeService = reservationDatetimeService;
 	}
 
 	@GetMapping
@@ -203,5 +207,93 @@ public class ReservationController {
 
 	private String safe(String value) {
 		return value == null ? "" : value;
+	}
+
+	// 開啟左側新增表單，也可重新查詢日期與桌型的時段。
+	@GetMapping("/new")
+	public String showCreate(
+			@RequestParam(name = "date", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+
+			@RequestParam(name = "tableType", defaultValue = "2") Integer tableType,
+
+			@RequestParam(name = "phone", defaultValue = "") String phone,
+
+			@RequestParam(name = "note", defaultValue = "") String note,
+
+			Model model) {
+
+		LocalDate selectedDate = date == null ? LocalDate.now() : date;
+
+		Integer selectedTableType = Set.of(2, 4, 6).contains(tableType) ? tableType : 2;
+
+		// 使用原本的清單方法，右側顯示同一天的訂位。
+		list(selectedDate, "", "all", "", null, model);
+
+		model.addAttribute("staffCreateMode", true);
+
+		model.addAttribute("createDate", selectedDate.toString());
+
+		model.addAttribute("createTableType", selectedTableType);
+
+		model.addAttribute("createMinDate", LocalDate.now().toString());
+
+		model.addAttribute("createMaxDate", LocalDate.now().plusMonths(3).toString());
+
+		model.addAttribute("createPhone", phone);
+
+		model.addAttribute("createNote", note);
+
+		model.addAttribute("createSlots", reservationService.getSlots(selectedDate, selectedTableType));
+
+		model.addAttribute("createOpenDates", reservationDatetimeService.getOpenDates());
+
+		return "staff/reservation/list";
+	}
+
+	// 送出後台新增訂位。
+	@PostMapping("/create")
+	public String create(@RequestParam(name = "phone", defaultValue = "") String phone,
+
+			@RequestParam(name = "date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+
+			@RequestParam(name = "tableType") Integer tableType,
+
+			@RequestParam(name = "rsvDtNo", required = false) Long rsvDtNo,
+
+			@RequestParam(name = "note", defaultValue = "") String note,
+
+			RedirectAttributes redirectAttributes) {
+
+		try {
+			// 防止直接送出未開放日期。
+			if (!reservationDatetimeService.getOpenDates().contains(date)) {
+
+				throw new IllegalArgumentException("這一天沒有開放可預約時段");
+			}
+
+			ReservationVO reservation = reservationService.addByStaff(phone, date, rsvDtNo, tableType, note);
+
+			redirectAttributes.addFlashAttribute("message", "新增訂位成功");
+
+			redirectAttributes.addAttribute("date", date.toString());
+
+			redirectAttributes.addAttribute("selectedRsvNo", reservation.getRsvNo());
+
+			return "redirect:/staff/reservations";
+
+		} catch (IllegalArgumentException ex) {
+			redirectAttributes.addFlashAttribute("error", ex.getMessage());
+
+			// 新增失敗時保留輸入內容，不放在網址中。
+			redirectAttributes.addFlashAttribute("staffCreatePhone", phone);
+
+			redirectAttributes.addFlashAttribute("staffCreateNote", note);
+
+			redirectAttributes.addAttribute("date", date.toString());
+
+			redirectAttributes.addAttribute("tableType", tableType);
+
+			return "redirect:/staff/reservations/new";
+		}
 	}
 }
