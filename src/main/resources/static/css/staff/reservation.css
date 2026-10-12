@@ -1,0 +1,459 @@
+/* 沿用 staff.css 的配色與共用元件。 */
+.rsv-page-title {
+	margin-top: 6px;
+	font-family: var(--st-serif);
+	font-size: 28px;
+}
+
+.rsv-workspace {
+	display: grid;
+	grid-template-columns: minmax(280px, 340px) minmax(0, 1fr);
+	gap: 24px;
+	align-items: start;
+	margin-top: 24px;
+}
+
+.rsv-editor {
+	position: sticky;
+	top: 24px;
+	border-top: 5px solid var(--st-red);
+}
+
+.rsv-results {
+	min-width: 0;
+}
+
+.rsv-mode-tabs, .rsv-query-tabs {
+	display: flex;
+	gap: 8px;
+}
+
+.rsv-tab {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-height: 44px;
+	padding: 8px 14px;
+	border: 1px solid var(--st-border);
+	border-radius: 10px;
+	background: transparent;
+	color: var(--st-muted);
+	font: inherit;
+	white-space: nowrap;
+}
+
+.rsv-mode-tabs .rsv-tab {
+	flex: 1;
+}
+
+.rsv-tab.active {
+	background: var(--st-red);
+	border-color: var(--st-red);
+	color: white;
+}
+
+.rsv-editor-empty {
+	padding: 56px 4px;
+	text-align: center;
+}
+
+.rsv-empty-icon {
+	display: block;
+	color: var(--st-yellow);
+	font-size: 48px;
+	margin-bottom: 12px;
+}
+
+.rsv-editor-empty h2 {
+	font-family: var(--st-serif);
+	font-size: 24px;
+	margin-bottom: 12px;
+}
+
+.rsv-editor-empty p, .rsv-editor-hint {
+	color: var(--st-muted);
+	font-size: 14px;
+}
+
+.rsv-editor-heading {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 12px;
+	margin: 26px 0 20px;
+}
+
+.rsv-editor-heading h2 {
+	font-family: var(--st-serif);
+	font-size: 25px;
+}
+
+.rsv-info {
+	display: grid;
+	grid-template-columns: 78px minmax(0, 1fr);
+	gap: 14px 12px;
+	padding-bottom: 22px;
+	border-bottom: 1px solid var(--st-border);
+}
+
+.rsv-info dt {
+	color: var(--st-muted);
+	font-size: 14px;
+}
+
+.rsv-info dd {
+	margin: 0;
+	overflow-wrap: anywhere;
+}
+
+.rsv-manage-form {
+	margin-top: 22px;
+}
+
+.rsv-field-label {
+	display: block;
+	font-weight: 500;
+	margin-bottom: 8px;
+}
+
+.rsv-field-label small {
+	margin-left: 8px;
+	color: var(--st-muted);
+	font-weight: 400;
+}
+
+.rsv-manage-form textarea {
+	width: 100%;
+	padding: 12px;
+	border: 1px solid var(--st-border);
+	border-radius: 12px;
+	background: white;
+	color: var(--st-text);
+	font: inherit;
+	resize: vertical;
+}
+
+.rsv-manage-form textarea[readonly] {
+	background: var(--st-soft);
+}
+
+.rsv-save {
+	width: 100%;
+	margin-top: 12px;
+}
+
+.rsv-state-actions {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 10px;
+	margin-top: 20px;
+	padding-top: 20px;
+	border-top: 1px solid var(--st-border);
+}
+
+.rsv-state-actions .staff-btn {
+	min-width: 0;
+	padding: 8px;
+}
+
+.rsv-state-actions .btn-danger-outline {
+	grid-column: 1/-1;
+}
+
+.rsv-editor-hint {
+	margin-top: 16px;
+}
+
+.rsv-search-card {
+	border-top: 5px solid var(--st-yellow);
+}
+
+.rsv-search-form {
+	display: grid;
+	grid-template-columns: 170px 140px minmax(180px, 1fr);
+	gap: 16px;
+	margin-top: 22px;
+}
+
+.rsv-search-form>label {
+	display: grid;
+	gap: 8px;
+	font-size: 14px;
+	color: var(--st-muted);
+}
+
+.rsv-search-form input[type="date"], .rsv-search-form input[type="search"],
+	.rsv-search-form select {
+	width: 100%;
+	min-width: 0;
+	min-height: 48px;
+	padding: 10px 12px;
+	border: 1px solid var(--st-border);
+	border-radius: 10px;
+	background: white;
+	color: var(--st-text);
+	font: inherit;
+}
+
+.rsv-period-picker {
+	grid-column: 1/3;
+}
+
+.rsv-period-picker .rsv-field-label {
+	color: var(--st-muted);
+	font-size: 14px;
+}
+
+.rsv-period-options {
+	display: flex;
+	gap: 8px;
+}
+
+.rsv-period-options label {
+	position: relative;
+	cursor: pointer;
+}
+
+.rsv-period-options input {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	opacity: 0;
+}
+
+.rsv-period-options span {
+	display: block;
+	padding: 10px 20px;
+	border: 1px solid var(--st-border);
+	border-radius: 10px;
+}
+
+.rsv-period-options input:checked+span {
+	background: var(--st-soft);
+	border-color: var(--st-yellow);
+	font-weight: 700;
+}
+
+.rsv-period-options input:focus-visible+span {
+	outline: 3px solid var(--st-yellow);
+	outline-offset: 3px;
+}
+
+.rsv-search-actions {
+	display: flex;
+	gap: 8px;
+	justify-content: flex-end;
+	align-items: end;
+}
+
+.rsv-search-actions .staff-btn {
+	min-width: 0;
+	padding: 10px 16px;
+}
+
+.rsv-result-heading {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 12px;
+	margin: 28px 0 16px;
+}
+
+.rsv-result-heading h2 {
+	font-family: var(--st-serif);
+	font-size: 22px;
+}
+
+.rsv-result-heading>span {
+	color: var(--st-muted);
+}
+
+.rsv-time-group {
+	margin-bottom: 28px;
+}
+
+.rsv-time-heading {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	padding: 12px 0;
+	margin-bottom: 12px;
+	border-bottom: 1px solid var(--st-border);
+}
+
+.rsv-time-heading h3 {
+	font-size: 23px;
+	color: var(--st-red);
+}
+
+.rsv-time-heading span {
+	color: var(--st-muted);
+	font-size: 14px;
+}
+
+.rsv-card-grid {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 16px;
+}
+
+.rsv-booking-card {
+	display: block;
+	min-width: 0;
+	border-left: 5px solid var(--st-yellow);
+	transition: border-color .15s, box-shadow .15s;
+}
+
+.rsv-booking-card:hover, .rsv-booking-card.is-selected {
+	border-color: var(--st-red);
+	box-shadow: 0 6px 20px rgba(164, 67, 46, .12);
+}
+
+.rsv-booking-card:focus-visible {
+	outline: 3px solid var(--st-red);
+	outline-offset: 3px;
+}
+
+.rsv-booking-top, .rsv-booking-bottom {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 12px;
+}
+
+.rsv-booking-number {
+	color: var(--st-muted);
+	font-size: 14px;
+}
+
+.rsv-booking-card h4 {
+	margin: 14px 0 6px;
+	font-family: var(--st-serif);
+	font-size: 24px;
+	overflow-wrap: anywhere;
+}
+
+.rsv-booking-phone {
+	color: var(--st-muted);
+}
+
+.rsv-booking-bottom {
+	margin-top: 18px;
+}
+
+.rsv-booking-bottom span {
+	color: var(--st-red);
+	font-size: 14px;
+}
+
+.rsv-booking-note {
+	margin-top: 14px;
+	padding-top: 12px;
+	border-top: 1px solid var(--st-border);
+	font-size: 14px;
+	color: var(--st-muted);
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+}
+
+.rsv-badge {
+	display: inline-flex;
+	padding: 4px 10px;
+	border-radius: 20px;
+	font-size: 13px;
+	white-space: nowrap;
+}
+
+.rsv-badge.is-booked {
+	background: #fbefd9;
+	color: #8c5b15;
+}
+
+.rsv-badge.is-arrived {
+	background: #eaf0e0;
+	color: #4e6335;
+}
+
+.rsv-badge.is-ended {
+	background: #eee7df;
+	color: #78675c;
+}
+
+.rsv-alert {
+	margin-top: 18px;
+	padding: 14px 18px;
+	border-radius: 12px;
+}
+
+.rsv-alert-success {
+	background: #eaf0e0;
+	color: #40572c;
+}
+
+.rsv-alert-error {
+	background: #fbeee9;
+	color: #9d3525;
+}
+
+.rsv-no-results {
+	padding: 48px 24px;
+	text-align: center;
+}
+
+.rsv-no-results h3 {
+	margin-bottom: 12px;
+}
+
+.rsv-no-results p {
+	color: var(--st-muted);
+}
+
+@media ( max-width : 1200px) {
+	.rsv-search-form {
+		grid-template-columns: 1fr 1fr;
+	}
+	.rsv-search-keyword {
+		grid-column: 1/-1;
+	}
+	.rsv-period-picker {
+		grid-column: 1;
+	}
+	.rsv-search-actions {
+		grid-column: 2;
+	}
+	.rsv-card-grid {
+		grid-template-columns: 1fr;
+	}
+}
+
+@media ( max-width : 900px) {
+	.rsv-workspace {
+		grid-template-columns: 1fr;
+	}
+	.rsv-editor {
+		position: static;
+	}
+	.rsv-editor-empty {
+		padding: 24px 4px;
+	}
+}
+
+@media ( max-width : 560px) {
+	.rsv-search-form {
+		grid-template-columns: 1fr;
+	}
+	.rsv-search-keyword, .rsv-period-picker, .rsv-search-actions {
+		grid-column: 1;
+	}
+	.rsv-search-actions {
+		justify-content: flex-start;
+	}
+	.rsv-tab {
+		padding: 8px 10px;
+		font-size: 14px;
+	}
+	.rsv-result-heading {
+		align-items: flex-start;
+		flex-direction: column;
+	}
+}

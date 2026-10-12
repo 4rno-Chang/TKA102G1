@@ -543,55 +543,104 @@
 
 						<!-- ---------- 預約紀錄（內容由 member.js 產生） ---------- -->
 						<section class="member-panel" data-panel="reservations" hidden>
+
 							<h3 class="panel-title">預約紀錄</h3>
+
+							<p class="form-msg error" role="alert"
+								th:if="${reservationError != null}"
+								th:text="${reservationError}"></p>
+
 							<div class="sub-tabs">
-								<button type="button" class="active" data-resv-tab="current">當前訂位</button>
+								<button type="button" class="active" data-resv-tab="current">
+									當前訂位</button>
+
 								<button type="button" data-resv-tab="history">歷史訂位</button>
 							</div>
-							<!-- 【Thymeleaf 串接】預約紀錄
-              Controller 把兩份清單放進 Model：currentResvs（當前訂位）、historyResvs（歷史訂位）。
-              兩份都先產生在頁面上，由 member.js 切換要顯示哪一份。把下面那行 div 換成：
 
-                <div class="record-list" id="resvList">
+							<div class="record-list" id="resvList">
+								<div
+									th:each="group : ${#strings.arraySplit('current,history', ',')}"
+									th:id="${group == 'current' ? 'resvCurrent' : 'resvHistory'}"
+									th:attr="hidden=${group == 'history' ? 'hidden' : null}"
+									th:with="items=${group == 'current'
+                 ? currentResvs : historyResvs}">
 
-                  <div id="resvCurrent">
-                    <p class="empty-text" th:if="${#lists.isEmpty(currentResvs)}">目前沒有進行中的訂位</p>
+									<p class="empty-text" th:if="${#lists.isEmpty(items)}"
+										th:text="${group == 'current'
+                   ? '目前沒有進行中的訂位'
+                   : '目前沒有歷史訂位'}"></p>
 
-                    <div class="record-item" th:each="resv : ${currentResvs}">
-                      <div class="record-head">
-                        <span class="record-info">
-                          <span th:text="${resv.date}">2026年10月10日</span>
-                          <span th:text="${resv.time}">18:30</span>
-                          <span th:text="|${resv.people} 人|">4 人</span>
-                        </span>
-                        <span class="record-actions">
-                          <button type="button" class="btn-small" data-toggle-record aria-expanded="false">訂位明細</button>
-                          <form th:action="@{/member/reservation/cancel}" method="post">
-                            <input type="hidden" name="resvId" th:value="${resv.id}">
-                            <button type="submit" class="btn-small danger">取消訂位</button>
-                          </form>
-                        </span>
-                      </div>
-                      <div class="record-body" hidden>
-                        <p th:text="|訂位編號：${resv.id}|">訂位編號：</p>
-                        <p th:text="|用餐時間：${resv.date} ${resv.time}|">用餐時間：</p>
-                        <p th:text="|用餐人數：${resv.people} 人|">用餐人數：</p>
-                        <p th:text="|備註：${resv.note ?: '無'}|">備註：</p>
-                      </div>
-                    </div>
-                  </div>
+									<div class="record-item" th:each="r : ${items}">
+										<div class="record-head">
+											<span class="record-info"> <span
+												th:text="${#temporals.format(
+                            r.rsvDt.rsvDtDatetime, 'yyyy年MM月dd日')}">
+											</span> <span
+												th:text="${#temporals.format(
+                            r.rsvDt.rsvDtDatetime, 'HH:mm')}">
+											</span> <span th:text="|${r.seatType.seatTypeNo} 人桌|"> </span>
+											</span>
 
-                  <div id="resvHistory" hidden>
-                    （內容和上面 resvCurrent 相同，改成 historyResvs，並拿掉「取消訂位」的 form，
-                      沒有資料時的文字改成「目前沒有歷史訂位」）
-                  </div>
+											<div class="record-actions">
+												<button type="button" class="btn-small" data-toggle-record
+													aria-expanded="false">訂位明細</button>
 
-                </div>
+												<form th:if="${group == 'current'}"
+													th:action="@{/member/reservation/cancel}" method="post"
+													data-reservation-cancel>
 
-              「取消訂位」是每筆各自一個小表單，用隱藏欄位 resvId 告訴 Controller 要取消哪一筆。
-              member.js 的修改見「6. 預約紀錄」。
-            -->
-							<div class="record-list" id="resvList"></div>
+													<input type="hidden" name="rsvNo" th:value="${r.rsvNo}">
+
+													<input type="hidden" name="reservationCsrfToken"
+														th:value="${reservationCsrfToken}">
+
+													<button type="submit" class="btn-small danger">
+														取消訂位</button>
+												</form>
+											</div>
+										</div>
+
+										<div class="record-body" hidden>
+											<p th:text="|訂位編號：${r.rsvNo}|"></p>
+
+											<p>
+												用餐時間： <span
+													th:text="${#temporals.format(
+                            r.rsvDt.rsvDtDatetime, 'yyyy/MM/dd HH:mm')}">
+												</span>
+											</p>
+
+											<p th:text="|桌型：${r.seatType.seatTypeNo} 人桌|"></p>
+
+											<p th:text="|狀態：${r.rsvStatus}|"></p>
+
+											<p>
+												備註： <span style="white-space: pre-wrap;"
+													th:text="${#strings.isEmpty(r.rsvComment)
+                                  ? '無' : r.rsvComment}"></span>
+											</p>
+
+											<form th:if="${group == 'current'}"
+												th:action="@{/member/reservation/comment}" method="post">
+
+												<input type="hidden" name="rsvNo" th:value="${r.rsvNo}">
+
+												<input type="hidden" name="reservationCsrfToken"
+													th:value="${reservationCsrfToken}"> <label
+													th:for="|memberRsvNote-${r.rsvNo}|"> 修改備註（最多 50
+													個字元） </label>
+
+												<textarea th:id="|memberRsvNote-${r.rsvNo}|"
+													name="rsvComment" rows="3" maxlength="50"
+													style="display: block; width: 100%; margin: 8px 0; padding: 10px; font: inherit;"
+													th:text="${r.rsvComment}"></textarea>
+
+												<button type="submit" class="btn-small">儲存備註</button>
+											</form>
+										</div>
+									</div>
+								</div>
+							</div>
 						</section>
 
 						<!-- ---------- 優惠券（內容由 member.js 產生） ---------- -->
