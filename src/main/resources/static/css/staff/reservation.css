@@ -456,4 +456,52 @@
 		align-items: flex-start;
 		flex-direction: column;
 	}
+	
+}
+.rsv-new-link {
+    width: 100%;
+    margin-top: 18px;
+}
+
+.rsv-create-panel {
+    margin-top: 24px;
+}
+
+.rsv-create-panel h2 {
+    font-family: var(--st-serif);
+    font-size: 25px;
+}
+
+.rsv-create-form {
+    display: grid;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.rsv-create-form > label {
+    margin-top: 8px;
+    color: var(--st-muted);
+    font-size: 14px;
+}
+
+.rsv-create-form input,
+.rsv-create-form select,
+.rsv-create-form textarea {
+    width: 100%;
+    min-width: 0;
+    padding: 12px;
+    border: 1px solid var(--st-border);
+    border-radius: 10px;
+    background: white;
+    color: var(--st-text);
+    font: inherit;
+}
+
+.rsv-create-form input,
+.rsv-create-form select {
+    min-height: 48px;
+}
+
+.rsv-create-form textarea {
+    resize: vertical;
 }

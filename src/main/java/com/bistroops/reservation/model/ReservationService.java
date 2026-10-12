@@ -443,4 +443,25 @@ public class ReservationService {
 		}
 	}
 
+	// 員工代會員新增訂位。
+	// 會員以電話查找，不要求客人在前台登入。
+	@Transactional(isolation = Isolation.READ_COMMITTED)
+	public ReservationVO addByStaff(String phone, LocalDate date, Long rsvDtNo, Integer seatTypeNo, String comment) {
+
+		String normalizedPhone = phone == null ? "" : phone.trim();
+
+		if (!normalizedPhone.matches("09[0-9]{8}")) {
+			throw new IllegalArgumentException("請輸入09開頭的10碼手機號碼");
+		}
+
+		MemberVO member = memberRepository.findByMemTel(normalizedPhone);
+
+		if (member == null) {
+			throw new IllegalArgumentException("此電話尚未建立會員資料，目前無法新增訂位");
+		}
+
+		// 沿用前台新增的日期、時段、名額與重複訂位檢查。
+		return addForMember(member.getMemNo(), date, rsvDtNo, seatTypeNo, comment);
+	}
+
 }
