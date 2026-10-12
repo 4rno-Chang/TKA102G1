@@ -474,20 +474,13 @@ VALUES
 
 -- 14. 權限 (permission)
 INSERT INTO permission (perm_exp) VALUES
-('員工管理'),
-('會員管理'),
-('菜單管理'),
-('活動管理'),
-('公告設定'),
-('桌型管理'),
-('入座管理'),
-('訂單管理_廚師'),
-('訂單管理_菜口'),
+('訂單管理_內場'),
 ('訂單管理_外場'),
+('入座管理'),
+('訂候位管理'),
+('訂單管理'),
 ('結帳'),
-('預約管理'),
-('候位管理'),
-('回饋表單管理');
+('後臺管理');
 
 -- 15. 員工權限 (emp_permission)
 INSERT INTO emp_permission (emp_no, perm_no) VALUES
@@ -495,10 +488,11 @@ INSERT INTO emp_permission (emp_no, perm_no) VALUES
 (1, 2),
 (1, 3),
 (1, 4),
+(1, 5),
+(1, 6),
+(1, 7),
 (2, 1),
-(3, 2),
-(4, 5),
-(5, 1);
+(2, 3);
 
 -- 16. 回饋 (feedback)
 INSERT INTO feedback (orders_no, fee_customer, fee_customer_tel, fee_customer_time, fee_time, fee_content, fee_rating) VALUES 

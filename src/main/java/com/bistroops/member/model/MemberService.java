@@ -43,6 +43,9 @@ public class MemberService {
 		member.setMemTel(memTel);
 		member.setMemPassword(passwordEncoder.encode(memPassword));
 		
+		// 新註冊會員預設為未驗證
+		member.setMemStatus("未驗證");
+		
 		dao.save(member);
 		
 		// 註冊成功，返回 true
@@ -149,6 +152,27 @@ public class MemberService {
 	    member.setMemPassword(passwordEncoder.encode(newPassword));
 
 	    // 儲存修改
+	    dao.save(member);
+
+	    return true;
+	}
+	
+	
+	// 會員手機驗證成功，更新驗證狀態
+	public boolean verifyMemberPhone(Integer memNo) {
+
+	    // 依會員編號查詢資料庫
+	    MemberVO member = dao.findById(memNo).orElse(null);
+
+	    // 找不到會員
+	    if (member == null) {
+	        return false;
+	    }
+
+	    // 更新為已驗證
+	    member.setMemStatus("已驗證");
+
+	    // 儲存至 MySQL
 	    dao.save(member);
 
 	    return true;
