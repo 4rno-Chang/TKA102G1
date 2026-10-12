@@ -1,5 +1,7 @@
 package com.bistroops.member.model;
 
+import org.springframework.security.crypto.password.PasswordEncoder;
+
 import java.time.LocalDate;
 import java.util.List;
 
@@ -11,6 +13,9 @@ public class MemberService {
 	
 	@Autowired
 	MemberRepository dao;
+	
+	@Autowired
+	private PasswordEncoder passwordEncoder;
 	
 	//查詢全部會員
 	public List<MemberVO> getAll() {
@@ -36,7 +41,7 @@ public class MemberService {
 		MemberVO member = new MemberVO();
 		
 		member.setMemTel(memTel);
-		member.setMemPassword(memPassword);
+		member.setMemPassword(passwordEncoder.encode(memPassword));
 		
 		dao.save(member);
 		
@@ -98,7 +103,7 @@ public class MemberService {
 		}
 		
 		// 驗證密碼是否正確
-		if (member.getMemPassword().equals(memPassword)) {
+		if (passwordEncoder.matches(memPassword, member.getMemPassword())) {
 			
 			// 登入成功，回傳會員資料
 			return member; 
@@ -121,7 +126,7 @@ public class MemberService {
 	    }
 
 	    // 修改成新密碼
-	    member.setMemPassword(newPassword);
+	    member.setMemPassword(passwordEncoder.encode(newPassword));
 
 	    // 儲存修改
 	    dao.save(member);
@@ -141,7 +146,7 @@ public class MemberService {
 	    }
 
 	    // 設定新密碼
-	    member.setMemPassword(newPassword);
+	    member.setMemPassword(passwordEncoder.encode(newPassword));
 
 	    // 儲存修改
 	    dao.save(member);
