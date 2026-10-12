@@ -1,6 +1,13 @@
 package com.bistroops.member.model;
 
 import java.time.LocalDate;
+import java.util.List;
+
+import com.bistroops.reservation.model.ReservationVO;
+import com.bistroops.orders.model.OrdersVO;
+
+import jakarta.persistence.FetchType;
+import jakarta.persistence.OneToMany;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -56,9 +63,18 @@ public class MemberVO {
 	@Column(name = "MEM_STATUS")
 	private String memStatus;
 	
+	// 一位會員可以有多筆預約紀錄
+	@OneToMany(mappedBy = "member", fetch = FetchType.LAZY)
+	private List<ReservationVO> reservations;
+	
+	// 一位會員可以有多筆訂單
+	@OneToMany(mappedBy = "member", fetch = FetchType.LAZY)
+	private List<OrdersVO> orders;
+	
 	public MemberVO() {
 	    super();
 	}
+	
 
 	//password不放入toString，避免敏感資料被輸出
 	@Override
@@ -125,6 +141,7 @@ public class MemberVO {
 		this.memTag = memTag;
 	}
 
+	
 	public LocalDate getMemBirth() {
 		return memBirth;
 	}
@@ -171,6 +188,22 @@ public class MemberVO {
 
 	public void setMemStatus(String memStatus) {
 		this.memStatus = memStatus;
+	}
+	
+	public List<ReservationVO> getReservations() {
+	    return reservations;
+	}
+
+	public void setReservations(List<ReservationVO> reservations) {
+	    this.reservations = reservations;
+	}
+	
+	public List<OrdersVO> getOrders() {
+	    return orders;
+	}
+
+	public void setOrders(List<OrdersVO> orders) {
+	    this.orders = orders;
 	}
 
 }
