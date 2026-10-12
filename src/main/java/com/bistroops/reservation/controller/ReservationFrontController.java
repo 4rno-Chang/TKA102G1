@@ -153,7 +153,7 @@ public class ReservationFrontController {
 		MemberVO member = (MemberVO) session.getAttribute("member");
 
 		if (member == null) {
-			redirectAttributes.addFlashAttribute("error", "請先登入會員");
+			redirectAttributes.addFlashAttribute("error", "請先登入");
 			return "redirect:/bistroops/reservation";
 		}
 
