@@ -4,7 +4,7 @@ import java.util.Arrays;
 import java.util.Set;
 
 import com.bistroops.mealtype.model.MealtypeVO;
-//import com.bistroops.ordersdetails.model.OrdersDetailsVO;
+import com.bistroops.ordersdetails.model.OrdersDetailsVO;
 import com.bistroops.promotemeal.model.PromoteMealVO;
 
 import jakarta.persistence.CascadeType;
@@ -53,9 +53,9 @@ public class MealVO  {
 	@OrderBy("meal asc")
 	private Set<PromoteMealVO> promoteMeals;
 	
-//	@OneToMany(mappedBy="ordersDatils")
-//	@OrderBy("ordersNo asc")
-//	private Set<OrdersDetailsVO> ordersdetails;
+	@OneToMany(mappedBy="meal")
+	@OrderBy("ordersNo asc")
+	private Set<OrdersDetailsVO> ordersdetails;
 
 	public MealVO() {
 	}
@@ -126,19 +126,13 @@ public class MealVO  {
 		this.promoteMeals = promoteMeals;
 	}
 
-//	public Set<OrdersDetailsVO> getOrdersdetails() {
-//		return ordersdetails;
-//	}
-//
-//	public void setOrdersdetails(Set<OrdersDetailsVO> ordersdetails) {
-//		this.ordersdetails = ordersdetails;
-//	}
-
-	@Override
-	public String toString() {
-		return "MealVO [mealNo=" + mealNo + ", mealType=" + mealType + ", mealName=" + mealName + ", mealImg="
-				+ Arrays.toString(mealImg) + ", mealExp=" + mealExp + ", mealPrice=" + mealPrice + ", mealStatusEn="
-				+ mealStatusEn + ", promoteMeals=" + promoteMeals + "]";
+	public Set<OrdersDetailsVO> getOrdersdetails() {
+		return ordersdetails;
 	}
-	
+
+	public void setOrdersdetails(Set<OrdersDetailsVO> ordersdetails) {
+		this.ordersdetails = ordersdetails;
+	}
+
+
 }

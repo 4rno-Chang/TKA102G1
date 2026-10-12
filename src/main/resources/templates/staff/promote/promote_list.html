@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="zh-Hant" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bistroops 後台｜活動管理</title>
+  <link rel="icon" th:href="@{/images/logo-mark.svg}" type="image/svg+xml">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;700&display=swap">
+  <link rel="stylesheet" th:href="@{/css/staff/staff.css}" />
+  <link rel="stylesheet" th:href="@{/css/staff/promote.css}" />
+  <script th:src="@{/js/staff/staff.js}" defer></script>
+  <script th:src="@{/js/staff/promote.js}" defer></script>
+</head>
+
+
+<body class="staff-layout">
+  <nav th:replace="~{staff/staff_sidebar :: sidebar('promote')}"></nav>
+
+  <main class="staff-main">
+    <header class="staff-header">
+      <div>
+        <p class="staff-eyebrow">Promote</p>
+        <h1 class="staff-title">活動管理</h1>
+      </div>
+      <p class="staff-clock" id="staffClock"></p>
+    </header>
+
+
+    
+    <div class="source-block" th:if="${promotes != null}" th:with="now=${#temporals.createNow()}">
+      <p class="source-line"><span class="source-tag source-db">資料庫資料</span></p>
+      <p class="promote-alert promote-alert-ok" th:if="${message != null}" th:text="${message}">已新增活動</p>
+
+     
+      <form class="promote-tools" th:action="@{/staff/promote}" method="get">
+        <input type="hidden" name="status" th:value="${status}">
+
+        <div class="chips">
+          <a class="chip" th:href="@{/staff/promote(keyword=${keyword})}"
+             th:classappend="${status == null or status == ''} ? 'active'">全部</a>
+          <a class="chip" th:href="@{/staff/promote(status='未開始', keyword=${keyword})}"
+             th:classappend="${status == '未開始'} ? 'active'">未開始</a>
+          <a class="chip" th:href="@{/staff/promote(status='進行中', keyword=${keyword})}"
+             th:classappend="${status == '進行中'} ? 'active'">進行中</a>
+          <a class="chip" th:href="@{/staff/promote(status='已結束', keyword=${keyword})}"
+             th:classappend="${status == '已結束'} ? 'active'">已結束</a>
+        </div>
+
+
+        <div class="promote-search">
+          <input type="search" class="staff-input" name="keyword" th:value="${keyword}"
+                 placeholder="搜尋活動名稱" aria-label="搜尋活動">
+          <button type="submit" class="staff-btn">搜尋</button>
+        </div>
+
+  
+        <a class="staff-btn btn-pay" th:href="@{/staff/promote/add(status=${status}, keyword=${keyword}, page=${page})}">＋ 新增活動</a>
+      </form>
+
+     
+      <div class="promote-cards">
+        <p class="staff-empty" th:if="${#lists.isEmpty(promotes)}">沒有符合條件的活動</p>
+
+        <article class="promote-card" th:each="p : ${promotes}"
+                 th:with="statusText=${p.promoteBegin != null and now.isBefore(p.promoteBegin)} ? '未開始' : (${p.promoteEnd != null and now.isAfter(p.promoteEnd)} ? '已結束' : '進行中')">
+          <div class="promote-card-img">
+            <img th:if="${p.promoteImg != null}" th:src="@{/staff/promote/img(promoteNo=${p.promoteNo})}" alt="">
+            <th:block th:if="${p.promoteImg == null}">尚無圖片</th:block>
+          </div>
+          <div class="promote-card-body">
+            <h3 class="promote-card-name">
+              <span th:text="${p.promoteName}">活動名稱</span><span class="promote-card-no" th:text="|編號 ${p.promoteNo}|">編號 1</span>
+            </h3>
+            <p class="promote-card-period">
+              <span th:text="${#temporals.format(p.promoteBegin, 'yyyy/MM/dd')}">2026/10/01</span> <small>起</small><br>
+              <span th:text="${#temporals.format(p.promoteEnd, 'yyyy/MM/dd')}">2026/10/10</span> <small>止</small>
+            </p>
+            <div class="promote-card-foot">
+              <span class="tag"
+                    th:classappend="${statusText == '進行中'} ? 'tag-green' : (${statusText == '未開始'} ? 'tag-yellow' : 'tag-gray')"
+                    th:text="${statusText}">進行中</span>
+              <a class="staff-btn" th:href="@{/staff/promote/detail(promoteNo=${p.promoteNo}, status=${status}, keyword=${keyword}, page=${page})}">詳細</a>
+            </div>
+          </div>
+        </article>
+      </div>
+
+      <div class="promote-pager" th:if="${page != null and totalPages != null}">
+        <span class="promote-pager-total" th:if="${total != null}" th:text="|共 ${total} 筆|">共 12 筆</span>
+
+        <a class="promote-pager-btn" th:if="${page > 1}" aria-label="上一頁"
+           th:href="@{/staff/promote(status=${status}, keyword=${keyword}, page=${page - 1})}">‹</a>
+        <span class="promote-pager-btn is-disabled" th:unless="${page > 1}">‹</span>
+
+        <span class="promote-pager-text" th:text="|第 ${page} / ${totalPages} 頁|">第 1 / 2 頁</span>
+
+        <a class="promote-pager-btn" th:if="${page < totalPages}" aria-label="下一頁"
+           th:href="@{/staff/promote(status=${status}, keyword=${keyword}, page=${page + 1})}">›</a>
+        <span class="promote-pager-btn is-disabled" th:unless="${page < totalPages}">›</span>
+      </div>
+    </div>
+  </main>
+
+
+  <div class="promote-modal" th:if="${promoteDetail != null}"
+       th:with="now=${#temporals.createNow()},
+                detailStatus=${promoteDetail.promoteBegin != null and now.isBefore(promoteDetail.promoteBegin)} ? '未開始' : (${promoteDetail.promoteEnd != null and now.isAfter(promoteDetail.promoteEnd)} ? '已結束' : '進行中')">
+    <!-- 半透明的背景，點一下會關閉對話框 -->
+    <a class="promote-backdrop" th:href="@{/staff/promote(status=${status}, keyword=${keyword}, page=${page})}" aria-label="關閉"></a>
+
+    <section class="promote-dialog" role="dialog" aria-modal="true" aria-labelledby="dbDetailHeading">
+      <header class="promote-head">
+        <h2 class="promote-title" id="dbDetailHeading">
+          活動詳細
+          <span class="source-tag source-db">資料庫</span>
+        </h2>
+        <a class="promote-close" th:href="@{/staff/promote(status=${status}, keyword=${keyword}, page=${page})}" aria-label="關閉">×</a>
+      </header>
+
+      <div class="promote-view">
+        <div class="promote-body">
+          <dl class="promote-detail">
+            <div><dt>活動編號</dt><dd th:text="${promoteDetail.promoteNo}">1</dd></div>
+            <div><dt>活動名稱</dt><dd class="promote-detail-name" th:text="${promoteDetail.promoteName}">活動名稱</dd></div>
+            <div>
+              <dt>活動狀態</dt>
+              <dd>
+                <span class="tag"
+                      th:classappend="${detailStatus == '進行中'} ? 'tag-green' : (${detailStatus == '未開始'} ? 'tag-yellow' : 'tag-gray')"
+                      th:text="${detailStatus}">進行中</span>
+              </dd>
+            </div>
+            <div><dt>開始日期</dt><dd th:text="${#temporals.format(promoteDetail.promoteBegin, 'yyyy/MM/dd')}">2026/10/01</dd></div>
+            <div><dt>結束日期</dt><dd th:text="${#temporals.format(promoteDetail.promoteEnd, 'yyyy/MM/dd')}">2026/10/10</dd></div>
+            <div><dt>活動內容</dt><dd class="promote-detail-content" th:text="${promoteDetail.promoteContent}">活動內容</dd></div>
+            <div>
+              <dt>活動圖片</dt>
+              <dd>
+                <div class="promote-detail-img">
+                  <img th:if="${promoteDetail.promoteImg != null}"
+                       th:src="@{/staff/promote/img(promoteNo=${promoteDetail.promoteNo})}" alt="活動圖片">
+                  <th:block th:if="${promoteDetail.promoteImg == null}">尚無圖片</th:block>
+                </div>
+                <small class="promote-hint">圖片固定用 16:9 顯示，和首頁的輪播相同；不是 16:9 的圖片會被拉成 16:9（會變形）。</small>
+              </dd>
+            </div>
+          </dl>
+        </div>
+
+        <footer class="promote-foot">
+          <form class="promote-foot-left" th:if="${detailStatus == '未開始'}" th:action="@{/staff/promote/delete}" method="post"
+                data-confirm="確定要刪除這個活動嗎？刪除之後無法復原。">
+            <input type="hidden" name="promoteNo" th:value="${promoteDetail.promoteNo}">
+            <input type="hidden" name="status" th:value="${status}">
+            <input type="hidden" name="keyword" th:value="${keyword}">
+            <input type="hidden" name="page" th:value="${page}">
+            <button type="submit" class="staff-btn btn-danger-outline">刪除</button>
+          </form>
+          <a class="staff-btn btn-danger-outline" th:if="${detailStatus != '已結束'}"
+             th:href="@{/staff/promote/edit(promoteNo=${promoteDetail.promoteNo}, status=${status}, keyword=${keyword}, page=${page})}">修改</a>
+          <a class="staff-btn" th:href="@{/staff/promote(status=${status}, keyword=${keyword}, page=${page})}">關閉</a>
+        </footer>
+      </div>
+    </section>
+  </div>
+
+
+</body>
+
+</html>
