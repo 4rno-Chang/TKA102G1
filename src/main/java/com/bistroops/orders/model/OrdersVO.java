@@ -5,6 +5,7 @@ import java.util.List;
 
 import org.springframework.data.annotation.Transient;
 
+import com.bistroops.member.model.MemberVO;
 import com.bistroops.ordersdetails.model.OrdersDetailsVO;
 //import com.bistroops.seat.model.SeatVO;
 import com.bistroops.seat.model.SeatVO;
@@ -48,12 +49,21 @@ public class OrdersVO {
 	@JoinColumn(name="seat_no",nullable=false)
 	private SeatVO seatNo;
 	
-	@Column(name="member_no")
-	private Integer memberNo;
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "member_no")
+	private MemberVO member;
 	
 	@Column(name="orders_time")
 	private LocalDateTime ordersTime;
 	
+	public MemberVO getMember() {
+		return member;
+	}
+
+	public void setMember(MemberVO member) {
+		this.member = member;
+	}
+
 	@Column(name="orders_total") //總金額
 	private Integer ordersTotal;
 	
@@ -101,13 +111,7 @@ public class OrdersVO {
 	}
 
 
-	public Integer getMemberNo() {
-		return memberNo;
-	}
 
-	public void setMemberNo(Integer memberNo) {
-		this.memberNo = memberNo;
-	}
 
 	public LocalDateTime getOrdersTime() {
 		return ordersTime;
