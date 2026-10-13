@@ -96,6 +96,7 @@ CREATE TABLE IF NOT EXISTS employee(
   emp_no INT UNSIGNED AUTO_INCREMENT COMMENT '員工編號',
   emp_name VARCHAR(30) NOT NULL COMMENT '姓名',
   emp_password VARCHAR(100) NOT NULL COMMENT '密碼',
+  emp_pwd_changed BOOLEAN NOT NULL DEFAULT FALSE COMMENT '是否已完成首次密碼修改',
   emp_tel VARCHAR(10) NOT NULL COMMENT '本人電話',
   emp_ice VARCHAR(30) COMMENT '緊急聯絡人',
   emp_icetel VARCHAR(10) COMMENT '緊急聯絡人電話',
@@ -432,7 +433,7 @@ VALUES
     ('2026-08-25 11:00:00'),
     ('2026-08-25 12:30:00'),
     ('2026-08-25 17:00:00'),
-    ('2026-08-25 18:30:00');
+    ('2026-08-25 16:30:00');
 
 -- 12. 訂位 (reservation)
 INSERT INTO reservation (
