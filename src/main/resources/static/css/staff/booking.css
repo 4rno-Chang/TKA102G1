@@ -1,0 +1,400 @@
+/* =========================================================
+   Bistroops 員工後台：訂候位（templates/staff/booking.html）
+   需要先載入 staff.css（使用它的 --st-* 變數，以及 .staff-btn、.staff-input、.chip、.tag、.source-tag、.staff-empty）
+   內容：1. 最上面一列（分頁、刷新頁面、新增）與訊息　2. 查詢的工具列（日期、午餐／晚餐、搜尋）　3. 列表（訂位、候位共用）
+         4. 候位：左邊列表、右邊叫號　5. 對話框與表單　6. 自製的月曆與訂位時段　7. 平板直放與手機
+   資料庫的版本和假資料的版本用的是同一組 class，所以刪掉假資料之後這個檔案不用改。
+   ========================================================= */
+
+
+/* ========== 1. 最上面一列：左邊分頁，右邊「刷新頁面」「新增」的按鈕 ========== */
+.booking-top {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px;
+  margin-bottom: 18px;
+}
+/* 分頁（訂位／候位）：用 staff.css 的 .chip，這裡放大一點比較好按 */
+.booking-tabs .chip { min-width: 96px; min-height: 48px; justify-content: center; font-size: 17px; font-weight: 700; }
+.booking-top-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+/* 按鈕裡的小標籤（資料庫／假資料同時出現時用來分辨） */
+.booking-top-actions .source-tag { margin-left: 8px; }
+
+/* 訊息：預設是錯誤（紅）；加上 booking-alert-ok 變成成功（綠） */
+.booking-alert {
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  background: #f6d9d2;
+  border-left: 4px solid var(--st-red);
+  border-radius: 10px;
+  color: #a23e2b;
+  font-weight: 500;
+}
+.booking-alert-ok { background: #dfe6cf; border-left-color: var(--st-green); color: #4f6037; }
+
+
+/* ========== 2. 查詢的工具列（訂位：日期、餐期、搜尋、查詢） ==========
+   每個欄位是「上面小字的標題、下面輸入框」；按鈕對齊輸入框的底部 */
+.booking-tools {
+  display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px;
+  margin-bottom: 12px;
+}
+.booking-tool { display: grid; gap: 4px; }
+.booking-tool > span { color: var(--st-muted); font-size: 13px; }
+.booking-tool .staff-input { width: 100%; min-width: 170px; font: inherit; color: inherit; }
+/* 餐期（午餐／晚餐）：用 staff.css 的 .chip */
+.booking-meals { flex-wrap: nowrap; }
+.booking-meals .chip { min-width: 80px; justify-content: center; font-weight: 700; white-space: nowrap; }
+/* 搜尋框：佔掉剩下的寬度 */
+.booking-tool-grow { flex: 1; min-width: 220px; max-width: 420px; }
+
+/* 候位列表上面那一行：左邊「今天的候位，共 N 組」，後面接著小小的搜尋。放不下的時候搜尋會掉到下一行 */
+.booking-waiting-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; margin-bottom: 10px; }
+.booking-waiting-head .booking-summary { margin-bottom: 0; }
+/* 小的搜尋：輸入框和按鈕的字和旁邊那行字一樣大（15px），高度 38px，比後台一般的輸入框（48px）小一號 */
+.booking-mini-search { display: flex; align-items: center; gap: 6px; }
+.booking-mini-search input[type="search"] {
+  width: 230px; height: 38px;
+  padding: 0 12px;
+  background: var(--st-card);
+  border: 1px solid var(--st-border);
+  border-radius: 10px;
+  font-size: 15px;
+}
+.booking-mini-search input[type="search"]:focus { outline: 2px solid var(--st-yellow); outline-offset: 1px; }
+.booking-mini-search button,
+.booking-mini-search a {
+  display: inline-flex; align-items: center;
+  height: 38px; padding: 0 14px;
+  background: var(--st-card);
+  border: 1px solid var(--st-border);
+  border-radius: 10px;
+  font-size: 15px; white-space: nowrap;
+}
+.booking-mini-search button:hover,
+.booking-mini-search a:hover { background: var(--st-soft); }
+/* 目前顯示的是什麼（某一天某個餐期的訂位、搜尋的結果、候位共幾組） */
+.booking-summary { margin-bottom: 10px; color: var(--st-muted); font-size: 15px; }
+.booking-summary b { color: var(--st-text); }
+
+
+/* ========== 3. 列表（訂位、候位共用） ==========
+   外面包一層 .booking-table-wrap：畫面太窄、放不下所有欄位的時候，只有這一塊可以左右捲動，整個頁面不會被撐寬 */
+.booking-table-wrap {
+  background: var(--st-card);
+  border: 1px solid var(--st-border);
+  border-radius: var(--st-radius);
+  box-shadow: var(--st-shadow);
+  overflow-x: auto;
+}
+.booking-table { width: 100%; min-width: 760px; border-collapse: collapse; }
+/* 候位的列表欄位比較少（沒有電話），而且旁邊還要放叫號，所以最小的寬度小一點 */
+.booking-table-narrow { min-width: 600px; }
+.booking-table th,
+.booking-table td { padding: 12px 14px; text-align: left; vertical-align: middle; }
+/* 每一列都只有一行：所有格子都不換行（white-space: nowrap）。畫面放不下的時候，是外面那一層左右捲動，不是把字擠成兩行 */
+.booking-table td { white-space: nowrap; }
+.booking-table th {
+  background: var(--st-soft);
+  color: var(--st-muted);
+  font-size: 14px; font-weight: 500;
+  white-space: nowrap;
+}
+.booking-table tbody tr + tr td { border-top: 1px solid var(--st-border); }
+/* 訂位時段、候位號碼：最常看的欄位，字大一點 */
+.booking-time { font-weight: 700; white-space: nowrap; }
+.booking-no { font-family: var(--st-serif); font-size: 22px; font-weight: 700; }
+/* 備註：字淡一點，只顯示一行，放不下的部分在最後顯示「…」。
+   文字包在格子裡的 <span>：表格的格子（td）不一定會照設定的寬度，所以把「最寬多少、超過就省略」設定在裡面的 span 上才可靠。
+     display: block ＋ max-width   span 最寬 200px
+     white-space: nowrap           不要換行
+     overflow: hidden              放不下的部分藏起來
+     text-overflow: ellipsis       藏起來的地方顯示「…」
+   後面三個要一起寫才有效果。完整的內容滑鼠移上去看得到（span 的 title） */
+.booking-note { color: var(--st-muted); font-size: 14px; }
+.booking-note span {
+  display: block;
+  max-width: 200px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+/* 候位的列表旁邊還有叫號，位置比較少，備註再窄一點 */
+.booking-table-narrow .booking-note span { max-width: 140px; }
+/* 操作的欄位靠右 */
+.booking-table .booking-col-act { text-align: right; }
+.booking-actions { display: flex; justify-content: flex-end; gap: 8px; }   /* 按鈕排成一行，不換行 */
+.booking-actions form { display: flex; }   /* 包著按鈕的表單（取消訂位、過號），讓按鈕和旁邊的一樣高 */
+/* 列表裡的小按鈕 */
+.booking-btn-sm { min-width: 0; min-height: 40px; padding: 0 14px; font-size: 15px; }
+/* 已通知的候位：還剩幾分鐘；超過時間用紅字 */
+.booking-left { margin-left: 4px; color: var(--st-muted); font-size: 13px; white-space: nowrap; }
+.booking-left.is-late { color: var(--st-red); font-weight: 700; }
+
+
+/* ========== 4. 候位：左邊列表、右邊叫號 ==========
+   .booking-split 把畫面分成左右兩欄：
+     左邊 .booking-split-main   今天的候位列表，寬度是「剩下的全部」
+     右邊 .booking-split-side   每種桌型的叫號，固定 320px 寬
+   minmax(0, 1fr)：左邊可以縮到比表格的最小寬度還小（縮小時表格自己左右捲動），右邊才不會被擠出畫面 */
+.booking-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 20px;
+  align-items: start;
+}
+.booking-split-main { min-width: 0; }
+/* position: sticky：列表很長、往下捲的時候，叫號會停在畫面上方，不會跟著捲走 */
+.booking-split-side { position: sticky; top: 16px; display: grid; gap: 10px; min-width: 0; }
+.booking-side-title { font-family: var(--st-serif); font-size: 18px; font-weight: 700; line-height: 1.5; }
+/* 標題旁邊的小字：說明號碼顏色的意思 */
+.booking-side-title small { margin-left: 8px; color: var(--st-muted); font-family: var(--st-sans); font-size: 12px; font-weight: 400; }
+/* 說明裡的小圓點：紅色＝已叫號，加上 is-late 是綠色＝逾時。顏色要和下面 .booking-call 的底色相同 */
+.booking-dot {
+  display: inline-block;
+  width: 10px; height: 10px; margin-right: 4px;
+  background: var(--st-red);
+  border-radius: 50%;
+}
+.booking-dot.is-late { background: #5f7a45; }
+
+/* 每種桌型一張小卡，上下排。小卡左邊有一條粗的色線，三種桌型的顏色不一樣（--board-color），方便一眼分辨：
+   :nth-child(1) 是「第一張」，所以顏色是照小卡的順序給的（目前是 2、4、6 人桌）。之後桌型變多，照樣往下加就可以。
+   顏色用的是後台主頁三個大按鈕的顏色（磚紅、芥末黃、鼠尾草綠，都是 staff.css 的 --st-* 變數），整個後台看起來才一致 */
+.booking-boards { display: grid; gap: 10px; }
+.booking-board {
+  display: grid; gap: 8px;
+  padding: 12px 14px;
+  background: var(--st-card);
+  border: 1px solid var(--st-border);
+  border-left: 4px solid var(--board-color, #354536);
+  border-radius: 14px;
+  box-shadow: var(--st-shadow);
+}
+.booking-board:nth-child(1) { --board-color: var(--st-green); }    /* 第一張（2 人桌）：鼠尾草綠 */
+.booking-board:nth-child(2) { --board-color: var(--st-yellow); }   /* 第二張（4 人桌）：芥末黃 */
+.booking-board:nth-child(3) { --board-color: var(--st-red); }      /* 第三張（6 人桌）：磚紅 */
+/* 第一行：左邊桌型，右邊「叫下一號」 */
+.booking-board-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.booking-board-head form { display: flex; }   /* 資料庫的版本按鈕包在表單裡 */
+.booking-board-title { font-family: var(--st-serif); font-size: 19px; font-weight: 700; }
+/* 第二行：可用 3 桌・等候 4 組 */
+.booking-board-meta { color: var(--st-muted); font-size: 13px; }
+.booking-board-meta b { color: var(--st-text); font-size: 16px; }
+.booking-board-meta i { margin: 0 6px; color: var(--st-border); font-style: normal; }
+/* 第三行：「目前叫號」的小標題，在號碼的左上方 */
+.booking-calls-label { margin-bottom: -4px; color: var(--st-muted); font-size: 12px; }
+/* 第四行：叫號中的號碼。可能同時有好幾個，一個號碼一顆膠囊，放不下會自動換行。紅底白字＝已叫號 */
+.booking-calls { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-height: 34px; }
+.booking-call {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 46px; height: 34px; padding: 0 14px;
+  background: var(--st-red);
+  border-radius: 999px;
+  color: #fff;
+  font-family: var(--st-serif); font-size: 19px; font-weight: 700; line-height: 1;
+}
+/* 逾時（通知後超過 10 分鐘還沒回來）的號碼：綠底白字，提醒工作人員可以按「過號」了 */
+.booking-call.is-late { background: #5f7a45; }
+.booking-call-none { color: var(--st-muted); font-size: 14px; }
+/* 簡訊內容的說明 */
+.booking-sms {
+  padding: 10px 12px;
+  background: var(--st-soft);
+  border-radius: 12px;
+  color: var(--st-muted);
+  font-size: 13px; line-height: 1.7;
+}
+.booking-sms b { color: var(--st-text); font-weight: 500; }
+
+
+/* ========== 5. 對話框與表單（新增／修改訂位、新增／修改候位） ========== */
+.booking-modal {
+  position: fixed; inset: 0; z-index: 2500;
+  display: flex;
+  padding: 20px;
+}
+/* 半透明的背景 */
+.booking-backdrop { position: absolute; inset: 0; background: rgba(59, 47, 42, .5); }
+/* 對話框本身：上面標題、中間欄位（太長時只有中間會捲動）、下面按鈕 */
+.booking-dialog {
+  position: relative;
+  display: flex; flex-direction: column;
+  width: min(100%, 560px); max-height: 100%;
+  margin: auto;
+  background: var(--st-card);
+  border-radius: 22px;
+  box-shadow: 0 30px 80px rgba(59, 47, 42, .35);
+  overflow: hidden;
+}
+.booking-dialog-head {
+  flex: none;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 16px 16px 14px 22px;
+  background: var(--st-soft);
+  border-bottom: 1px solid var(--st-border);
+}
+.booking-dialog-title { font-family: var(--st-serif); font-size: 24px; font-weight: 700; line-height: 1.3; }
+.booking-close {
+  flex: none;
+  display: grid; place-items: center;
+  width: 48px; height: 48px;
+  background: none; border: 0; border-radius: 50%;
+  color: var(--st-text);
+  font-size: 32px; line-height: 1;
+}
+.booking-close:hover { background: var(--st-card); }
+.booking-form { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.booking-dialog-body {
+  flex: 1; min-height: 0;
+  display: grid; gap: 16px; align-content: start;
+  padding: 18px 22px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.booking-dialog-body .booking-alert { margin-bottom: 0; }
+.booking-dialog-foot {
+  flex: none;
+  display: flex; justify-content: flex-end; gap: 10px;
+  padding: 14px 22px;
+  border-top: 1px solid var(--st-border);
+}
+
+/* 一個欄位：上面標題、下面輸入框 */
+.booking-field { display: grid; gap: 6px; min-width: 0; }
+.booking-label { font-size: 15px; font-weight: 700; }
+.booking-label small { margin-left: 8px; color: var(--st-muted); font-size: 13px; font-weight: 400; }
+.booking-label b { color: var(--st-red); }   /* 必填的 * */
+.booking-field .staff-input { width: 100%; min-width: 0; font: inherit; color: inherit; }
+/* 兩個欄位左右並排 */
+.booking-field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }
+/* 欄位下面的小字提示 */
+.booking-hint { color: var(--st-red); font-size: 13px; line-height: 1.6; }
+
+
+/* ========== 6. 自製的月曆與訂位時段 ==========
+   日期不用瀏覽器內建的欄位，改用自己做的月曆（外觀和活動管理的月曆相同）。一個日期欄位是 .booking-date，裡面有：
+     .booking-date-btn    顯示日期的按鈕（按了打開月曆）
+     .booking-date-panel  月曆（一開始藏著，內容由 booking.js 的 A-3 產生）。
+                          它是「跳出來浮在畫面上」的小視窗，不佔版面的位置，打開時下面的東西不會被推開。 */
+.booking-date { min-width: 0; }
+/* 按鈕：外觀和輸入框一樣，左邊是日期、右邊是月曆的圖示 */
+.booking-date-btn {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  width: 100%; height: 48px;
+  padding: 0 14px 0 16px;
+  background: var(--st-card);
+  border: 1px solid var(--st-border);
+  border-radius: 12px;
+  color: var(--st-text);
+  font: inherit; text-align: left; white-space: nowrap;
+  transition: border-color .2s;
+}
+.booking-date-btn:hover { border-color: var(--st-green); }
+.booking-date-btn:focus-visible { outline: 2px solid var(--st-yellow); outline-offset: 1px; }
+.booking-date-btn svg {
+  flex: none;
+  width: 22px; height: 22px;
+  fill: none; stroke: var(--st-muted); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round;
+}
+/* 還沒選日期：文字變淡 */
+.booking-date.is-empty .booking-date-btn span { color: var(--st-muted); }
+/* 月曆打開的時候：外框變色 */
+.booking-date.is-open .booking-date-btn { border-color: var(--st-green); }
+/* 查詢列上的日期按鈕：至少這麼寬，日期和星期才放得下 */
+.booking-tool .booking-date { min-width: 210px; }
+
+/* 月曆：跳出來的小視窗
+   position: fixed → 浮在整個畫面的最上層，不佔位置；也不會被對話框裡「可以捲動的區域」切掉。
+   要出現在畫面的哪裡（top、left）由 booking.js 在打開時算好。z-index 要比對話框（2500）大，才不會被蓋住。 */
+.booking-date-panel {
+  position: fixed; z-index: 2600;
+  width: min(300px, calc(100vw - 24px));   /* 最寬 300px；手機上不超過畫面寬度 */
+  padding: 12px;
+  background: var(--st-card);
+  border: 1px solid var(--st-border);
+  border-radius: 14px;
+  box-shadow: 0 16px 40px rgba(59, 47, 42, .28);
+}
+/* 最上面一列：‹ 2026 年 10 月 › */
+.booking-cal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.booking-cal-title { font-family: var(--st-serif); font-size: 17px; font-weight: 700; }
+.booking-cal-nav {
+  display: grid; place-items: center;
+  width: 36px; height: 36px;
+  background: none; border: 0; border-radius: 50%;
+  color: var(--st-red);
+  font-size: 22px; line-height: 1;
+}
+.booking-cal-nav:hover { background: var(--st-soft); }
+.booking-cal-nav:disabled { color: var(--st-border); cursor: not-allowed; background: none; }
+/* 星期的標題和日期都是一列七格 */
+.booking-cal-week,
+.booking-cal-days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.booking-cal-week span { padding: 4px 0; color: var(--st-muted); font-size: 12px; text-align: center; }
+/* 每一天是一顆圓形的按鈕 */
+.booking-cal-day {
+  aspect-ratio: 1;
+  display: grid; place-items: center;
+  background: none; border: 0; border-radius: 50%;
+  color: var(--st-text);
+  font: inherit; font-size: 14px;
+}
+.booking-cal-day:hover { background: var(--st-soft); }
+.booking-cal-day.is-today { box-shadow: inset 0 0 0 1px var(--st-green); }          /* 今天：外面一圈細線 */
+.booking-cal-day.is-selected { background: var(--st-green); color: #fff; font-weight: 700; }   /* 選到的那一天 */
+.booking-cal-day:disabled { color: #cfc5b7; cursor: not-allowed; background: none; }   /* 不能選的日子 */
+/* 月曆最下面：「今天」的按鈕和提示 */
+.booking-cal-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 8px; }
+.booking-cal-today {
+  min-height: 32px; padding: 0 12px;
+  background: var(--st-soft); border: 0; border-radius: 8px;
+  color: var(--st-text);
+  font: inherit; font-size: 13px;
+}
+.booking-cal-today:hover { background: var(--st-border); }
+.booking-cal-hint { color: var(--st-muted); font-size: 12px; }
+
+/* 訂位時段：一排可以點的時段（月曆沒有時間，時段另外在這裡選）。放不下會自動換行。
+   每個時段是 <label class="booking-slot"><input type="radio"><span>18:00</span></label>：
+   真正的欄位是那個 radio（單選），把它藏起來，畫面上看到、按到的是 <span>。 */
+.booking-slots { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+/* 時段前面的小標題（午餐、晚餐）。第二個以後的小標題左邊多留一點空間，兩組才分得開 */
+.booking-slot-group { color: var(--st-muted); font-size: 13px; }
+.booking-slot ~ .booking-slot-group { margin-left: 10px; }
+.booking-slot { position: relative; cursor: pointer; }
+/* 把 radio 藏起來（不用 display: none，鍵盤才選得到它，必填的檢查也才有作用） */
+.booking-slot input { position: absolute; opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
+.booking-slot span {
+  display: grid; place-items: center;
+  min-width: 72px; min-height: 44px; padding: 0 12px;
+  background: var(--st-card);
+  border: 1px solid var(--st-border);
+  border-radius: 12px;
+  font-weight: 500;
+  transition: background-color .2s, border-color .2s;
+}
+.booking-slot:hover span { border-color: var(--st-green); }
+/* 選到的時段：深色。input:checked + span 的意思是「被選起來的 radio 後面緊接著的那個 span」 */
+.booking-slot input:checked + span { background: var(--st-text); border-color: var(--st-text); color: #fff; }
+.booking-slot input:focus-visible + span { outline: 2px solid var(--st-yellow); outline-offset: 1px; }
+
+
+/* ========== 7. 平板直放與手機 ========== */
+/* 1100px 以下：候位的左右兩欄放不下，改成上下排。叫號移到上面（order: -1），三張小卡改成橫的排一列 */
+@media (max-width: 1100px) {
+  .booking-split { grid-template-columns: minmax(0, 1fr); }
+  .booking-split-side { position: static; order: -1; }
+  .booking-boards { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+}
+/* 640px 以下（手機） */
+@media (max-width: 640px) {
+  .booking-top-actions { width: 100%; }
+  .booking-top-actions .staff-btn { flex: 1; }
+  .booking-tool, .booking-tool-grow { flex-basis: 100%; max-width: none; }
+  .booking-tools .staff-btn { flex: 1; }
+  .booking-meals .chip { flex: 1; justify-content: center; }
+  /* 對話框佔滿整個畫面，並排的欄位改成上下排 */
+  .booking-modal { padding: 0; }
+  .booking-dialog { width: 100%; height: 100%; border-radius: 0; }
+  .booking-dialog-body { padding: 16px; }
+  .booking-field-row { grid-template-columns: 1fr; }
+  .booking-dialog-foot { padding: 12px 16px; }
+  .booking-dialog-foot .staff-btn { flex: 1; }
+}

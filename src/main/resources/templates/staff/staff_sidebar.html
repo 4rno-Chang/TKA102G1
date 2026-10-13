@@ -33,13 +33,12 @@
 				<span>入座管理</span>
 			</button>
 
-			<a class="staff-menu-item" th:href="@{/staff/reservations}"
-				th:classappend="${active == 'reservations'} ? 'active'"> <svg
-					viewBox="0 0 24 24" aria-hidden="true">
-        <rect x="4" y="5" width="16" height="15" rx="2" />
-        <path d="M4 10h16M8 3v4M16 3v4" />
-    </svg> <span>訂候位</span>
-			</a> <a class="staff-menu-item" th:href="@{/staff/orders}"
+			<a class="staff-menu-item" th:href="@{/staff/booking}" th:classappend="${active == 'booking'} ? 'active'">
+		      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M8 3v4M16 3v4"/></svg>
+		      <span>訂候位</span>
+		    </a>
+			
+			 <a class="staff-menu-item" th:href="@{/staff/orders}"
 				th:classappend="${active == 'orders'} ? 'active'"> <svg
 					viewBox="0 0 24 24" aria-hidden="true">
 					<path d="M8 6h12M8 12h12M8 18h12" />
