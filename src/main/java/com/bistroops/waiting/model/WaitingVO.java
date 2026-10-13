@@ -14,6 +14,8 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "waiting")
@@ -46,6 +48,16 @@ public class WaitingVO {
 
 	@Column(name = "waiting_notify_time")
 	private LocalTime waitingNotifyTime;
+	
+	@Column(name = "waiting_date")
+	private LocalDate waitingDate;
+
+	@Column(name = "waiting_take_time")
+	private LocalDateTime waitingTakeTime;
+
+	@Column(name = "waiting_ticket_seq")
+	private Integer waitingTicketSeq;
+	
 
 	public WaitingVO() {
 	}
@@ -112,5 +124,44 @@ public class WaitingVO {
 
 	public void setWaitingNotifyTime(LocalTime waitingNotifyTime) {
 		this.waitingNotifyTime = waitingNotifyTime;
+	}
+	
+	public LocalDate getWaitingDate() {
+	    return waitingDate;
+	}
+
+	public void setWaitingDate(LocalDate waitingDate) {
+	    this.waitingDate = waitingDate;
+	}
+
+	public LocalDateTime getWaitingTakeTime() {
+	    return waitingTakeTime;
+	}
+
+	public void setWaitingTakeTime(LocalDateTime waitingTakeTime) {
+	    this.waitingTakeTime = waitingTakeTime;
+	}
+
+	public Integer getWaitingTicketSeq() {
+	    return waitingTicketSeq;
+	}
+
+	public void setWaitingTicketSeq(Integer waitingTicketSeq) {
+	    this.waitingTicketSeq = waitingTicketSeq;
+	}
+
+	// 顯示號碼不取代資料庫主鍵。
+	public String getTicketDisplay() {
+
+	    if (seatType == null || waitingTicketSeq == null) {
+	        return "舊紀錄 #" + waitingNo;
+	    }
+
+	    return seatType.getSeatTypeNo()
+	            + "-"
+	            + String.format(
+	                    java.util.Locale.ROOT,
+	                    "%03d",
+	                    waitingTicketSeq);
 	}
 }

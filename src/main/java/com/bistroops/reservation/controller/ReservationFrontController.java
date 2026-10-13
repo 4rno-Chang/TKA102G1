@@ -47,25 +47,24 @@ public class ReservationFrontController {
 			tableType = 2;
 		}
 
-		List<LocalDate> openDates = rsvDtService.getOpenDates();
+		Map<String, Object> availability = reservationService.getAvailabilitySnapshot();
 
-		if (date != null && !openDates.contains(date)) {
-			model.addAttribute("error", "這一天沒有開放可選時段");
+		LocalDate minDate = LocalDate.parse(availability.get("minDate").toString());
+
+		LocalDate maxDate = LocalDate.parse(availability.get("maxDate").toString());
+
+		if (date != null && (date.isBefore(minDate) || date.isAfter(maxDate))) {
+
+			model.addAttribute("error", "日期超出可預約範圍，請重新選擇");
+
 			date = null;
 		}
 
-		String dateStrings = openDates.stream().map(LocalDate::toString).collect(Collectors.joining(","));
-
 		model.addAttribute("date", date == null ? "" : date.toString());
 
-		model.addAttribute("dateText", date == null ? "尚未選擇" : date.toString().replace('-', '/'));
-
 		model.addAttribute("tableType", tableType);
-		model.addAttribute("openDates", dateStrings);
-		model.addAttribute("minDate", LocalDate.now().toString());
-		model.addAttribute("maxDate", LocalDate.now().plusMonths(3).toString());
 
-		model.addAttribute("slots", reservationService.getSlots(date, tableType));
+		model.addAttribute("reservationAvailability", availability);
 
 		return "front/reservation/reservation_date";
 	}
@@ -167,10 +166,5 @@ public class ReservationFrontController {
 			return "redirect:/bistroops/reservation";
 		}
 	}
-	
-	
-	
-
-	   
 
 }

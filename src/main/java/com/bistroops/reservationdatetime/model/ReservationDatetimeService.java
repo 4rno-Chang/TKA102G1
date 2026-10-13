@@ -1,6 +1,7 @@
 package com.bistroops.reservationdatetime.model;
 
 import java.util.List;
+import java.time.ZoneId;
 
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
@@ -43,19 +44,22 @@ public class ReservationDatetimeService {
 	}
 
 	public List<LocalDate> getOpenDates() {
-		LocalDate today = LocalDate.now();
+
+		ZoneId zone = ZoneId.of("Asia/Taipei");
+
+		LocalDateTime now = LocalDateTime.now(zone);
+		LocalDate today = now.toLocalDate();
 
 		Set<LocalTime> allowedTimes = Set.of(LocalTime.of(11, 0), LocalTime.of(12, 30), LocalTime.of(17, 0),
 				LocalTime.of(18, 30));
 
-		LocalDateTime now = LocalDateTime.now();
-
 		return repository
 				.findByRsvDtDatetimeGreaterThanEqualAndRsvDtDatetimeLessThanOrderByRsvDtDatetimeAsc(
-						today.atStartOfDay(), today.plusMonths(3).plusDays(1).atStartOfDay())
-				.stream().filter(slot -> slot.getRsvDtDatetime() != null).map(ReservationDatetimeVO::getRsvDtDatetime)
-				.filter(time -> time.isAfter(now)).filter(time -> allowedTimes.contains(time.toLocalTime()))
-				.map(LocalDateTime::toLocalDate).distinct().sorted().toList();
+						today.atStartOfDay(), today.plusDays(90).atStartOfDay())
+				.stream().filter(slot -> slot.getRsvDtDatetime() != null)
+				.filter(slot -> slot.getRsvDtDatetime().isAfter(now))
+				.filter(slot -> allowedTimes.contains(slot.getRsvDtDatetime().toLocalTime()))
+				.map(slot -> slot.getRsvDtDatetime().toLocalDate()).distinct().sorted().toList();
 	}
 
 }

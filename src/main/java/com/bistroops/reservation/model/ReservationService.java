@@ -1,6 +1,7 @@
 package com.bistroops.reservation.model;
 
 import java.time.LocalDate;
+import com.bistroops.reservationdatetime.model.ReservationSlotWindowService;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
@@ -18,6 +19,12 @@ import com.bistroops.seattype.model.SeatTypeRepository;
 import com.bistroops.seattype.model.SeatTypeVO;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 @Service
 @Transactional(readOnly = true)
@@ -27,14 +34,18 @@ public class ReservationService {
 	private final MemberRepository memberRepository;
 	private final ReservationDatetimeRepository rsvDtRepository;
 	private final SeatTypeRepository seatTypeRepository;
+	private final ReservationSlotWindowService slotWindowService;
+	private static final ZoneId RESERVATION_ZONE = ZoneId.of("Asia/Taipei");
 
 	public ReservationService(ReservationRepository repository, MemberRepository memberRepository,
-			ReservationDatetimeRepository rsvDtRepository, SeatTypeRepository seatTypeRepository) {
+			ReservationDatetimeRepository rsvDtRepository, SeatTypeRepository seatTypeRepository,
+			ReservationSlotWindowService slotWindowService) {
 
 		this.repository = repository;
 		this.memberRepository = memberRepository;
 		this.rsvDtRepository = rsvDtRepository;
 		this.seatTypeRepository = seatTypeRepository;
+		this.slotWindowService = slotWindowService;
 	}
 
 	public List<ReservationVO> getAll() {
@@ -65,6 +76,13 @@ public class ReservationService {
 
 		if (date == null || rsvDtNo == null) {
 			throw new IllegalArgumentException("請選擇日期與時段");
+		}
+
+		LocalDate today = LocalDate.now(RESERVATION_ZONE);
+
+		if (date.isBefore(today) || date.isAfter(today.plusDays(89))) {
+
+			throw new IllegalArgumentException("只能預約含今日起算90天內的日期");
 		}
 
 		if (seatTypeNo == null || !Set.of(2, 4, 6).contains(seatTypeNo)) {
@@ -462,6 +480,58 @@ public class ReservationService {
 
 		// 沿用前台新增的日期、時段、名額與重複訂位檢查。
 		return addForMember(member.getMemNo(), date, rsvDtNo, seatTypeNo, comment);
+	}
+
+	// 開啟訂位頁時，補齊含今日90天的時段，
+	// 再一次查詢各日期、桌型與時段的剩餘桌數。
+	public Map<String, Object> getAvailabilitySnapshot() {
+
+		LocalDateTime now = LocalDateTime.now(RESERVATION_ZONE);
+
+		LocalDate minDate = now.toLocalDate();
+		LocalDate maxDate = minDate.plusDays(89);
+
+		// 先補齊缺少的訂位時段。
+		slotWindowService.ensureWindow(minDate);
+
+		// 查詢包含最後一天，使用隔天00:00作為排除上限。
+		LocalDateTime endExclusive = maxDate.plusDays(1).atStartOfDay();
+
+		List<ReservationAvailabilityRow> rows = repository.findAvailability(now, endExclusive);
+
+		Map<String, Map<String, List<Map<String, Object>>>> slotsByDate = new LinkedHashMap<>();
+
+		for (ReservationAvailabilityRow row : rows) {
+
+			LocalDateTime diningTime = row.getDiningTime();
+
+			String date = diningTime.toLocalDate().toString();
+
+			String tableType = row.getTableType().toString();
+
+			Map<String, List<Map<String, Object>>> tables = slotsByDate.computeIfAbsent(date,
+					ignored -> new LinkedHashMap<>());
+
+			List<Map<String, Object>> slots = tables.computeIfAbsent(tableType, ignored -> new ArrayList<>());
+
+			long remaining = row.getRemaining() == null ? 0L : Math.max(0L, row.getRemaining());
+
+			slots.add(Map.<String, Object>of("rsvDtNo", row.getRsvDtNo().toString(),
+
+					"timeText", diningTime.format(DateTimeFormatter.ofPattern("HH:mm")),
+
+					"startAt", diningTime.atZone(RESERVATION_ZONE).toInstant().toEpochMilli(),
+
+					"remaining", remaining,
+
+					"full", remaining == 0));
+		}
+
+		return Map.<String, Object>of("minDate", minDate.toString(), "maxDate", maxDate.toString(),
+
+				"serverTime", now.atZone(RESERVATION_ZONE).toInstant().toEpochMilli(),
+
+				"slotsByDate", slotsByDate);
 	}
 
 }
