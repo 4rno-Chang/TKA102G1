@@ -40,13 +40,14 @@ import jakarta.persistence.EntityNotFoundException;
 public class SeatTypeService {
 
 	public static final int EST = 90;                         // 固定用餐時間（分鐘）
+	private static final int RANGE = 4 * 60;                  // 時間軸畫現在前後各幾分鐘
 	public static final List<Integer> TYPES = List.of(2, 4, 6);
 	private static final String RSV_PENDING = "預約";
 	private static final String RSV_ARRIVED = "實到";
 	private static final String RSV_CANCELLED = "取消";
 	private static final String RSV_NO_SHOW = "未到";
 
-	// 平面圖上桌子的位置（桌子中心，單位是 %）。寫死在這裡，不存資料庫；不在表上的桌號會排在平面圖下方
+	// 平面圖上桌子的位置（桌子中心，單位是 %）。寫死在這裡，不存資料庫；不在表上的桌號不畫（桌位管理之後再做）
 	private static final Map<String, int[]> LAYOUT = Map.ofEntries(
 			Map.entry("A01", new int[] { 9, 18 }), Map.entry("A02", new int[] { 9, 36 }),
 			Map.entry("A03", new int[] { 9, 54 }), Map.entry("A04", new int[] { 22, 18 }),
@@ -161,29 +162,6 @@ public class SeatTypeService {
 					Math.max(free - need, 0), Math.max(need - free, 0), nextSlot);
 		}
 
-		/* 超時分兩種
-		   urgent（需提醒）：空桌連 90 分鐘內的訂位都不夠用，或沒有現場可坐的桌子又有人在候位
-		   mild（不影響）：同桌型還有空桌；沒超時是 null */
-		String lateLevel(SeatVO s) {
-			if (!isLate(s)) {
-				return null;
-			}
-			Quota q = quota(s.getSeatTypeNo());
-			return (q.shortage() > 0 || (q.walkLeft() == 0 && q.waiting() > 0)) ? "urgent" : "mild";
-		}
-
-		String lateReason(SeatVO s) {
-			Quota q = quota(s.getSeatTypeNo());
-			int type = s.getSeatTypeNo();
-			if (q.shortage() > 0) {
-				return type + " 人桌的空桌不夠 90 分鐘內的訂位用（還差 " + q.shortage() + " 桌）";
-			}
-			if (q.walkLeft() == 0 && q.waiting() > 0) {
-				return type + " 人桌已經沒有現場可坐的桌子，有 " + q.waiting() + " 組在候位";
-			}
-			return type + " 人桌還有空桌，不影響其他客人";
-		}
-
 		/* 時間軸：這個時段、這個桌型夠不夠桌子
 		   需要 = 這個時段還是「預約」的筆數
 		   預計空出 = 現在的空桌 + 用餐中、預估在時段前離開的桌子（入座 + 90 分鐘 ≤ 時段） */
@@ -203,72 +181,85 @@ public class SeatTypeService {
 
 	/* =====================================================================
 	   二、整頁的資料（Controller 放進 Model 的 page）
-	   view：floor 平面圖／timeline 時間軸；filter：all、2、4、6、free、late；selected：選到的桌號
+	   view：floor 平面圖／timeline 時間軸；filter（桌型）：all、2、4、6；
+	   state（狀態，只有平面圖用）：all、free 可使用、use 使用中、off 停用、late 超時（用餐超過 90 分鐘）、anomaly 時間異常；
+	   桌型和狀態同時生效（兩個都符合的桌子才是亮的）；selected：選到的桌號
+	   focus（只有時間軸用，點上方的卡片）：all、busy 用餐中、rsv 90 分鐘內的預約、warn 須注意；和桌型疊加
 	   ===================================================================== */
-	public Map<String, Object> getPage(String view, String filter, String selected) {
+	public static final List<String> STATES = List.of("free", "use", "off", "late", "anomaly");
+	// 平面圖說明列（狀態篩選）的每一項：state 值、圖示的 class、文字
+	private static final List<Map<String, Object>> STATE_OPTIONS = List.of(
+			Map.of("value", "free", "cls", "st-free", "label", "可使用"),
+			Map.of("value", "use", "cls", "st-use", "label", "使用中"),
+			Map.of("value", "off", "cls", "st-off", "label", "停用"),
+			Map.of("value", "late", "cls", "lg-late", "label", "超時"),
+			Map.of("value", "anomaly", "cls", "lg-warn", "label", "時間異常"));
+
+	public static final List<String> FOCUSES = List.of("busy", "rsv", "warn");
+
+	public Map<String, Object> getPage(String view, String filter, String state, String focus, String selected) {
 		Snapshot snap = new Snapshot();
 		boolean timeline = "timeline".equals(view);
-
-		List<Map<String, Object>> quotas = new ArrayList<>();
-		for (Integer type : TYPES) {
-			Quota q = snap.quota(type);
-			quotas.add(row("type", type, "total", q.total(), "off", q.off(), "free", q.free(), "need", q.need(),
-					"nextSlot", q.nextSlot() == null ? null : fmt(q.nextSlot()), "noShow", q.noShow(),
-					"waiting", q.waiting(), "walkLeft", q.walkLeft(), "shortage", q.shortage()));
-		}
-		List<SeatVO> late = snap.seats.stream().filter(snap::isLate).toList();
-		long urgent = late.stream().filter(s -> "urgent".equals(snap.lateLevel(s))).count();
+		String type = TYPES.stream().map(String::valueOf).anyMatch(t -> t.equals(filter)) ? filter : "all";
+		String seatState = STATES.contains(state) ? state : "all";
+		String timelineFocus = timeline && FOCUSES.contains(focus) ? focus : "all";
 
 		SeatVO picked = snap.seats.stream().filter(s -> s.getSeatNo().equals(selected)).findFirst().orElse(null);
-		List<Map<String, Object>> seats = floorSeats(snap, filter, picked);
+		List<Map<String, Object>> seats = floorSeats(snap, type, seatState, picked);
 
 		return row(
 				"view", timeline ? "timeline" : "floor",
-				"filter", filter == null || filter.isBlank() ? "all" : filter,
+				"filter", type,
+				"state", seatState,
+				"focus", timelineFocus,
+				"stateOptions", STATE_OPTIONS,
 				"selected", picked == null ? null : picked.getSeatNo(),
 				"now", fmt(snap.now),                     // 現在時間 HH:mm（時間軸紅線上的「現在 16:20」）
 				"est", EST,
-				"quotas", quotas,
-				"lateCount", late.size(),
-				"urgentCount", urgent,
 				"seats", seats,
-				"looseCount", seats.stream().filter(s -> !(Boolean) s.get("placed")).count(),
 				"panel", picked == null ? null : panel(snap, picked),
 				"closing", closingPreview(snap),
-				"timeline", timeline ? timeline(snap, filter) : null);
+				"timeline", timeline ? timeline(snap, type, timelineFocus) : null);
 	}
 
 	/* ---------- 平面圖上的每一張桌子 ---------- */
-	private List<Map<String, Object>> floorSeats(Snapshot snap, String filter, SeatVO picked) {
+	private List<Map<String, Object>> floorSeats(Snapshot snap, String filter, String state, SeatVO picked) {
 		List<Map<String, Object>> list = new ArrayList<>();
 		for (SeatVO s : snap.seats) {
 			int[] xy = LAYOUT.get(s.getSeatNo());
-			String level = snap.lateLevel(s);
+			boolean late = snap.isLate(s);
 			boolean anomaly = snap.isAnomaly(s);
-			String sub = anomaly ? "時間異常" : snap.isSeated(s) ? snap.minsOf(s) + " 分" : s.getSeatStatus();
+			// 桌子下面的小字：使用中的兩種狀態顏色一樣，用文字分「訂位 35 分」「現場 35 分」
+			String sub = anomaly ? "時間異常"
+					: snap.isSeated(s) ? (SeatingSeatService.RESERVED.equals(s.getSeatStatus()) ? "訂位 " : "現場 ") + snap.minsOf(s) + " 分"
+					: s.getSeatStatus();
 			String title = s.getSeatNo() + " " + s.getSeatStatus()
-					+ (level == null ? "" : "・用餐 " + snap.minsOf(s) + " 分鐘，" + snap.lateReason(s))
+					+ (late ? "・用餐 " + snap.minsOf(s) + " 分鐘，超過 " + EST + " 分鐘" : "")
 					+ (anomaly ? "・入座時間 " + fmt(minuteOf(s.getSeatTime())) + " 比現在還晚" : "");
 			list.add(row("no", s.getSeatNo(), "type", s.getSeatTypeNo(), "status", s.getSeatStatus(),
 					"cls", statusClass(s), "placed", xy != null, "x", xy == null ? 0 : xy[0], "y", xy == null ? 0 : xy[1],
-					"sub", sub, "late", level != null, "urgent", "urgent".equals(level),
-					"anomaly", anomaly, "dim", isDim(snap, s, filter),
+					"sub", sub, "late", late,
+					"anomaly", anomaly, "dim", isDim(snap, s, filter, state),
 					"selected", picked != null && picked.getSeatNo().equals(s.getSeatNo()), "title", title));
 		}
 		return list;
 	}
 
-	private boolean isDim(Snapshot snap, SeatVO s, String filter) {
-		if (filter == null || filter.isBlank() || "all".equals(filter)) {
-			return false;
-		}
-		if ("free".equals(filter)) {
-			return !SeatingSeatService.FREE.equals(s.getSeatStatus());
-		}
-		if ("late".equals(filter)) {
-			return !snap.isLate(s);
-		}
-		return !String.valueOf(s.getSeatTypeNo()).equals(filter);
+	// 變淡：桌型不符，或狀態不符（兩個篩選疊加）
+	private boolean isDim(Snapshot snap, SeatVO s, String filter, String state) {
+		boolean typeOk = "all".equals(filter) || String.valueOf(s.getSeatTypeNo()).equals(filter);
+		return !typeOk || !matchState(snap, s, state);
+	}
+
+	private boolean matchState(Snapshot snap, SeatVO s, String state) {
+		return switch (state) {
+			case "free" -> SeatingSeatService.FREE.equals(s.getSeatStatus());
+			case "use" -> SeatingSeatService.isInUse(s);
+			case "off" -> SeatingSeatService.OFF.equals(s.getSeatStatus());
+			case "late" -> snap.isLate(s);
+			case "anomaly" -> snap.isAnomaly(s);
+			default -> true;
+		};
 	}
 
 	/* ---------- 右邊：選到的那一桌 ---------- */
@@ -284,11 +275,10 @@ public class SeatTypeService {
 		List<OrdersVO> unpaid = snap.unpaidOrders(s);
 		int cancelled = current.size() - active.size();
 		String payLabel = active.isEmpty() ? "尚未點餐" : unpaid.isEmpty() ? "已結帳" : "未結帳";
-		// 例：共 2 張訂單，1 張未結帳（1 張已取消）；「共」包含已取消的單
-		String payDetail = current.isEmpty() ? null
+		// 例：共 2 張訂單，1 張未結帳（1 張已取消）；「共」包含已取消的單。只有 1 張單時不顯示（看「未結帳／已結帳」就夠）
+		String payDetail = current.size() < 2 ? null
 				: "共 " + current.size() + " 張訂單，" + unpaid.size() + " 張未結帳"
 						+ (cancelled > 0 ? "（" + cancelled + " 張已取消）" : "");
-		String level = snap.lateLevel(s);
 		String meterLevel = mins == null ? "" : mins >= EST ? "over" : mins >= EST * 3 / 4 ? "mid" : "";
 
 		// 空桌：可以選的訂位、候位
@@ -315,7 +305,7 @@ public class SeatTypeService {
 				"seatTime", s.getSeatTime() == null ? null : fmt(minuteOf(s.getSeatTime())),
 				"mins", mins, "anomaly", snap.isAnomaly(s),
 				"meterPct", mins == null ? 0 : Math.min(mins * 100 / EST, 100), "meterLevel", meterLevel,
-				"lateUrgent", "urgent".equals(level), "lateReason", level == null ? null : snap.lateReason(s),
+				"late", snap.isLate(s),
 				"payLabel", payLabel, "payDetail", payDetail,
 				"customer", "use".equals(mode) ? customerOf(active) : null,
 				"leaveConfirm", unpaid.isEmpty() ? null
@@ -343,12 +333,12 @@ public class SeatTypeService {
 		MemberVO m = active.stream().map(OrdersVO::getMember).filter(mem -> mem != null).findFirst().orElse(null);
 		try {
 			if (m != null) {
-				return row("member", true, "name", m.getMemName(), "tel", m.getMemTel(), "tag", m.getMemTag());
+				return row("member", true, "name", m.getMemName(), "tel", m.getMemTel(), "tags", splitTags(m.getMemTag()));
 			}
 		} catch (EntityNotFoundException e) {
 			// 查不到會員：往下顯示非會員
 		}
-		return row("member", false, "name", "非會員", "tel", null, "tag", null);
+		return row("member", false, "name", "非會員", "tel", null, "tags", List.of());
 	}
 
 	/* ---------- 打烊一鍵清桌：預覽（確認視窗的文字） ---------- */
@@ -368,32 +358,23 @@ public class SeatTypeService {
 	}
 
 	/* ---------- 時間軸 ---------- */
-	private Map<String, Object> timeline(Snapshot snap, String filter) {
+	/* focus：點上方卡片後只顯示一部分（卡片上的數字永遠算全部）
+	     busy：只留用餐中的桌子，不顯示預約列
+	     rsv ：只留預約列，而且只有 90 分鐘內、還沒到的預約（和卡片的數字一致）
+	     warn：只留超時、時間異常的桌子，預約列只留桌數不夠（紅色 !）的預約；沒有的桌型整組不顯示 */
+	private Map<String, Object> timeline(Snapshot snap, String filter, String focus) {
 		int now = snap.now;
-		// 左邊界：現在往前 3 小時、取到整點（最早 09:00），一個畫面看完不用滑動；更早的紀錄不畫
-		int start = Math.max(9 * 60, (now - 180) / 60 * 60);
-		// 右邊界：至少到 20:00、現在 + 30 分；今天還有訂位或用餐中的桌子時，畫到「最晚的時段／入座 + 90 分鐘」，訂位色塊才不會被切掉
-		int last = Math.max(20 * 60, now + 30);
-		for (ReservationVO r : snap.reservations) {
-			if (!RSV_CANCELLED.equals(r.getRsvStatus())) {
-				last = Math.max(last, slotOf(r) + EST);
-			}
-		}
-		for (SeatVO s : snap.seats) {
-			if (snap.isSeated(s)) {
-				last = Math.max(last, minuteOf(s.getSeatTime()) + EST);
-			}
-		}
-		int end = Math.min(24 * 60, (last + 59) / 60 * 60);
+		// 範圍：現在前後各 4 小時，左邊往前取整點、右邊往後取整點，一個畫面看完不用滑動
+		// 不限營業時間：清晨或深夜打開時可能跨過 00:00（刻度用 fmt 換回 0～23 點顯示）
+		// 範圍外的紀錄、訂位不畫（訂位清單、桌位卡照常可以選）
+		int start = Math.floorDiv(now - RANGE, 60) * 60;
+		int end = Math.floorDiv(now + RANGE + 59, 60) * 60;
 		Pct pct = new Pct(start, end);
 
 		List<Map<String, Object>> hours = new ArrayList<>();
 		for (int h = start; h <= end; h += 60) {
 			hours.add(row("label", fmt(h), "left", pct.of(h), "first", h == start, "last", h + 60 > end));
 		}
-		List<Map<String, Object>> peaks = List.of(
-				row("label", "午餐", "left", pct.of(11 * 60), "width", pct.of(14 * 60) - pct.of(11 * 60)),
-				row("label", "晚餐", "left", pct.of(17 * 60), "width", pct.of(20 * 60) - pct.of(17 * 60)));
 
 		List<Map<String, Object>> groups = new ArrayList<>();
 		int conflicts = 0;
@@ -401,14 +382,31 @@ public class SeatTypeService {
 			List<SeatVO> list = snap.seatsOf(type);
 			int off = (int) list.stream().filter(s -> SeatingSeatService.OFF.equals(s.getSeatStatus())).count();
 			int busy = (int) list.stream().filter(snap::isSeated).count();
-			Map<String, Object> lane = lane(snap, type, pct);
+			Map<String, Object> lane = lane(snap, type, pct, focus);
 			conflicts += (int) lane.get("conflicts");
 			if (filter != null && TYPES.stream().map(String::valueOf).anyMatch(filter::equals) && !filter.equals(String.valueOf(type))) {
 				continue;
 			}
 			List<Map<String, Object>> rows = new ArrayList<>();
 			for (SeatVO s : list) {
-				rows.add(timelineRow(snap, s, pct));
+				boolean keep = switch (focus) {
+					case "busy" -> snap.isSeated(s);
+					case "rsv" -> false;
+					case "warn" -> snap.isLate(s) || snap.isAnomaly(s);
+					default -> true;
+				};
+				if (keep) {
+					rows.add(timelineRow(snap, s, pct));
+				}
+			}
+			boolean showLane = switch (focus) {
+				case "busy" -> false;
+				case "rsv", "warn" -> !((List<?>) lane.get("blocks")).isEmpty();
+				default -> true;
+			};
+			lane.put("show", showLane);
+			if (rows.isEmpty() && !showLane) {
+				continue;   // 這個桌型沒有符合的項目，整組不顯示
 			}
 			groups.add(row("type", type,
 					"sub", list.size() + " 桌・用餐中 " + busy + (off > 0 ? "・停用 " + off : ""),
@@ -418,9 +416,9 @@ public class SeatTypeService {
 		int usable = (int) snap.seats.stream().filter(s -> !SeatingSeatService.OFF.equals(s.getSeatStatus())).count();
 		int busy = (int) snap.seats.stream().filter(snap::isSeated).count();
 		int needTotal = TYPES.stream().mapToInt(t -> snap.quota(t).need()).sum();
-		int warn = (int) snap.seats.stream().filter(s -> "urgent".equals(snap.lateLevel(s)) || snap.isAnomaly(s)).count() + conflicts;
+		int warn = (int) snap.seats.stream().filter(s -> snap.isLate(s) || snap.isAnomaly(s)).count() + conflicts;
 
-		return row("hours", hours, "peaks", peaks, "groups", groups,
+		return row("hours", hours, "groups", groups,
 				"nowLeft", now >= start && now <= end ? pct.of(now) : null, "hourWidth", pct.of(start + 60),
 				"busy", busy, "usable", usable, "busyPct", usable == 0 ? 0 : busy * 100 / usable,
 				"ordersToday", snap.orders.stream().filter(o -> !isCancelled(o)).count(),
@@ -454,22 +452,22 @@ public class SeatTypeService {
 				continue;   // 整段都在時間軸左邊界之前，不畫
 			}
 			blocks.add(block("done", "blk done", pct.of(first), pct.of(end) - pct.of(first),
-					fmt(first) + (count > 1 ? "・" + count + " 張單" : ""),
+					fmt(first),
 					"稍早用過餐：" + fmt(first) + " 下單" + (count > 1 ? "（共 " + count + " 張）" : "") + "，約 " + fmt(first + EST) + " 結束",
 					0, 0));
 		}
 
-		// 現在這組客人：從入座到「入座 + 90 分鐘」和「現在」較晚的那一個；實心到現在，超時的部分是紅色
+		// 現在這組客人：從入座到「入座 + 90 分鐘」和「現在」較晚的那一個；實心到現在，超時的部分需提醒是紅色、不影響是橘色
 		if (seatedMin != null) {
 			int end = seatedMin + EST;
 			int right = Math.max(end, snap.now);
 			double span = Math.max(right - seatedMin, 1);
-			String level = snap.lateLevel(s);
+			boolean late = snap.isLate(s);
 			String pay = snap.activeOrders(s).isEmpty() ? "尚未點餐" : snap.isPaid(s) ? "已結帳" : "未結帳";
 			String text = pay + "・" + snap.minsOf(s) + " 分";
-			blocks.add(block("now", "blk now " + statusClass(s) + ("urgent".equals(level) ? " over" : ""),
+			blocks.add(block("now", "blk now " + statusClass(s) + (late ? " over" : ""),
 					pct.of(seatedMin), Math.max(pct.of(right) - pct.of(seatedMin), 0.8), text,
-					s.getSeatNo() + " " + text + "，預計 " + fmt(end) + " 離開" + (level == null ? "" : "；" + snap.lateReason(s)),
+					s.getSeatNo() + " " + text + "，預計 " + fmt(end) + " 離開" + (late ? "；已超過 " + EST + " 分鐘" : ""),
 					round(Math.min(snap.now - seatedMin, EST) / span * 100), round(snap.now > end ? (snap.now - end) / span * 100 : 0)));
 		}
 
@@ -481,9 +479,8 @@ public class SeatTypeService {
 			statusText = "時間異常";
 			warn = true;
 		} else if (snap.isSeated(s)) {
-			String level = snap.lateLevel(s);
-			statusText = snap.minsOf(s) + " 分" + ("urgent".equals(level) ? "・超時需提醒" : "mild".equals(level) ? "・超時（不影響）" : "");
-			warn = "urgent".equals(level);
+			statusText = snap.minsOf(s) + " 分" + (snap.isLate(s) ? "・超時" : "");
+			warn = snap.isLate(s);
 		} else {
 			statusText = "空桌";
 		}
@@ -495,7 +492,8 @@ public class SeatTypeService {
 	}
 
 	// 每個桌型最下面一列「預約」：訂位只有桌型、沒有桌號，一筆一塊，同一個時段往下疊
-	private Map<String, Object> lane(Snapshot snap, int type, Pct pct) {
+	// focus＝rsv 只畫 90 分鐘內、還沒到的預約；focus＝warn 只畫桌數不夠的預約（conflicts 照樣算全部）
+	private Map<String, Object> lane(Snapshot snap, int type, Pct pct, String focus) {
 		List<Map<String, Object>> blocks = new ArrayList<>();
 		TreeSet<Integer> slots = new TreeSet<>();
 		snap.reservations.stream().filter(r -> r.getSeatType().getSeatTypeNo() == type).forEach(r -> slots.add(slotOf(r)));
@@ -513,7 +511,14 @@ public class SeatTypeService {
 			}
 			boolean pastSlot = slot < snap.now;
 			int[] check = snap.slotCheck(type, slot);
-			conflicts += check[2];
+			conflicts += check[2];   // 桌數不夠照樣算進「需要注意」，即使時段在右邊界之後
+			if (slot >= pct.end()) {
+				continue;   // 時段在時間軸右邊界之後，不畫
+			}
+			boolean soon = slot >= snap.now && slot < snap.now + EST;
+			if (("rsv".equals(focus) && !soon) || ("warn".equals(focus) && check[2] == 0)) {
+				continue;
+			}
 			double left = pct.of(slot), width = pct.of(slot + EST) - pct.of(slot);
 			int row = 0;
 			if (pastSlot) {
@@ -673,18 +678,28 @@ public class SeatTypeService {
 		return t.getHour() * 60 + t.getMinute();
 	}
 
+	// 分鐘 → HH:mm；超過 24:00 或小於 00:00（時間軸跨日、入座 + 90 分鐘超過午夜）換回 0～23 點
+	// 會員的客戶備註（member.mem_tag）用「；」「;」「、」或換行分成幾點，畫面上條列顯示
+	private static List<String> splitTags(String tag) {
+		if (tag == null || tag.isBlank()) {
+			return List.of();
+		}
+		return java.util.Arrays.stream(tag.split("[；;、\n]")).map(String::trim).filter(t -> !t.isEmpty()).toList();
+	}
+
 	private static String fmt(int minute) {
-		return String.format("%02d:%02d", minute / 60, minute % 60);
+		int m = Math.floorMod(minute, 24 * 60);
+		return String.format("%02d:%02d", m / 60, m % 60);
 	}
 
 	private static double round(double v) {
 		return Math.round(v * 100) / 100.0;
 	}
 
+	// 訂位者使用、其它者使用同一個顏色（st-use）；平面圖、桌位卡、時間軸都用這個
 	private static String statusClass(SeatVO s) {
 		return switch (s.getSeatStatus() == null ? "" : s.getSeatStatus()) {
-			case SeatingSeatService.RESERVED -> "st-rsv";
-			case SeatingSeatService.WALK_IN -> "st-walk";
+			case SeatingSeatService.RESERVED, SeatingSeatService.WALK_IN -> "st-use";
 			case SeatingSeatService.OFF -> "st-off";
 			default -> "st-free";
 		};

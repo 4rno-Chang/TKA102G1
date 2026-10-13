@@ -43,7 +43,7 @@
           <label class="ann-label" for="annBegin">公告開始時間 <small>到了這個時間，前台才會顯示</small></label>
           <input type="datetime-local" class="staff-input" id="annBegin" name="annBegin" th:value="${annBegin}" required>
           <!-- 後端檢查到過往日期時才會出現（beginError）；JS 檢查到時也會用這個 id 顯示 -->
-          <p class="ann-field-error" id="annBeginError" th:if="${beginError != null}" th:text="${beginError}" role="alert">請勿設定過往日期</p>
+          <p class="ann-field-error" id="annBeginError" th:if="${beginError != null}" th:text="${beginError}" role="alert"></p>
         </div>
 
         <div class="ann-field">

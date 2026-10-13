@@ -8,7 +8,7 @@
 <body>
   <div th:fragment="content">
     <div class="ann-toolbar">
-      <p class="ann-count" th:text="|共 ${#lists.size(qaList)} 則常見問題|">共 0 則常見問題</p>
+      <p class="ann-count" th:text="|共 ${#lists.size(qaList)} 則常見問題|"></p>
       <a class="staff-btn btn-pay" th:href="@{/staff/qa/insert}">＋ 新增常見問題</a>
     </div>
 
@@ -19,10 +19,10 @@
         <li class="ann-row qa-row" th:each="qa : ${qaList}">
           <div>
             <p class="ann-meta">
-              <span class="ann-no" th:text="|#${qa.qaNo}|">#1</span>
+              <span class="ann-no" th:text="|#${qa.qaNo}|"></span>
             </p>
-            <h2 class="ann-row-title" th:text="|Q：${qa.qaTitle}|">Q：問題標題</h2>
-            <p class="ann-row-text" th:text="|A：${qa.qaContent}|">A：回答內容</p>
+            <h2 class="ann-row-title" th:text="|Q：${qa.qaTitle}|"></h2>
+            <p class="ann-row-text" th:text="|A：${qa.qaContent}|"></p>
           </div>
 
           <div class="ann-actions">

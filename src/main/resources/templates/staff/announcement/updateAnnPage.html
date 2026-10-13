@@ -28,7 +28,7 @@
     <header class="staff-header">
       <div>
         <a class="ann-back" th:href="@{/staff/announcement}">‹ 公告及QA</a>
-        <h1 class="staff-title" th:text="|修改公告 #${ann.annNo}|">修改公告</h1>
+        <h1 class="staff-title" th:text="|修改公告 #${ann.annNo}|"></h1>
       </div>
       <p class="staff-clock" id="staffClock"></p>
     </header>
@@ -48,7 +48,7 @@
                  th:value="${#temporals.format(ann.annBegin, 'yyyy-MM-dd''T''HH:mm')}"
                  th:data-original="${#temporals.format(originalBegin, 'yyyy-MM-dd''T''HH:mm')}" required>
           <!-- 後端檢查到過往日期時才會出現（beginError）；JS 檢查到時也會用這個 id 顯示 -->
-          <p class="ann-field-error" id="annBeginError" th:if="${beginError != null}" th:text="${beginError}" role="alert">請勿設定過往日期</p>
+          <p class="ann-field-error" id="annBeginError" th:if="${beginError != null}" th:text="${beginError}" role="alert"></p>
         </div>
 
         <div class="ann-field" th:if="${ann.annImg != null}">

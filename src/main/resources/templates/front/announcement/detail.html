@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title th:text="|Bistroops｜${ann.annTitle}|">Bistroops｜最新消息</title>
+  <title th:text="|Bistroops｜${ann.annTitle}|"></title>
   <link rel="icon" th:href="@{/images/logo-mark.svg}" type="image/svg+xml">
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -15,7 +15,7 @@
   <link rel="stylesheet" th:href="@{/css/front/front.css}" />
   <link rel="stylesheet" th:href="@{/css/front/member.css}" />
   <link rel="stylesheet" th:href="@{/css/front/announcement.css}" />
-  <!-- 不載入 main.js：它會抓首頁才有的輪播、FAQ 等元素，在這頁會出錯；版型需要的功能寫在 announcement.js -->
+  <!-- 不載入 frontend_index.js：它會抓首頁才有的輪播、FAQ 等元素，在這頁會出錯；版型需要的功能寫在 announcement.js -->
   <script th:src="@{/js/front/member.js}" defer></script>
   <script th:src="@{/js/front/announcement.js}" defer></script>
 </head>
@@ -34,8 +34,8 @@
 
       <header class="ann-article-head">
         <time class="ann-date" th:datetime="${ann.annBegin}"
-          th:text="${#temporals.format(ann.annBegin, 'yyyy.MM.dd')}">2026.01.01</time>
-        <h1 class="ann-article-title" th:text="${ann.annTitle}">公告標題</h1>
+          th:text="${#temporals.format(ann.annBegin, 'yyyy.MM.dd')}"></time>
+        <h1 class="ann-article-title" th:text="${ann.annTitle}"></h1>
       </header>
 
       <figure class="ann-article-img" th:if="${ann.annImg != null}">
@@ -43,7 +43,7 @@
       </figure>
 
       <!-- 用 th:text（不是 th:utext），內文的換行由 CSS 的 white-space: pre-line 保留 -->
-      <div class="ann-article-body" th:text="${ann.annText}">公告內文</div>
+      <div class="ann-article-body" th:text="${ann.annText}"></div>
 
       <div class="btn-center">
         <a class="btn-outline" th:href="@{/bistroops/announcement}">返回列表</a>

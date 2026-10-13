@@ -1,9 +1,9 @@
 /* =========================================================
-   Bistroops 前台：最新消息（listAll.html、detail.html）
+   Bistroops 前台：最新消息（listAll.html、detail.html）、常見問題（qa/listAll.html）
    內容：1. 手機版漢堡選單　2. Header 陰影 + 回到頂端　3. 頁尾年份　4. 圖片載入失敗時顯示佔位
 
    對應的 CSS：static/css/front/announcement.css
-   1～3 和 main.js 的版型功能相同；main.js 會抓首頁才有的元素，所以這兩頁不載入它，改用這支。
+   1～3 和 frontend_index.js 的版型功能相同；frontend_index.js 會抓首頁才有的元素，所以這幾頁不載入它，改用這支。
    ========================================================= */
 
 

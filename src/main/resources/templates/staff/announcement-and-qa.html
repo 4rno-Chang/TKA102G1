@@ -35,7 +35,7 @@
       <p class="staff-clock" id="staffClock"></p>
     </header>
 
-    <p class="ann-alert" th:if="${errorMsg != null}" th:text="${errorMsg}" role="alert">錯誤訊息</p>
+    <p class="ann-alert" th:if="${errorMsg != null}" th:text="${errorMsg}" role="alert"></p>
 
     <div class="chips ann-tabs">
       <a class="chip" th:href="@{/staff/announcement}" th:classappend="${tab != 'qa'} ? 'active'">公告</a>

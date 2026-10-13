@@ -13,6 +13,7 @@ public class QaVO implements java.io.Serializable{
 qa_no INT UNSIGNED AUTO_INCREMENT COMMENT '編號',
 qa_title VARCHAR(30) COMMENT '標題',
 qa_content MEDIUMTEXT COMMENT '內容',
+qa_clicks INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '點擊次數',（G1 v1_4 沒有，05 新增，寫在 createTable_demo.sql）
 */
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -24,6 +25,10 @@ qa_content MEDIUMTEXT COMMENT '內容',
 	
 	@Column(name="qa_content", columnDefinition = "mediumtext")
 	private String qaContent;
+
+	// 前台展開題目的次數；預設 0，後台新增題目時不會寫入 NULL
+	@Column(name = "qa_clicks")
+	private Integer qaClicks = 0;
 
 	public Integer getQaNo() {
 		return qaNo;
@@ -47,6 +52,14 @@ qa_content MEDIUMTEXT COMMENT '內容',
 
 	public void setQaContent(String qaContent) {
 		this.qaContent = qaContent;
+	}
+
+	public Integer getQaClicks() {
+		return qaClicks;
+	}
+
+	public void setQaClicks(Integer qaClicks) {
+		this.qaClicks = qaClicks;
 	}
 	
 	

@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="zh-Hant" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bistroops｜常見問題</title>
+  <link rel="icon" th:href="@{/images/logo-mark.svg}" type="image/svg+xml">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Noto+Sans+TC:wght@300;400;500;700&family=Noto+Serif+TC:wght@500;600&display=swap">
+  <!-- front.css：顏色、字型變數與前台共用的 header、footer；qa.css：常見問題頁自己的版面 -->
+  <link rel="stylesheet" th:href="@{/css/front/front.css}" />
+  <link rel="stylesheet" th:href="@{/css/front/member.css}" />
+  <link rel="stylesheet" th:href="@{/css/front/qa.css}" />
+  <!-- 不載入 frontend_index.js：它會抓首頁才有的輪播、FAQ 等元素，在這頁會出錯；版型需要的功能寫在 announcement.js
+       qa-click.js：展開一題時送出點擊次數 -->
+  <script th:src="@{/js/front/member.js}" defer></script>
+  <script th:src="@{/js/front/announcement.js}" defer></script>
+  <script th:src="@{/js/front/qa-click.js}" defer></script>
+</head>
+
+<body>
+  <div th:replace="~{front/member/member_modals :: modals}"></div>
+
+  <!-- ========== Header（共用 front_layout.html，括號內的 qa 讓「常見問題」顯示為選取中） ========== -->
+  <header th:replace="~{front/front_layout :: header('qa')}"></header>
+
+  <!-- ========== 常見問題 ==========
+       qaList：FrontQaController 放入，全部問答，點擊多的在前
+       每一題用原生的 <details>，點問題就展開答案，不需要 JS；data-click-url 給 qa-click.js 記錄點擊次數 -->
+  <main class="qa-page section">
+    <div class="container">
+      <p class="eyebrow">FAQ</p>
+      <h1 class="section-title">常見問題</h1>
+
+      <div class="qa-list" th:unless="${#lists.isEmpty(qaList)}">
+        <details class="qa-item" th:each="qa : ${qaList}"
+          th:attr="data-click-url=@{/bistroops/qa/{no}/click(no=${qa.qaNo})}">
+          <summary class="qa-question">
+            <span th:text="|Q：${qa.qaTitle}|"></span>
+            <span class="qa-icon" aria-hidden="true">+</span>
+          </summary>
+          <p class="qa-answer" th:text="|A：${qa.qaContent}|"></p>
+        </details>
+      </div>
+
+      <!-- 沒有任何問答時 -->
+      <div class="qa-empty" th:if="${#lists.isEmpty(qaList)}">
+        <p>目前沒有常見問題</p>
+        <a class="btn-outline" th:href="@{/bistroops}">回首頁</a>
+      </div>
+
+      <p class="qa-back" th:unless="${#lists.isEmpty(qaList)}">
+        <a class="btn-outline" th:href="@{/bistroops}">← 回首頁</a>
+      </p>
+    </div>
+  </main>
+
+  <!-- ========== Footer（共用 front_layout.html） ========== -->
+  <footer th:replace="~{front/front_layout :: footer}"></footer>
+
+  <button th:replace="~{front/front_layout :: backToTop}"></button>
+</body>
+
+</html>

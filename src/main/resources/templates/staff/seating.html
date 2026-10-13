@@ -21,7 +21,9 @@
 <!--
   入座管理（SeatTypeController GET /staff/seating）
   資料全部由 SeatTypeService.getPage() 算好放在 page 裡，這個檔案只負責顯示，不做計算。
-  · 網址參數：view＝floor 平面圖／timeline 時間軸；type＝篩選（all、2、4、6、free、late）；seat＝選到的桌號
+  · 網址參數：view＝floor 平面圖／timeline 時間軸；type＝桌型（all、2、4、6）；
+    state＝狀態（all、free、use、off、late、anomaly，只有平面圖用，和 type 疊加）；
+    focus＝時間軸上方卡片的篩選（all、busy、rsv、warn，只有時間軸用，和 type 疊加）；seat＝選到的桌號
   · 篩選、切換畫面、點桌子都是連結（重新載入頁面）；操作都是 POST 表單，做完導回這一頁並顯示訊息
   · 表單的 data-confirm：staff.js 會在送出前跳出確認視窗
   · seating.js 只做一件事：每 60 秒重新整理（正在選訂位／候位時不會重新整理）
@@ -33,13 +35,26 @@
     <header class="staff-header seat-header">
       <div>
         <p class="staff-eyebrow">Seating</p>
-        <h1 class="staff-title">入座管理</h1>
+        <div class="title-row">
+          <h1 class="staff-title">入座管理</h1>
+          <!-- 切換畫面：在標題右邊。切到時間軸時不帶 state（時間軸沒有狀態篩選） -->
+          <nav class="chips view-switch" aria-label="切換畫面">
+            <a class="chip" th:classappend="${page.view == 'floor'} ? 'active'"
+               th:href="@{/staff/seating(view='floor',type=${page.filter},state=${page.state},seat=${page.selected})}">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 10h7v11M14 3v7h7"/></svg>平面圖</a>
+            <a class="chip" th:classappend="${page.view == 'timeline'} ? 'active'"
+               th:href="@{/staff/seating(view='timeline',type=${page.filter})}">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h10M3 12h16M3 18h7"/><circle cx="17" cy="6" r="2"/><circle cx="14" cy="18" r="2"/></svg>時間軸</a>
+          </nav>
+        </div>
       </div>
       <div class="head-side">
         <div class="page-actions">
-          <a class="staff-btn" th:href="@{/staff/seating(view=${page.view},type=${page.filter},seat=${page.selected})}">重新整理</a>
+          <a class="staff-btn" th:href="${page.view == 'timeline'} ? @{/staff/seating(view='timeline',type=${page.filter},focus=${page.focus},seat=${page.selected})} : @{/staff/seating(type=${page.filter},state=${page.state},seat=${page.selected})}">重新整理</a>
           <form th:action="@{/staff/seating/closing}" method="post" th:data-confirm="${page.closing.confirm}">
             <input type="hidden" name="type" th:value="${page.filter}">
+            <input type="hidden" name="state" th:value="${page.state}">
+            <input type="hidden" name="focus" th:value="${page.focus}">
             <input type="hidden" name="view" th:value="${page.view}">
             <button type="submit" class="staff-btn btn-pay">打烊一鍵清桌</button>
           </form>
@@ -47,122 +62,81 @@
       </div>
     </header>
 
-    <!-- 切換畫面：放在標題下方靠左（和訂單管理的篩選列一樣） -->
-    <nav class="chips view-switch" aria-label="切換畫面">
-      <a class="chip" th:classappend="${page.view == 'floor'} ? 'active'"
-         th:href="@{/staff/seating(view='floor',type=${page.filter},seat=${page.selected})}">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 10h7v11M14 3v7h7"/></svg>平面圖</a>
-      <a class="chip" th:classappend="${page.view == 'timeline'} ? 'active'"
-         th:href="@{/staff/seating(view='timeline',type=${page.filter})}">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h10M3 12h16M3 18h7"/><circle cx="17" cy="6" r="2"/><circle cx="14" cy="18" r="2"/></svg>時間軸</a>
-    </nav>
-
-    <!-- 操作結果（flash） -->
-    <p class="seat-flash ok" th:if="${message}" th:text="${message}" role="status">A02：其它者入座</p>
-    <p class="seat-flash err" th:if="${error}" th:text="${error}" role="alert">A02 目前不能入座</p>
+    <!-- 操作結果：桌位卡視窗開著時改顯示在視窗裡（不然會被灰色背景蓋住） -->
+    <th:block th:if="${page.panel == null}">
+      <p class="seat-flash ok" th:if="${message}" th:text="${message}" role="status"></p>
+      <p class="seat-flash err" th:if="${error}" th:text="${error}" role="alert"></p>
+    </th:block>
 
     <!-- ================= 平面圖 ================= -->
     <th:block th:if="${page.view == 'floor'}">
-      <div class="floor-wrap">
-        <section class="staff-card floor-card">
-          <div class="floor-tools">
-            <nav class="chips" aria-label="篩選">
-              <a th:each="option : ${ {'all','2','4','6','free'} }" class="chip chip-sm"
-                 th:classappend="${page.filter == option} ? 'active'"
-                 th:href="@{/staff/seating(type=${option},seat=${page.selected})}"
-                 th:text="${option == 'all' ? '全部' : (option == 'free' ? '只看空桌' : option + ' 人桌')}">全部</a>
-            </nav>
-            <div class="legend">
-              <span class="st-free">可使用</span><span class="st-rsv">訂位者使用</span>
-              <span class="st-walk">其它者使用</span><span class="st-off">停用</span>
-              <span class="lg-late">超時・需提醒</span>
-              <span class="lg-mild">超時・不影響</span><span class="lg-warn">時間異常</span>
-            </div>
-          </div>
+      <section class="staff-card floor-card">
+        <div class="floor-tools">
+          <!-- 桌型：點了保留目前的狀態篩選 -->
+          <nav class="chips" aria-label="桌型">
+            <a th:each="option : ${ {'all','2','4','6'} }" class="chip chip-sm"
+               th:classappend="${page.filter == option} ? 'active'"
+               th:aria-current="${page.filter == option} ? 'true'"
+               th:href="@{/staff/seating(type=${option},state=${page.state},seat=${page.selected})}"
+               th:text="${option == 'all' ? '全部' : option + ' 人桌'}"></a>
+          </nav>
+          <!-- 說明列＝狀態篩選：點一下只看那一種（和桌型疊加），再點一次選中的那一項取消 -->
+          <nav class="legend filter" aria-label="狀態">
+            <a th:each="option : ${page.stateOptions}"
+               th:class="${option.cls}" th:classappend="${page.state == option.value} ? 'active'"
+               th:aria-current="${page.state == option.value} ? 'true'"
+               th:href="@{/staff/seating(type=${page.filter},state=${page.state == option.value ? 'all' : option.value},seat=${page.selected})}"
+               th:text="${option.label}"></a>
+          </nav>
+        </div>
 
-          <div class="floor">
-            <div class="window"></div>
-            <div class="zone" style="left:2%;top:4%;width:30%;height:59%"><span>窗邊</span></div>
-            <div class="zone" style="left:35%;top:4%;width:38%;height:59%"><span>中央</span></div>
-            <div class="zone vip" style="left:76%;top:4%;width:22%;height:72%"><span>包廂</span></div>
-            <div class="fixture fx-bar" style="left:3%;top:80%;width:28%;height:14%">吧台</div>
-            <div class="fixture fx-door" style="left:35%;top:80%;width:15%;height:14%">入口</div>
-            <div class="fixture fx-kitchen" style="left:53%;top:80%;width:20%;height:14%">廚房出餐口</div>
+        <div class="floor">
+          <div class="window"></div>
+          <div class="zone" style="left:2%;top:4%;width:30%;height:59%"><span>窗邊</span></div>
+          <div class="zone" style="left:35%;top:4%;width:38%;height:59%"><span>中央</span></div>
+          <div class="zone vip" style="left:76%;top:4%;width:22%;height:72%"><span>包廂</span></div>
+          <div class="fixture fx-bar" style="left:3%;top:80%;width:28%;height:14%">吧台</div>
+          <div class="fixture fx-door" style="left:35%;top:80%;width:15%;height:14%">入口</div>
+          <div class="fixture fx-kitchen" style="left:53%;top:80%;width:20%;height:14%">廚房出餐口</div>
 
-            <th:block th:each="seat : ${page.seats}" th:if="${seat.placed}">
-              <a th:replace="~{:: seatLink(${seat}, ${page})}"></a>
-            </th:block>
-          </div>
-
-          <!-- 平面圖上沒有位置的桌號（新增的桌子）排在這裡 -->
-          <div class="loose-seats" th:if="${page.looseCount > 0}">
-            <p class="stat-label">其他桌位</p>
-            <div class="loose-list">
-              <th:block th:each="seat : ${page.seats}" th:unless="${seat.placed}">
-                <a th:replace="~{:: seatLink(${seat}, ${page})}"></a>
-              </th:block>
-            </div>
-          </div>
-        </section>
-
-        <!-- 右邊：各桌型的空桌數和超時桌數（點桌子的桌位卡改成跳出視窗，在頁面最下面） -->
-        <aside class="side">
-          <!-- 每個桌型一張卡：現場還能坐幾桌；最後一張：超過 90 分鐘的桌子（由上往下排） -->
-          <section class="stat-col">
-            <div class="stat st-free quota" th:each="quota : ${page.quotas}">
-              <div class="quota-head">
-                <b th:text="|${quota.type} 人桌|">2 人桌</b>
-                <small th:text="|共 ${quota.total} 桌${quota.off > 0 ? '・停用 ' + quota.off : ''}|">共 10 桌</small>
-              </div>
-              <div class="quota-big" th:classappend="${quota.walkLeft == 0} ? 'zero'">
-                <p class="stat-value" th:text="${quota.walkLeft}">3</p><span>桌現場還能坐</span>
-              </div>
-              <div class="quota-line">
-                <span>空桌 <b th:text="${quota.free}">5</b></span>
-                <span>需保留 <b th:text="${quota.need}">2</b><th:block th:if="${quota.nextSlot}" th:text="|（${quota.nextSlot} 預約）|"></th:block></span>
-                <span th:if="${quota.noShow > 0}">逾時未到 <b th:text="${quota.noShow}">1</b></span>
-                <span th:if="${quota.waiting > 0}">候位 <b th:text="${quota.waiting}">2</b> 組</span>
-              </div>
-              <p class="quota-warn" th:if="${quota.shortage > 0}" th:text="|空桌不夠訂位用，還差 ${quota.shortage} 桌|">空桌不夠訂位用</p>
-            </div>
-
-            <a class="stat late-card" th:classappend="${(page.urgentCount > 0 ? 'warn ' : '') + (page.filter == 'late' ? 'on' : '')}"
-               th:href="@{/staff/seating(type=${page.filter == 'late' ? 'all' : 'late'},seat=${page.selected})}">
-              <p class="stat-label" th:text="|超過 ${page.est} 分鐘|">超過 90 分鐘</p>
-              <p class="stat-value"><th:block th:text="${page.lateCount}">2</th:block><small>桌</small></p>
-              <th:block th:if="${page.lateCount > 0}">
-                <p class="late-split"><span>需提醒 <b th:text="${page.urgentCount}">1</b></span><span th:text="|不影響 ${page.lateCount - page.urgentCount}|">不影響 1</span></p>
-                <p class="stat-label small" th:text="${page.filter == 'late'} ? '再點一下看全部' : '點一下只看這些桌子'">點一下只看這些桌子</p>
-              </th:block>
-              <p class="stat-label small" th:unless="${page.lateCount > 0}">目前沒有</p>
-            </a>
-          </section>
-        </aside>
-      </div>
+          <!-- 只畫 LAYOUT 裡有位置的桌子（桌位管理還沒做，新增的桌子暫時不顯示） -->
+          <th:block th:each="seat : ${page.seats}" th:if="${seat.placed}">
+            <a th:replace="~{:: seatLink(${seat}, ${page})}"></a>
+          </th:block>
+        </div>
+      </section>
     </th:block>
 
     <!-- ================= 時間軸 =================
          點左欄的桌號或用餐中的長條 → 網址帶 seat，時間軸上跳出那一桌的桌位卡（灰色背景），在卡片裡直接操作 -->
     <th:block th:if="${page.view == 'timeline'}" th:with="timeline=${page.timeline}">
+      <!-- 上方卡片：前三張點了只顯示那一部分（再點一次回到全部，桌型篩選保留）；本日訂單連到訂單管理 -->
       <section class="stat-row">
-        <div class="stat st-walk">
+        <a class="stat stat-link st-use" th:classappend="${page.focus == 'busy'} ? 'on'"
+           th:aria-current="${page.focus == 'busy'} ? 'true'"
+           th:href="@{/staff/seating(view='timeline',type=${page.filter},focus=${page.focus == 'busy' ? 'all' : 'busy'})}">
           <p class="stat-label">用餐中</p>
-          <p class="stat-value"><th:block th:text="${timeline.busy}">8</th:block><small th:text="|/ ${timeline.usable} 桌|">/ 16 桌</small></p>
+          <p class="stat-value"><th:block th:text="${timeline.busy}"></th:block><small th:text="|/ ${timeline.usable} 桌|"></small></p>
           <div class="stat-bar"><i th:style="|width:${timeline.busyPct}%|"></i></div>
-        </div>
-        <div class="stat st-free">
-          <p class="stat-label">今日訂單</p>
-          <p class="stat-value"><th:block th:text="${timeline.ordersToday}">13</th:block><small>張</small></p>
-        </div>
-        <div class="stat st-hold">
-          <p class="stat-label">90 分鐘內還沒到的預約</p>
-          <p class="stat-value"><th:block th:text="${timeline.needTotal}">6</th:block><small>組</small></p>
-        </div>
-        <div class="stat" th:classappend="${timeline.warn > 0} ? 'warn'">
-          <p class="stat-label">需要注意</p>
-          <p class="stat-value"><th:block th:text="${timeline.warn}">2</th:block><small>項</small></p>
-          <p class="stat-label small">超時需提醒、時間異常、桌數不夠</p>
-        </div>
+        </a>
+        <a class="stat stat-link st-hold" th:classappend="${page.focus == 'rsv'} ? 'on'"
+           th:aria-current="${page.focus == 'rsv'} ? 'true'"
+           th:href="@{/staff/seating(view='timeline',type=${page.filter},focus=${page.focus == 'rsv' ? 'all' : 'rsv'})}">
+          <p class="stat-label">90 分鐘內的預約</p>
+          <p class="stat-value"><th:block th:text="${timeline.needTotal}"></th:block><small>組</small></p>
+        </a>
+        <a class="stat stat-link" th:classappend="|${timeline.warn > 0 ? 'warn' : ''}${page.focus == 'warn' ? ' on' : ''}|"
+           th:aria-current="${page.focus == 'warn'} ? 'true'"
+           th:href="@{/staff/seating(view='timeline',type=${page.filter},focus=${page.focus == 'warn' ? 'all' : 'warn'})}">
+          <p class="stat-label">須注意</p>
+          <p class="stat-value"><th:block th:text="${timeline.warn}"></th:block><small>項</small></p>
+          <p class="stat-label small">超時、時間異常、桌數不夠</p>
+        </a>
+        <a class="stat stat-link st-free" th:href="@{/staff/orders}">
+          <p class="stat-label">本日訂單</p>
+          <p class="stat-value"><th:block th:text="${timeline.ordersToday}"></th:block><small>張</small></p>
+          <p class="stat-label small">前往訂單管理 ›</p>
+        </a>
       </section>
 
       <section class="staff-card tl-card">
@@ -170,11 +144,11 @@
           <nav class="chips" aria-label="篩選">
             <a th:each="option : ${ {'all','2','4','6'} }" class="chip chip-sm"
                th:classappend="${page.filter == option} ? 'active'"
-               th:href="@{/staff/seating(view='timeline',type=${option})}"
-               th:text="${option == 'all' ? '全部' : option + ' 人桌'}">全部</a>
+               th:href="@{/staff/seating(view='timeline',type=${option},focus=${page.focus})}"
+               th:text="${option == 'all' ? '全部' : option + ' 人桌'}"></a>
           </nav>
           <div class="legend">
-            <span class="st-rsv">訂位者使用</span><span class="st-walk">其它者使用</span><span class="lg-est">預估用餐</span>
+            <span class="st-use">使用中</span><span class="lg-est">預估用餐</span>
             <span class="lg-done">稍早用過餐</span><span class="st-hold">預約（還沒到）</span><span class="lg-conflict">桌數不夠</span>
           </div>
         </div>
@@ -185,48 +159,47 @@
               <div class="tl-corner">桌號</div>
               <div class="tl-hours">
                 <span th:each="hour : ${timeline.hours}" th:text="${hour.label}" th:style="|left:${hour.left}%|"
-                      th:classappend="${hour.first ? 'first' : (hour.last ? 'last' : '')}">11:00</span>
+                      th:classappend="${hour.first ? 'first' : (hour.last ? 'last' : '')}"></span>
               </div>
             </div>
 
             <th:block th:each="group : ${timeline.groups}">
-              <div class="tl-group"><b th:text="|${group.type} 人桌|">2 人桌</b><small th:text="${group.sub}">10 桌・用餐中 5</small></div>
+              <div class="tl-group"><b th:text="|${group.type} 人桌|"></b><small th:text="${group.sub}"></small></div>
 
               <div class="tl-row" th:each="row : ${group.rows}">
                 <a class="tl-name" th:classappend="${row.cls}" th:title="|${row.no}：點一下開啟桌位卡|"
-                   th:href="@{/staff/seating(view='timeline',type=${page.filter},seat=${row.no})}">
-                  <b th:text="${row.no}">A01</b>
-                  <small><span th:classappend="${row.warn} ? 'warn-dot'" th:text="${row.statusText}">空桌</span></small>
+                   th:href="@{/staff/seating(view='timeline',type=${page.filter},focus=${page.focus},seat=${row.no})}">
+                  <b th:text="${row.no}"></b>
+                  <small><span th:classappend="${row.warn} ? 'warn-dot'" th:text="${row.statusText}"></span></small>
                 </a>
                 <div class="tl-track" th:classappend="${row.off} ? 'off'" th:style="|--hour:${timeline.hourWidth}%|">
                   <th:block th:each="block : ${row.blocks}">
-                    <!-- 用餐中的長條：點一下開啟這一桌的桌位卡；其他色塊只顯示提示文字 -->
-                    <a th:if="${block.kind == 'now'}" th:class="${block.cls}" th:title="${block.title}"
-                       th:href="@{/staff/seating(view='timeline',type=${page.filter},seat=${row.no})}"
+                    <!-- 用餐中的長條：點一下開啟這一桌的桌位卡；其他色塊只是顯示（滑鼠移上去沒有提示） -->
+                    <a th:if="${block.kind == 'now'}" th:class="${block.cls}"
+                       th:href="@{/staff/seating(view='timeline',type=${page.filter},focus=${page.focus},seat=${row.no})}"
                        th:style="|left:${block.left}%;width:${block.width}%;top:${block.top}px|">
                       <span class="fill" th:style="|width:${block.fill}%|"></span>
                       <span class="over-part" th:if="${block.over > 0}" th:style="|width:${block.over}%|"></span>
-                      <span class="label" th:text="${block.text}">未結帳・40 分</span>
+                      <span class="label" th:text="${block.text}"></span>
                     </a>
-                    <span th:unless="${block.kind == 'now'}" th:class="${block.cls}" th:title="${block.title}"
-                          th:style="|left:${block.left}%;width:${block.width}%;top:${block.top}px|" th:text="${block.text}">11:05</span>
+                    <span th:unless="${block.kind == 'now'}" th:class="${block.cls}"
+                          th:style="|left:${block.left}%;width:${block.width}%;top:${block.top}px|" th:text="${block.text}"></span>
                   </th:block>
-                  <span class="note" th:if="${row.note}" th:classappend="${row.noteWarn} ? 'warn'" th:text="${row.note}">停用中</span>
+                  <span class="note" th:if="${row.note}" th:classappend="${row.noteWarn} ? 'warn'" th:text="${row.note}"></span>
                 </div>
               </div>
 
-              <div class="tl-row lane" th:style="|min-height:${group.lane.height}px|">
-                <div class="tl-name st-hold"><b th:text="|${group.type} 人桌・預約|">2 人桌・預約</b><small th:text="${group.lane.sub}">需保留 3</small></div>
+              <div class="tl-row lane" th:if="${group.lane.show}" th:style="|min-height:${group.lane.height}px|">
+                <div class="tl-name st-hold"><b th:text="|${group.type} 人桌・預約|"></b><small th:text="${group.lane.sub}"></small></div>
                 <div class="tl-track" th:style="|--hour:${timeline.hourWidth}%|">
-                  <span th:each="block : ${group.lane.blocks}" th:class="${block.cls}" th:title="${block.title}"
-                        th:style="|left:${block.left}%;width:${block.width}%;top:${block.top}px|" th:text="${block.text}">18:30 王小明</span>
+                  <span th:each="block : ${group.lane.blocks}" th:class="${block.cls}"
+                        th:style="|left:${block.left}%;width:${block.width}%;top:${block.top}px|" th:text="${block.text}"></span>
                 </div>
               </div>
             </th:block>
 
-            <div class="tl-layer peaks">
-              <div class="peak" th:each="peak : ${timeline.peaks}" th:style="|left:${peak.left}%;width:${peak.width}%|"><span th:text="${peak.label}">午餐</span></div>
-            </div>
+            <p class="tl-empty" th:if="${#lists.isEmpty(timeline.groups)}">目前沒有符合的項目</p>
+
             <div class="tl-layer now" th:if="${timeline.nowLeft != null}">
               <div class="now-line" th:style="|left:${timeline.nowLeft}%|" th:data-t="|現在 ${page.now}|"></div>
             </div>
@@ -240,9 +213,11 @@
          灰色背景和右上角的 ✕ 都是「關閉」連結（回到同一個畫面、不帶 seat） -->
     <div class="seat-modal" th:if="${page.panel != null}" role="dialog" aria-modal="true"
          th:aria-label="|${page.panel.no} 桌位卡|">
-      <a class="seat-modal-backdrop" th:href="@{/staff/seating(view=${page.view},type=${page.filter})}" aria-label="關閉"></a>
+      <a class="seat-modal-backdrop" th:href="${page.view == 'timeline'} ? @{/staff/seating(view='timeline',type=${page.filter},focus=${page.focus})} : @{/staff/seating(type=${page.filter},state=${page.state})}" aria-label="關閉"></a>
       <div class="seat-modal-box">
-        <a class="seat-modal-close" th:href="@{/staff/seating(view=${page.view},type=${page.filter})}" aria-label="關閉" title="關閉">✕</a>
+        <a class="seat-modal-close" th:href="${page.view == 'timeline'} ? @{/staff/seating(view='timeline',type=${page.filter},focus=${page.focus})} : @{/staff/seating(type=${page.filter},state=${page.state})}" aria-label="關閉" title="關閉">✕</a>
+        <p class="seat-flash ok" th:if="${message}" th:text="${message}" role="status"></p>
+        <p class="seat-flash err" th:if="${error}" th:text="${error}" role="alert"></p>
         <section th:replace="~{:: seatPanel(${page})}"></section>
       </div>
     </div>
@@ -255,56 +230,59 @@
      外層的 th:remove="all" 讓這段定義本身不會被畫在頁面上；上面用 th:replace 引用時照常使用 -->
 <th:block th:remove="all">
 <th:block th:fragment="seatLink(seat, page)">
-  <a class="seat" th:classappend="|t${seat.type} ${seat.cls}${seat.selected ? ' selected' : ''}${seat.dim ? ' dim' : ''}${seat.urgent ? ' urgent' : ''}${seat.anomaly ? ' anomaly' : ''}${seat.placed ? '' : ' loose'}|"
-     th:style="${seat.placed} ? |left:${seat.x}%;top:${seat.y}%|"
-     th:href="@{/staff/seating(type=${page.filter},seat=${seat.no})}" th:title="${seat.title}" th:aria-label="${seat.title}">
+  <a class="seat" th:classappend="|t${seat.type} ${seat.cls}${seat.selected ? ' selected' : ''}${seat.dim ? ' dim' : ''}${seat.late ? ' late' : ''}${seat.anomaly ? ' anomaly' : ''}|"
+     th:style="|left:${seat.x}%;top:${seat.y}%|"
+     th:href="@{/staff/seating(type=${page.filter},state=${page.state},seat=${seat.no})}" th:title="${seat.title}" th:aria-label="${seat.title}">
     <i class="chair c1"></i><i class="chair c2"></i><i class="chair c3"></i>
     <i class="chair c4"></i><i class="chair c5"></i><i class="chair c6"></i>
-    <span class="top"><b th:text="${seat.no}">A01</b><small th:text="${seat.sub}">可使用</small></span>
-    <span class="mark late" th:if="${seat.late}" th:classappend="${seat.urgent} ? '' : 'mild'"></span>
+    <span class="top"><b th:text="${seat.no}"></b><small th:text="${seat.sub}"></small></span>
+    <span class="mark late" th:if="${seat.late}"></span>
     <span class="mark warn" th:if="${seat.anomaly}">!</span>
   </a>
 </th:block>
 
 <!-- 桌位卡：選到的那一桌（平面圖、時間軸的跳出視窗共用）
-     表單都帶 type、view，送出後回到原本的畫面和篩選 -->
+     表單都帶 type、state、focus、view，送出後回到原本的畫面和篩選 -->
 <section class="staff-card panel" th:fragment="seatPanel(page)" th:with="panel=${page.panel}" th:classappend="${panel.cls}">
   <div class="panel-head">
     <div>
-      <p class="staff-eyebrow" th:text="|${panel.type} 人桌・${panel.zone}|">2 人桌・窗邊</p>
-      <h2 th:text="${panel.no}">A02</h2>
+      <p class="staff-eyebrow" th:text="|${panel.type} 人桌・${panel.zone}|"></p>
+      <h2 th:text="${panel.no}"></h2>
     </div>
-    <span class="tag" th:text="${panel.status}">其它者使用</span>
+    <span class="tag" th:text="${panel.status}"></span>
   </div>
 
   <!-- 用餐中 -->
   <th:block th:if="${panel.mode == 'use'}">
     <dl class="info">
-      <dt>入座時間</dt><dd th:text="${panel.seatTime}">18:02</dd>
+      <dt>入座時間</dt><dd th:text="${panel.seatTime}"></dd>
       <dt>結帳</dt>
-      <dd><th:block th:text="${panel.payLabel}">未結帳</th:block>
-        <small class="muted" th:if="${panel.payDetail}" th:text="${panel.payDetail}">共 1 張訂單</small></dd>
+      <dd><th:block th:text="${panel.payLabel}"></th:block>
+        <small class="muted" th:if="${panel.payDetail}" th:text="${panel.payDetail}"></small></dd>
       <th:block th:if="${panel.customer != null}">
         <dt>客人</dt>
-        <dd><th:block th:text="${panel.customer.name}">王小明</th:block>
-          <small class="muted" th:if="${panel.customer.tel}" th:text="${panel.customer.tel}">0912345678</small>
-          <small class="cust-tag" th:if="${!#strings.isEmpty(panel.customer.tag)}" th:text="${panel.customer.tag}">不吃香菜</small></dd>
+        <dd><th:block th:text="${panel.customer.name}"></th:block>
+          <small class="muted" th:if="${panel.customer.tel}" th:text="${panel.customer.tel}"></small>
+          <ul class="cust-tags" th:if="${!#lists.isEmpty(panel.customer.tags)}">
+            <li th:each="tag : ${panel.customer.tags}" th:text="${tag}"></li>
+          </ul></dd>
       </th:block>
     </dl>
 
     <p class="notice warn" th:if="${panel.anomaly}"
-       th:text="|入座時間 ${panel.seatTime} 比現在還晚。資料只有時間沒有日期，多半是之前沒清桌，請確認後按「客人離席」。|">入座時間異常</p>
+       th:text="|入座時間 ${panel.seatTime} 比現在還晚。資料只有時間沒有日期，多半是之前沒清桌，請確認後按「客人離席」。|"></p>
     <th:block th:unless="${panel.anomaly}">
       <div class="meter" th:classappend="${panel.meterLevel}"><i th:style="|width:${panel.meterPct}%|"></i></div>
-      <p class="meter-label">已用餐 <b th:text="${panel.mins}">40</b> 分鐘／固定 <th:block th:text="${page.est}">90</th:block> 分鐘
+      <p class="meter-label">已用餐 <b th:text="${panel.mins}"></b> 分鐘／固定 <th:block th:text="${page.est}"></th:block> 分鐘
         <b class="hot" th:if="${panel.meterLevel == 'over'}">已超過</b></p>
-      <p class="notice warn" th:if="${panel.lateUrgent}" th:text="|建議提醒客人：${panel.lateReason}。|">建議提醒客人</p>
-      <p class="notice info" th:if="${panel.lateReason != null and !panel.lateUrgent}" th:text="|${panel.lateReason}。|">不影響</p>
+      <p class="notice warn" th:if="${panel.late}" th:text="|已用餐超過 ${page.est} 分鐘，請留意是否需要提醒客人。|"></p>
     </th:block>
 
     <form class="dialog-actions" th:action="@{/staff/seating/leave}" method="post" th:data-confirm="${panel.leaveConfirm}">
       <input type="hidden" name="seatNo" th:value="${panel.no}">
       <input type="hidden" name="type" th:value="${page.filter}">
+      <input type="hidden" name="state" th:value="${page.state}">
+      <input type="hidden" name="focus" th:value="${page.focus}">
       <input type="hidden" name="view" th:value="${page.view}">
       <button type="submit" class="staff-btn btn-card">客人離席</button>
     </form>
@@ -312,23 +290,25 @@
 
   <!-- 空桌 -->
   <th:block th:if="${panel.mode == 'free'}">
-    <p class="notice" th:classappend="${panel.walkWarn} ? 'warn' : 'info'" th:text="${panel.quotaText}">2 人桌：空桌 5、需保留 2、現場還能坐 3</p>
+    <p class="notice" th:classappend="${panel.walkWarn} ? 'warn' : 'info'" th:text="${panel.quotaText}"></p>
 
     <div class="dialog-actions">
       <!-- 訂位者入座：選一筆同桌型、還是「預約」的訂位，入座後改成「實到」 -->
-      <details class="pick-box st-rsv" th:if="${panel.rsvCount > 0}">
-        <summary class="staff-btn btn-cash" th:text="|訂位者入座（${panel.rsvCount}）|">訂位者入座（2）</summary>
+      <details class="pick-box st-hold" th:if="${panel.rsvCount > 0}">
+        <summary class="staff-btn btn-cash" th:text="|訂位者入座（${panel.rsvCount}）|"></summary>
         <form th:action="@{/staff/seating/reservation}" method="post">
           <input type="hidden" name="seatNo" th:value="${panel.no}">
           <input type="hidden" name="type" th:value="${page.filter}">
+          <input type="hidden" name="state" th:value="${page.state}">
+          <input type="hidden" name="focus" th:value="${page.focus}">
           <input type="hidden" name="view" th:value="${page.view}">
           <div class="pick-group" th:if="${!#lists.isEmpty(panel.rsvComing)}">
             <h3>接下來的訂位</h3>
             <div class="pick-list">
               <button type="submit" class="pick" name="rsvNo" th:each="rsv : ${panel.rsvComing}" th:value="${rsv.no}">
-                <b th:text="${rsv.time}">18:30</b>
-                <span><th:block th:text="${rsv.name}">王小明</th:block><br><small th:text="${rsv.note}">2人用餐</small></span>
-                <small th:text="|#${rsv.no}|">#4</small>
+                <b th:text="${rsv.time}"></b>
+                <span><th:block th:text="${rsv.name}"></th:block><br><small th:text="${rsv.note}"></small></span>
+                <small th:text="|#${rsv.no}|"></small>
               </button>
             </div>
           </div>
@@ -336,9 +316,9 @@
             <h3>逾時未到（客人晚到也可以選）</h3>
             <div class="pick-list">
               <button type="submit" class="pick" name="rsvNo" th:each="rsv : ${panel.rsvLate}" th:value="${rsv.no}">
-                <b th:text="${rsv.time}">17:00</b>
-                <span><th:block th:text="${rsv.name}">吳佩琪</th:block><br><small th:text="${rsv.note}">2人用餐</small></span>
-                <small th:text="|#${rsv.no}|">#6</small>
+                <b th:text="${rsv.time}"></b>
+                <span><th:block th:text="${rsv.name}"></th:block><br><small th:text="${rsv.note}"></small></span>
+                <small th:text="|#${rsv.no}|"></small>
               </button>
             </div>
           </div>
@@ -347,17 +327,19 @@
       <button type="button" class="staff-btn btn-cash" th:unless="${panel.rsvCount > 0}" disabled>訂位者入座（0）</button>
 
       <!-- 候位入座：選一組同桌型、候位中或已通知的候位，入座後改成「已入座」 -->
-      <details class="pick-box st-walk" th:if="${!#lists.isEmpty(panel.waiting)}">
-        <summary class="staff-btn btn-pay" th:text="|候位入座（${#lists.size(panel.waiting)}）|">候位入座（1）</summary>
+      <details class="pick-box st-use" th:if="${!#lists.isEmpty(panel.waiting)}">
+        <summary class="staff-btn btn-pay" th:text="|候位入座（${#lists.size(panel.waiting)}）|"></summary>
         <form th:action="@{/staff/seating/waiting}" method="post">
           <input type="hidden" name="seatNo" th:value="${panel.no}">
           <input type="hidden" name="type" th:value="${page.filter}">
+          <input type="hidden" name="state" th:value="${page.state}">
+          <input type="hidden" name="focus" th:value="${page.focus}">
           <input type="hidden" name="view" th:value="${page.view}">
           <div class="pick-list">
             <button type="submit" class="pick" name="waitingNo" th:each="wait : ${panel.waiting}" th:value="${wait.no}">
-              <b th:text="|#${wait.no}|">#4</b>
-              <span><th:block th:text="${wait.name}">張先生</th:block><br><small th:text="${wait.note}">2位</small></span>
-              <small th:text="${wait.status}">已通知</small>
+              <b th:text="|#${wait.no}|"></b>
+              <span><th:block th:text="${wait.name}"></th:block><br><small th:text="${wait.note}"></small></span>
+              <small th:text="${wait.status}"></small>
             </button>
           </div>
         </form>
@@ -367,6 +349,8 @@
       <form th:action="@{/staff/seating/walk-in}" method="post" th:data-confirm="${panel.walkConfirm}">
         <input type="hidden" name="seatNo" th:value="${panel.no}">
         <input type="hidden" name="type" th:value="${page.filter}">
+        <input type="hidden" name="state" th:value="${page.state}">
+        <input type="hidden" name="focus" th:value="${page.focus}">
         <input type="hidden" name="view" th:value="${page.view}">
         <button type="submit" class="staff-btn btn-pay">其它者入座</button>
       </form>
@@ -374,6 +358,8 @@
             th:data-confirm="|停用 ${panel.no}？停用後這桌不會算進空桌。|">
         <input type="hidden" name="seatNo" th:value="${panel.no}">
         <input type="hidden" name="type" th:value="${page.filter}">
+        <input type="hidden" name="state" th:value="${page.state}">
+        <input type="hidden" name="focus" th:value="${page.focus}">
         <input type="hidden" name="view" th:value="${page.view}">
         <button type="submit" class="staff-btn btn-outline">停用這桌</button>
       </form>
@@ -386,6 +372,8 @@
     <form class="dialog-actions" th:action="@{/staff/seating/enable}" method="post">
       <input type="hidden" name="seatNo" th:value="${panel.no}">
       <input type="hidden" name="type" th:value="${page.filter}">
+      <input type="hidden" name="state" th:value="${page.state}">
+      <input type="hidden" name="focus" th:value="${page.focus}">
       <input type="hidden" name="view" th:value="${page.view}">
       <button type="submit" class="staff-btn btn-card">重新啟用</button>
     </form>

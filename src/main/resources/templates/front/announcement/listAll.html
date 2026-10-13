@@ -15,7 +15,7 @@
   <link rel="stylesheet" th:href="@{/css/front/front.css}" />
   <link rel="stylesheet" th:href="@{/css/front/member.css}" />
   <link rel="stylesheet" th:href="@{/css/front/announcement.css}" />
-  <!-- 不載入 main.js：它會抓首頁才有的輪播、FAQ 等元素，在這頁會出錯；版型需要的功能寫在 announcement.js -->
+  <!-- 不載入 frontend_index.js：它會抓首頁才有的輪播、FAQ 等元素，在這頁會出錯；版型需要的功能寫在 announcement.js -->
   <script th:src="@{/js/front/member.js}" defer></script>
   <script th:src="@{/js/front/announcement.js}" defer></script>
 </head>
@@ -46,10 +46,10 @@
             </div>
             <div class="ann-card-body">
               <time class="ann-date" th:datetime="${ann.annBegin}"
-                th:text="${#temporals.format(ann.annBegin, 'yyyy.MM.dd')}">2026.01.01</time>
-              <h2 class="ann-title" th:text="${ann.annTitle}">公告標題</h2>
+                th:text="${#temporals.format(ann.annBegin, 'yyyy.MM.dd')}"></time>
+              <h2 class="ann-title" th:text="${ann.annTitle}"></h2>
               <p class="ann-summary"
-                th:text="${ann.annText != null ? #strings.abbreviate(ann.annText, 70) : ''}">公告摘要</p>
+                th:text="${ann.annText != null ? #strings.abbreviate(ann.annText, 70) : ''}"></p>
               <span class="ann-more">閱讀更多 <span aria-hidden="true">→</span></span>
             </div>
           </a>

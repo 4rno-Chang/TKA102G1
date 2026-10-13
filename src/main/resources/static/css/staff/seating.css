@@ -3,27 +3,30 @@
    顏色、按鈕、卡片沿用 staff.css，這裡只放這一頁自己的樣式
    ========================================================= */
 
-/* 桌位狀態（seat.seat_status）的顏色：可使用＝綠、訂位者使用＝芥末黃、其它者使用＝磚紅、停用＝灰 */
+/* 桌位狀態（seat.seat_status）的顏色：可使用＝透明（只有框）、使用中（訂位者使用、其它者使用）＝同一個淡藍、停用＝灰
+   紅色、橘色只留給有問題的（超時）；琥珀色只用在時間軸上還沒到的預約 */
 :root {
-  --seat-free: #8f9c6c;   --seat-free-bg: #e6ecd8;
-  --seat-rsv:  #c98f2a;   --seat-rsv-bg:  #faecd0;
-  --seat-walk: #5b93c4;   --seat-walk-bg: #ddeaf6;   /* 淡藍；紅色只留給有問題的（超時等） */
+  --seat-free: #8f9c6c;   --seat-free-bg: transparent;
+  --seat-use:  #5b93c4;   --seat-use-bg:  #ddeaf6;
+  --seat-hold: #c98f2a;   --seat-hold-bg: #faecd0;
   --seat-off:  #9b8f84;   --seat-off-bg:  #ebe5dc;
+  --late:    #a8321f;   --late-bg:    #f5c6bb;   /* 超時（用餐超過 90 分鐘）：紅底、深紅字 */
 }
 .st-free { --c: var(--seat-free); --bg: var(--seat-free-bg); }
-.st-rsv  { --c: var(--seat-rsv);  --bg: var(--seat-rsv-bg); }
-.st-walk { --c: var(--seat-walk); --bg: var(--seat-walk-bg); }
+.st-use  { --c: var(--seat-use);  --bg: var(--seat-use-bg); }
 .st-off  { --c: var(--seat-off);  --bg: var(--seat-off-bg); }
-.st-hold { --c: var(--seat-rsv);  --bg: var(--seat-rsv-bg); }   /* 時間軸上還沒到的預約 */
+.st-hold { --c: var(--seat-hold); --bg: var(--seat-hold-bg); }   /* 時間軸上還沒到的預約 */
 
 .muted { color: var(--st-muted); }
-.hot { color: var(--st-red); }
+.hot { color: var(--late); }
 
 /* ---------- 標題列 ---------- */
 .seat-header { align-items: flex-start; }
 .head-side { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
 /* 平面圖｜時間軸：標題下方靠左，和訂單管理的篩選列同一個位置 */
-.view-switch { width: fit-content; margin-bottom: 16px; padding: 4px; gap: 4px; background: var(--st-soft); border-radius: 999px; }
+/* 「入座管理」標題和「平面圖｜時間軸」放同一行，切換在標題右邊；窄螢幕時換到下一行 */
+.title-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
+.view-switch { width: fit-content; padding: 4px; gap: 4px; background: var(--st-soft); border-radius: 999px; }
 .view-switch .chip { min-height: 40px; padding: 0 18px; border: 0; background: none; }
 .view-switch .chip:hover { background: var(--st-card); }
 .view-switch .chip.active { background: var(--st-text); color: #fff; }
@@ -38,7 +41,9 @@ a.chip, a.staff-btn { text-decoration: none; }
 /* 操作結果（flash） */
 .seat-flash { margin-bottom: 16px; padding: 12px 16px; border-radius: 12px; font-weight: 500; }
 .seat-flash.ok  { background: #eef2e4; color: #4f6037; border-left: 4px solid var(--st-green); }
-.seat-flash.err { background: #fdece7; color: #a23e2b; border-left: 4px solid var(--st-red); }
+.seat-flash.err { background: #fdece7; color: #a23e2b; border-left: 4px solid var(--st-red); font-weight: 700; }
+/* 視窗裡的訊息：放在桌位卡上面，寬度和桌位卡一樣 */
+.seat-modal-box .seat-flash { margin: 0 0 12px; }
 
 /* ---------- 統計小卡 ---------- */
 .stat-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 18px; }
@@ -56,31 +61,23 @@ a.chip, a.staff-btn { text-decoration: none; }
 .stat-bar { height: 6px; margin-top: 6px; background: var(--st-soft); border-radius: 99px; overflow: hidden; }
 .stat-bar i { display: block; height: 100%; background: var(--c); border-radius: 99px; }
 .stat.warn { --c: var(--st-red); background: linear-gradient(90deg, #fdf0ec, var(--st-card) 70%); }
+/* 時間軸上方的卡片可以點：點了只顯示那一部分（.on＝目前選的那張），再點一次回到全部 */
+.stat-link { transition: transform .15s, box-shadow .15s; }
+.stat-link:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(90, 60, 30, .12); }
+.stat-link:focus-visible { outline: 3px solid var(--st-text); outline-offset: 2px; }
+.stat-link.on { outline: 3px solid var(--c, var(--st-text)); outline-offset: 2px; }
 
-.quota { display: grid; gap: 6px; }
-.quota-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
-.quota-head b { font-family: var(--st-serif); font-size: 18px; }
-.quota-head small { color: var(--st-muted); font-size: 12px; }
-.quota-big { display: flex; align-items: baseline; gap: 6px; }
-.quota-big .stat-value { font-size: 22px; color: var(--st-green); }
-.quota-big.zero .stat-value { color: var(--st-red); }
-.quota-big span { color: var(--st-muted); font-size: 13px; }
-.quota-line { display: flex; flex-wrap: wrap; gap: 2px 12px; color: var(--st-muted); font-size: 13px; }
-.quota-line b { color: var(--st-text); font-variant-numeric: tabular-nums; }
-.quota-warn { color: var(--st-red); font-size: 12px; font-weight: 700; }
-.late-card { transition: transform .15s, box-shadow .15s; }
-.late-card .stat-value { font-size: 22px; }
-.late-card:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(90, 60, 30, .12); }
-.late-card.on { outline: 3px solid var(--st-red); outline-offset: 2px; }
-.late-split { display: flex; gap: 12px; font-size: 12px; color: var(--st-muted); }
-.late-split b { color: var(--st-red); }
 
-/* ---------- 圖例 ---------- */
+/* ---------- 圖例 ----------
+   時間軸的圖例是 <span>（只看）；平面圖的圖例是 <a>（點了只看那一種狀態，再點一次取消） */
 .legend { display: flex; flex-wrap: wrap; gap: 6px 16px; color: var(--st-muted); font-size: 13px; }
-.legend span { display: inline-flex; align-items: center; }
-.legend span::before { content: ""; width: 12px; height: 12px; margin-right: 6px; background: var(--bg); border: 2px solid var(--c); border-radius: 4px; }
-.legend .lg-late::before { background: var(--st-red); border-color: var(--st-red); border-radius: 50%; }
-.legend .lg-mild::before { background: #a89585; border-color: #a89585; border-radius: 50%; }
+.legend span, .legend a { display: inline-flex; align-items: center; }
+.legend span::before, .legend a::before { content: ""; width: 12px; height: 12px; margin-right: 6px; background: var(--bg); border: 2px solid var(--c); border-radius: 4px; }
+.legend.filter { gap: 6px; }
+.legend a { min-height: 34px; padding: 0 12px; border: 1px solid var(--st-border); border-radius: 999px; background: var(--st-card); color: var(--st-text); text-decoration: none; }
+.legend a:hover { background: var(--st-soft); }
+.legend a.active { border-color: var(--st-text); box-shadow: inset 0 0 0 1px var(--st-text); font-weight: 700; }
+.legend .lg-late::before { background: var(--late-bg); border-color: var(--late); }
 .legend .lg-warn::before { background: #8a5e10; border-color: #8a5e10; border-radius: 50%; }
 .legend .lg-done::before { --bg: #f1ebe2; --c: #b9ab9c; }
 .legend .lg-est::before  { background: repeating-linear-gradient(135deg, #e6dfd5 0 3px, #fff 3px 6px); border-style: dashed; border-color: var(--st-muted); }
@@ -89,7 +86,6 @@ a.chip, a.staff-btn { text-decoration: none; }
 /* =========================================================
    平面圖
    ========================================================= */
-.floor-wrap { display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: 18px; align-items: start; }
 .floor-card { padding: 16px; }
 .floor-tools { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px; }
 
@@ -147,6 +143,8 @@ a.chip, a.staff-btn { text-decoration: none; }
 .seat.dim { opacity: .2; filter: grayscale(.7); }
 .seat.st-off .top { border-style: dashed; background: repeating-linear-gradient(135deg, var(--bg) 0 6px, #f6f1ea 6px 12px); }
 .seat.st-off .chair { opacity: .2; }
+.seat.st-free .top { background: transparent; border-width: 2px; box-shadow: none; }
+.seat.st-free .chair { opacity: .2; }
 .seat.anomaly .top { border-style: dashed; }
 /* 桌角的小標記（右上）：超時（時鐘）或入座時間異常（!） */
 .mark {
@@ -157,22 +155,14 @@ a.chip, a.staff-btn { text-decoration: none; }
 .t6 .mark { width: 13%; }
 .mark.late {
   right: 6%; top: 6%;
-  background: var(--st-red) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2.6' stroke-linecap='round'%3E%3Ccircle cx='12' cy='12' r='8'/%3E%3Cpath d='M12 8v4l3 2'/%3E%3C/svg%3E") center / 70% no-repeat;
+  background: var(--late) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2.6' stroke-linecap='round'%3E%3Ccircle cx='12' cy='12' r='8'/%3E%3Cpath d='M12 8v4l3 2'/%3E%3C/svg%3E") center / 70% no-repeat;
 }
-.mark.late.mild { background-color: #a89585; }
 .mark.warn { right: 6%; top: 6%; background: #8a5e10; }
-/* 超時需提醒：固定的紅框（不閃動） */
-.seat.urgent .top { box-shadow: 0 0 0 4px rgba(196, 83, 59, .55); }
+/* 超時需提醒：固定的紅框；超時不影響：橘框（都不閃動） */
+/* 超時：整張桌子紅底（框、椅子、小字都跟著變紅），不加外框 */
+.seat.late { --c: var(--late); --bg: var(--late-bg); }
 
-/* 平面圖上沒有位置的桌號 */
-.loose-seats { margin-top: 14px; }
-.loose-list { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 6px; }
-.seat.loose { position: relative; transform: none; width: 110px; }
-
-/* ---------- 右邊：選到的那一桌 ---------- */
-.side { position: sticky; top: 16px; display: grid; gap: 14px; }
-/* 平面圖右欄：桌型卡、超時卡由上往下排 */
-.stat-col { display: grid; gap: 14px; }
+/* ---------- 桌位卡（跳出視窗裡） ---------- */
 .panel { padding: 16px; }
 .panel-head {
   display: flex; align-items: center; justify-content: space-between; gap: 10px;
@@ -185,11 +175,13 @@ a.chip, a.staff-btn { text-decoration: none; }
 .info dt { color: var(--st-muted); }
 .info dd { font-weight: 500; }
 .info dd small { display: block; font-size: 13px; font-weight: 400; }
-.cust-tag { display: inline-block !important; margin-top: 4px; padding: 1px 8px; background: #faecd0; border-radius: 999px; color: #8a5e10; }
+/* 客戶備註（會員的 mem_tag）：條列 */
+.cust-tags { margin: 6px 0 0; padding: 6px 10px 6px 26px; background: #faecd0; border-radius: 10px; color: #8a5e10; font-size: 14px; line-height: 1.6; list-style: disc; }
+.cust-tags li + li { margin-top: 2px; }
 .meter { height: 10px; background: var(--st-soft); border-radius: 99px; overflow: hidden; }
 .meter i { display: block; height: 100%; background: var(--st-green); border-radius: 99px; }
 .meter.mid i { background: var(--st-yellow); }
-.meter.over i { background: var(--st-red); }
+.meter.over i { background: var(--late); }
 .meter-label { margin: 6px 0 14px; color: var(--st-muted); font-size: 13px; }
 .notice { margin-bottom: 12px; padding: 10px 12px; border-radius: 12px; font-size: 13px; line-height: 1.6; }
 .notice.warn { background: #fdece7; color: #a23e2b; }
@@ -221,6 +213,7 @@ a.chip, a.staff-btn { text-decoration: none; }
    時間軸
    ========================================================= */
 .tl-card { padding: 16px 0 12px; }
+.tl-empty { padding: 28px 16px; color: var(--st-muted); text-align: center; }
 .tl-tools { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; padding: 0 16px 12px; }
 .tl-scroll { overflow-x: auto; }   /* 手機上只捲這一塊，不讓整頁變寬 */
 .tl { --name-w: 140px; position: relative; min-width: 980px; }
@@ -276,20 +269,17 @@ a.chip, a.staff-btn { text-decoration: none; }
   background: repeating-linear-gradient(135deg, var(--bg) 0 6px, var(--st-card) 6px 12px);
 }
 .blk.now .fill { position: absolute; left: 0; top: 0; bottom: 0; background: var(--bg); }
-.blk.now .over-part { position: absolute; top: 0; bottom: 0; right: 0; background: repeating-linear-gradient(135deg, #f2c4b8 0 6px, #f8e0d9 6px 12px); }
+.blk.now .over-part { position: absolute; top: 0; bottom: 0; right: 0; background: repeating-linear-gradient(135deg, #e4a597 0 6px, #f3d3cb 6px 12px); }
 .blk.now .label { position: relative; z-index: 1; padding: 0 16px 0 8px; overflow: hidden; text-overflow: ellipsis; }
-.blk.now.over { box-shadow: 0 0 0 2px var(--st-red); }
+.blk.now.over { --c: var(--late); --bg: var(--late-bg); }
 .blk.hold { background: repeating-linear-gradient(135deg, var(--bg) 0 8px, #fff6e2 8px 16px); }
 .blk.hold.past { --c: #b9ab9c; --bg: #f1ebe2; background: #f1ebe2; color: var(--st-muted); }
 .blk.conflict { box-shadow: 0 0 0 2px var(--st-red); }
 .blk.conflict::before { content: "!"; display: grid; place-items: center; flex: none; width: 16px; height: 16px; border-radius: 50%; background: var(--st-red); color: #fff; font-size: 11px; font-weight: 700; }
 
-/* 尖峰時段的底色、現在時間的紅線：疊在整張時間軸上 */
+/* 現在時間的紅線：疊在整張時間軸上 */
 .tl-layer { position: absolute; top: 0; bottom: 0; left: var(--name-w); right: 24px; pointer-events: none; }
-.tl-layer.peaks { z-index: 0; }
 .tl-layer.now { z-index: 2; }
-.peak { position: absolute; top: 48px; bottom: 0; background: rgba(219, 160, 60, .07); }
-.peak span { position: absolute; top: 4px; left: 6px; color: #b9862e; font-size: 11px; font-weight: 700; letter-spacing: 1px; }
 .now-line { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: var(--st-red); }
 .now-line::before {
   content: attr(data-t); position: absolute; top: 24px; left: 50%; transform: translateX(-50%);
@@ -308,28 +298,23 @@ a.blk { cursor: pointer; }
    ========================================================= */
 .seat-modal { position: fixed; inset: 0; z-index: 2000; display: grid; place-items: center; padding: 16px; }
 .seat-modal-backdrop { position: absolute; inset: 0; background: rgba(40, 28, 20, .5); }   /* 不用 backdrop-filter：平板瀏覽器會把背景畫成鏡像重複 */
+/* 視窗由上往下：✕（靠右）→ 操作訊息 → 桌位卡 */
 .seat-modal-box {
-  position: relative; width: min(380px, 100%); max-height: calc(100vh - 32px); overflow-y: auto;
-  border-radius: var(--st-radius); box-shadow: 0 24px 64px rgba(60, 40, 20, .28);
+  position: relative; display: flex; flex-direction: column;
+  width: min(380px, 100%); max-height: calc(100vh - 32px); overflow-y: auto;
 }
+.seat-modal-box .panel { box-shadow: 0 24px 64px rgba(60, 40, 20, .28); }
 .seat-modal-box .panel { margin: 0; }
 .seat-modal-close {
-  position: absolute; top: 10px; right: 10px; z-index: 1;
+  flex: none; align-self: flex-end; margin-bottom: 8px;
   display: grid; place-items: center; width: 34px; height: 34px;
   background: var(--st-card); border: 1px solid var(--st-border); border-radius: 50%;
   color: var(--st-muted); font-size: 16px; text-decoration: none;
 }
 .seat-modal-close:hover { background: var(--st-soft); color: var(--st-text); }
-/* 視窗裡的桌位卡：標題列右邊留位置給 ✕ */
-.seat-modal-box .panel-head { padding-right: 52px; }
 
 /* ---------- 窄螢幕 ---------- */
-@media (max-width: 1000px) {
-  .floor-wrap { grid-template-columns: 1fr; }
-  .side { position: static; }
-}
 @media (max-width: 640px) {
-  .head-side { align-items: flex-start; }
   .stat-row { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
   .stat-value { font-size: 24px; }
 }

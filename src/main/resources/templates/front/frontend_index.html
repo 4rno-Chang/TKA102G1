@@ -98,22 +98,26 @@
 			<div class="container">
 				<p class="eyebrow">FAQ</p>
 				<h2 class="section-title">常見問題</h2>
-				<!-- 內容來自資料庫的 qa 表：${@qaService.getAll()} 直接呼叫 Spring 的 QaService（不經過 Controller）。
-				     點問題展開答案的效果在 frontend_index.js「3. 常見問題」 -->
-				<div class="faq-list" id="faqList" th:with="qaList=${@qaService.getAll()}">
+				<!-- 內容來自資料庫的 qa 表：${@qaService.getPopular(5)} 直接呼叫 Spring 的 QaService（不經過 Controller），
+				     只顯示點擊最多的 5 題；全部的問答在「more→」連到的 /bistroops/qa（FrontQaController）。
+				     點問題展開答案的效果在 frontend_index.js「3. 常見問題」；
+				     展開時 qa-click.js 送出點擊次數（網址在 data-click-url） -->
+				<div class="faq-list" id="faqList" th:with="qaList=${@qaService.getPopular(5)}">
 					<p th:if="${#lists.isEmpty(qaList)}">目前沒有常見問題</p>
-					<div class="faq-item" th:each="qa : ${qaList}">
+					<div class="faq-item" th:each="qa : ${qaList}"
+						th:attr="data-click-url=@{/bistroops/qa/{no}/click(no=${qa.qaNo})}">
 						<button class="faq-question" aria-expanded="false">
-							<span th:text="|Q：${qa.qaTitle}|">Q：問題</span>
+							<span th:text="|Q：${qa.qaTitle}|"></span>
 							<span class="faq-icon">+</span>
 						</button>
-						<div class="faq-answer"><p th:text="|A：${qa.qaContent}|">A：回答</p></div>
+						<div class="faq-answer"><p th:text="|A：${qa.qaContent}|"></p></div>
 					</div>
 				</div>
 				<div class="btn-center">
-					<a href="#" class="btn-outline">more→</a>
+					<a th:href="@{/bistroops/qa}" class="btn-outline">more→</a>
 				</div>
 			</div>
+			<script th:src="@{/js/front/qa-click.js}" defer></script>
 		</section>
 
 		<!-- ========== 關於我們 ========== -->

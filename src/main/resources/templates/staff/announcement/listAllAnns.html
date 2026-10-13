@@ -8,7 +8,7 @@
 <body>
   <div th:fragment="content">
     <div class="ann-toolbar">
-      <p class="ann-count" th:text="|共 ${#lists.size(annList)} 則公告|">共 0 則公告</p>
+      <p class="ann-count" th:text="|共 ${#lists.size(annList)} 則公告|"></p>
       <div class="ann-actions">
         <!-- 編號查詢：送到 /staff/announcement/search?annNo=... -->
         <form class="ann-search" th:action="@{/staff/announcement/search}" method="get">
@@ -34,14 +34,14 @@
 
           <div>
             <p class="ann-meta">
-              <span class="ann-no" th:text="|#${ann.annNo}|">#1</span>
+              <span class="ann-no" th:text="|#${ann.annNo}|"></span>
               <time th:datetime="${ann.annBegin}"
-                    th:text="${#temporals.format(ann.annBegin, 'yyyy-MM-dd HH:mm')}">2026-01-01 12:00</time>
+                    th:text="${#temporals.format(ann.annBegin, 'yyyy-MM-dd HH:mm')}"></time>
               <span class="tag tag-yellow" th:if="${scheduled}">排程中</span>
               <span class="tag tag-green" th:unless="${scheduled}">已發布</span>
             </p>
-            <h2 class="ann-row-title" th:text="${ann.annTitle}">公告標題</h2>
-            <p class="ann-row-text" th:text="${ann.annText}">公告內容</p>
+            <h2 class="ann-row-title" th:text="${ann.annTitle}"></h2>
+            <p class="ann-row-text" th:text="${ann.annText}"></p>
           </div>
 
           <div class="ann-actions">

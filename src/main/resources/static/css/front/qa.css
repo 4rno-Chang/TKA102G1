@@ -1,0 +1,93 @@
+/* =========================================================
+   Bistroops 前台：常見問題（front/qa/listAll.html）
+   需要先載入 /css/front/front.css：使用它的變數（--color-*、--lux-*、--font-*），
+   以及 .container、.section、.eyebrow、.section-title、.btn-outline、header、footer 的樣式。
+   卡片外觀和首頁的常見問題（frontend_index.css「3. 常見問題」）一樣；
+   首頁用 JS 展開，這一頁用原生的 <details>，不需要 JS。
+   ========================================================= */
+
+
+/* ========== 1. 共用 ========== */
+/* 目前所在頁面的選單：金色字、底線常駐 */
+.nav-list a.active { color: var(--color-primary); }
+.nav-list a.active::after { width: 100%; }
+
+/* 內頁的上方留白比首頁區塊少一些 */
+.qa-page { padding-top: 80px; }
+
+
+/* ========== 2. 問答列表 ========== */
+.qa-list { max-width: 850px; margin: 0 auto; }
+
+/* 每一題是一張白色卡片，左側有金色粗線 */
+.qa-item {
+  margin-bottom: 14px;
+  background: var(--color-white);
+  border: 1px solid var(--color-border);
+  border-left: 3px solid var(--color-gold);
+  box-shadow: 0 6px 20px rgba(90, 70, 30, .06);
+  transition: box-shadow var(--transition), border-color var(--transition);
+}
+.qa-item:hover,
+.qa-item[open] { box-shadow: 0 14px 34px rgba(90, 70, 30, .13); }
+.qa-item[open] { border-left-color: var(--lux-ink); }
+
+.qa-question {
+  display: flex; align-items: center; justify-content: space-between; gap: 20px;
+  padding: 22px 26px;
+  cursor: pointer;
+  list-style: none;              /* 拿掉 <summary> 原生的三角形 */
+  color: var(--color-text);
+  font-family: var(--font-serif);
+  font-size: 20px; font-weight: 500;
+  letter-spacing: 1px;
+  transition: color var(--transition);
+}
+.qa-question::-webkit-details-marker { display: none; }   /* Safari 的三角形 */
+.qa-question:hover { color: var(--color-primary); }
+.qa-question:focus-visible { outline: 2px solid var(--color-gold); outline-offset: 3px; }
+
+/* 「+」外面有一個金色圓框，展開時轉成「×」 */
+.qa-icon {
+  flex: none;
+  display: grid; place-items: center;
+  width: 32px; height: 32px;
+  border: 1px solid var(--color-gold); border-radius: 50%;
+  color: var(--color-primary);
+  font-family: var(--font-sans);
+  font-size: 20px; font-weight: 300; line-height: 1;
+  transition: transform var(--transition);
+}
+.qa-item[open] .qa-icon { transform: rotate(45deg); }
+
+.qa-answer {
+  max-width: 750px;
+  padding: 0 26px 24px;
+  color: var(--color-text-light);
+  font-size: 15px;
+}
+
+/* 沒有任何問答時 */
+.qa-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 28px;
+  padding: 40px 0;
+  color: var(--color-text-light);
+  text-align: center;
+}
+
+.qa-back { margin-top: 40px; text-align: center; }
+
+
+/* ========== 3. 手機 ========== */
+@media (max-width: 768px) {
+  .qa-page { padding-top: 56px; }
+  .qa-question { font-size: 18px; padding: 18px 18px; }
+  .qa-answer { padding: 0 18px 20px; }
+}
+
+@media (max-width: 480px) {
+  .container { width: calc(100% - 32px); }
+}

@@ -4,7 +4,7 @@
 
 <!--
   前台共用的「頁首」和「頁尾」
-  首頁（frontend_index.html）、最新消息、預約訂位、候位的頁面都是引用這裡，所以選單要增減項目時，改這一個檔案就好。
+  首頁（frontend_index.html）、最新消息、預約訂位、候位、常見問題的頁面都是引用這裡，所以選單要增減項目時，改這一個檔案就好。
 
   使用方式：在頁面的 <body> 裡
     頁首：<header th:replace="~{front/front_layout :: header('reservation')}"></header>
@@ -21,6 +21,7 @@
   【Thymeleaf 串接】這個檔案沒有假資料：
     登入狀態（顯示「登入 / 註冊」還是會員的名字）已經是讀 session 裡的 member，接上資料庫後不用改。
     「最新消息」連到前台公告列表 /bistroops/announcement（FrontAnnouncementController），頁首和頁尾各有一個。
+    「常見問題」：頁首連到首頁下方的常見問題（#faq），頁尾連到前台常見問題頁 /bistroops/qa（FrontQaController）。
 
   選單裡「瀏覽菜單」等連結已經寫成完整網址，從哪一頁點都能回到首頁的那個區塊。
 -->
@@ -73,7 +74,7 @@
         <li><a th:href="@{/bistroops/announcement}">最新消息</a></li>
         <li><a th:href="@{/bistroops} + '#menu'">瀏覽菜單</a></li>
         <li><a th:href="@{/bistroops/reservation}">預約訂位</a></li>
-        <li><a th:href="@{/bistroops} + '#faq'">常見問題</a></li>
+        <li><a th:href="@{/bistroops/qa}">常見問題</a></li>
         <li><a th:href="@{/bistroops/waiting}">候位狀況</a></li>
         <li><a th:href="@{/bistroops} + '#about'">關於我們</a></li>
       </ul>
