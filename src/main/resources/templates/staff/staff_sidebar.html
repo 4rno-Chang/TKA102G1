@@ -183,6 +183,15 @@
 		<!-- 員工個人選單：後台所有頁面共用 -->
 		<link rel="stylesheet" th:href="@{/css/staff/staff_account.css}">
 		<script th:src="@{/js/staff/staff_account.js}" defer></script>
+
+		<!-- 員工個人資料彈窗樣式 -->
+		<link rel="stylesheet" th:href="@{/css/staff/staff_profile.css}">
+
+		<!-- 員工個人資料彈窗 -->
+		<div th:replace="~{staff/employee/staff_profile :: profileModal}"></div>
+
+		<!-- 員工個人資料彈窗功能 -->
+		<script th:src="@{/js/staff/staff_profile.js}" defer></script>
 	</nav>
 
 </body>
