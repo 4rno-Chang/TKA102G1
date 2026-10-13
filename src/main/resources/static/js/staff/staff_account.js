@@ -6,7 +6,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const accountGroup = document.querySelector('.staff-account-group');
     const accountToggle = document.querySelector('[data-account-toggle]');
 
-    if (!accountGroup || !accountToggle) return;
+	// 找不到員工選單就不執行
+	if (!accountGroup || !accountToggle) return;
+
+	// 避免同一支 JS 重複載入，造成點擊事件綁定兩次
+	if (accountToggle.dataset.accountInitialized === 'true') return;
+
+	accountToggle.dataset.accountInitialized = 'true';
 
     // 2. 預設收合
     accountGroup.classList.remove('open');

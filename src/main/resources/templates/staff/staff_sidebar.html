@@ -152,8 +152,7 @@
 		</a>
 
 		<!-- 已登入：員工個人選單 -->
-		<div th:if="${session.employeeNo != null}"
-			class="staff-account-group">
+		<div th:if="${session.employeeNo != null}" class="staff-account-group">
 
 			<button type="button"
 				class="staff-menu-item staff-menu-bottom staff-group-toggle"
@@ -181,6 +180,9 @@
 				</button>
 			</div>
 		</div>
+		<!-- 員工個人選單：後台所有頁面共用 -->
+		<link rel="stylesheet" th:href="@{/css/staff/staff_account.css}">
+		<script th:src="@{/js/staff/staff_account.js}" defer></script>
 	</nav>
 
 </body>
