@@ -51,7 +51,7 @@ public class IndexController_inSpringBoot {
             return "redirect:/staff";
         }
 
-        return "staff/staff_login";
+        return "staff/employee/staff_login";
     }
 
     @GetMapping("/staff")

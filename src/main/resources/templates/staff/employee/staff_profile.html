@@ -1,0 +1,61 @@
+
+<!DOCTYPE html>
+<html lang="zh-Hant" xmlns:th="http://www.thymeleaf.org">
+<body>
+
+	<!-- 員工個人資料共用彈窗 -->
+	<div th:fragment="profileModal" id="staffProfileModal"
+		class="staff-profile-overlay" hidden>
+
+		<div class="staff-profile-dialog" role="dialog" aria-modal="true"
+			aria-labelledby="staffProfileTitle">
+
+			<div class="staff-profile-header">
+				<h2 id="staffProfileTitle">員工個人資料</h2>
+
+				<button type="button" id="staffProfileClose" aria-label="關閉">×</button>
+			</div>
+
+			
+			<!-- 員工照片：有照片顯示員工照片，沒有則顯示預設頭像 -->
+			<div class="staff-profile-photo">
+
+				<img id="staffProfilePhoto" alt="員工照片" hidden> <img
+					id="staffProfileNoPhoto" th:src="@{/images/employee-default.svg}"
+					alt="預設員工頭像">
+
+				<p>照片由員工管理人員維護</p>
+
+			</div>
+
+			<form id="staffProfileForm">
+
+				<!-- 不可修改 -->
+				<label for="staffProfileEmpNo">員工編號</label> <input
+					id="staffProfileEmpNo" type="text" readonly> <label
+					for="staffProfileEmpName">員工姓名</label> <input
+					id="staffProfileEmpName" type="text" readonly> <label
+					for="staffProfileEmpTel">員工電話</label> <input
+					id="staffProfileEmpTel" type="text" readonly>
+
+				<!-- 可以自行修改 -->
+				<label for="staffProfileEmpIce">緊急聯絡人</label> <input
+					id="staffProfileEmpIce" type="text"> <label
+					for="staffProfileEmpIcetel">緊急聯絡電話</label> <input
+					id="staffProfileEmpIcetel" type="tel"> <label
+					for="staffProfileEmpAdd">聯絡地址</label> <input
+					id="staffProfileEmpAdd" type="text">
+
+				<div class="staff-profile-actions">
+					<button type="button" id="staffProfileChangePassword">
+						修改密碼</button>
+
+					<button type="submit" id="staffProfileSave">儲存修改</button>
+				</div>
+
+			</form>
+		</div>
+	</div>
+
+</body>
+</html>
