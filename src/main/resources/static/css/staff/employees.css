@@ -280,3 +280,56 @@ button[data-action="edit"], button[data-action="permissions"], button[data-actio
     transition: none;
     cursor: not-allowed;
 }
+
+/* ===== 員工照片：選擇檔案、刪除照片按鈕 ===== */
+
+.employee-photo-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+/* 兩個按鈕統一尺寸 */
+.employee-photo-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 18px;
+    border-radius: 8px;
+    font: inherit;
+    line-height: normal;
+    cursor: pointer;
+    box-sizing: border-box;
+    transition: background-color 0.2s ease,
+                color 0.2s ease,
+                box-shadow 0.2s ease,
+                transform 0.2s ease;
+}
+
+/* 選擇檔案：與儲存員工相同 */
+.employee-photo-actions .employee-primary-btn {
+    background-color: #a52a2a;
+    color: white;
+    border: 1px solid #a52a2a;
+}
+
+/* 刪除照片：與取消相同 */
+.employee-delete-photo-btn {
+    background-color: white;
+    color: #a52a2a;
+    border: 1px solid #a52a2a;
+}
+
+/* 刪除照片滑鼠移入效果 */
+.employee-delete-photo-btn:hover {
+    background-color: #a52a2a;
+    color: white;
+    box-shadow: 0 5px 12px rgba(165, 42, 42, 0.3);
+    transform: translateY(-2px);
+}
+
+/* 按下效果 */
+.employee-photo-btn:active {
+    transform: scale(0.97);
+}

@@ -107,11 +107,24 @@
 				</div>
 
 				<div class="employee-form-group">
-					<label for="empPhoto">員工照片（選填）</label> <input type="file"
-						id="empPhoto" name="photo"
-						accept="image/jpeg,image/png,image/webp"> <img
-						id="employeePhotoPreview" class="employee-photo-preview"
-						alt="員工照片預覽" hidden>
+					<label for="empPhoto">員工照片（選填）</label>
+
+					<div class="employee-photo-actions">
+
+						<input type="file" id="empPhoto" name="photo"
+							accept="image/jpeg,image/png,image/webp" hidden> <label
+							for="empPhoto" class="employee-primary-btn employee-photo-btn">
+							選擇檔案 </label>
+
+						<button type="button" id="deleteEmployeePhotoBtn"
+							class="employee-photo-btn employee-delete-photo-btn">
+							刪除照片</button>
+
+					</div>
+
+					<input type="hidden" id="deleteEmployeePhoto" name="deletePhoto"
+						value="false"> <img id="employeePhotoPreview"
+						class="employee-photo-preview" alt="員工照片預覽" hidden>
 				</div>
 
 				<div class="employee-form-actions">

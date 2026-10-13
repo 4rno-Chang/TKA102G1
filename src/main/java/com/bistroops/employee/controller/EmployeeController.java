@@ -8,6 +8,7 @@ import java.util.Arrays;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.bind.annotation.DeleteMapping;
 
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -189,6 +190,29 @@ public class EmployeeController {
 		} catch (IllegalArgumentException e) {
 			return ResponseEntity.badRequest().body(e.getMessage());
 		}
+	}
+	
+	// 刪除員工照片
+	@DeleteMapping("/{empNo}/photo")
+	public ResponseEntity<Void> deleteEmployeePhoto(@PathVariable Integer empNo) {
+
+	    // 確認員工是否存在
+	    if (employeeService.getEmployeeById(empNo).isEmpty()) {
+	        return ResponseEntity.notFound().build();
+	    }
+
+	    try {
+	        // 呼叫 Service 刪除照片
+	        employeeService.deleteEmployeePhoto(empNo);
+
+	        // 刪除成功，回傳 HTTP 204
+	        return ResponseEntity.noContent().build();
+
+	    } catch (IllegalArgumentException e) {
+	        throw new ResponseStatusException(
+	                HttpStatus.BAD_REQUEST, e.getMessage()
+	        );
+	    }
 	}
 
 	// 讀取員工照片

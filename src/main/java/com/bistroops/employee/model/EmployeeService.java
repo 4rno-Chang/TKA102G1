@@ -198,4 +198,25 @@ public class EmployeeService {
 
 		return employee.getEmpPhoto();
 	}
+	
+	// 刪除員工照片
+	@Transactional
+	public void deleteEmployeePhoto(Integer empNo) {
+
+	    // 1. 確認員工存在
+	    EmployeeVO employee = employeeRepository.findById(empNo)
+	            .orElseThrow(() -> new IllegalArgumentException("找不到員工：" + empNo));
+
+	    // 2. 停用員工不可修改照片
+	    if ("2".equals(employee.getEmpStatus())) {
+	        throw new IllegalArgumentException("此員工已停用，無法刪除照片");
+	    }
+
+	    // 3. 清除員工照片
+	    employee.setEmpPhoto(null);
+
+	    // 4. 更新資料庫
+	    employeeRepository.save(employee);
+	}
+	
 }

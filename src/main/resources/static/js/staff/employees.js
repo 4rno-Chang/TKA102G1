@@ -148,6 +148,23 @@ document.addEventListener("DOMContentLoaded", () => {
     const form = document.getElementById("employeeForm");
     const photoInput = document.getElementById("empPhoto");
     const photoPreview = document.getElementById("employeePhotoPreview");
+	
+	const deletePhotoBtn = document.getElementById("deleteEmployeePhotoBtn");
+	const deletePhotoInput = document.getElementById("deleteEmployeePhoto");
+
+	// 點擊刪除照片：先切換成預設灰色人像
+	deletePhotoBtn.addEventListener("click", () => {
+	    // 清除目前選擇的照片
+	    photoInput.value = "";
+
+	    // 記錄使用者要求刪除照片
+	    deletePhotoInput.value = "true";
+
+	    // 顯示預設灰色人像
+	    photoPreview.onerror = null;
+	    photoPreview.src = "/images/employee-default.svg";
+	    photoPreview.hidden = false;
+	});
 
     const openBtn = document.getElementById("addEmployeeBtn");
     const closeBtn = document.getElementById("closeEmployeeModal");
@@ -439,11 +456,16 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
-    // 選擇照片後預覽
-    photoInput.addEventListener("change", () => {
-        const file = photoInput.files[0];
+	// 選擇照片後預覽
+	photoInput.addEventListener("change", () => {
+	    const file = photoInput.files[0];
 
-        if (!file) {
+	    // 重新選擇照片時，取消刪除狀態
+	    if (file) {
+	        deletePhotoInput.value = "false";
+	    }
+
+	    if (!file) {
             photoPreview.hidden = true;
             photoPreview.removeAttribute("src");
             return;
@@ -516,24 +538,42 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
             // 2. 如果有選擇照片，再上傳照片
-            const file = photoInput.files[0];
+			// 2. 處理員工照片：上傳或刪除
+			const file = photoInput.files[0];
+			const shouldDeletePhoto = deletePhotoInput.value === "true";
 
-            if (file) {
-                const formData = new FormData();
-                formData.append("photo", file);
+			if (file) {
 
-                const photoResponse = await fetch(
-                    `/api/employees/${createdEmpNo}/photo`,
-                    {
-                        method: "POST",
-                        body: formData
-                    }
-                );
+			    // 有選擇新照片：上傳或更換照片
+			    const formData = new FormData();
+			    formData.append("photo", file);
 
-                if (!photoResponse.ok) {
-                    throw new Error("員工資料已儲存，但照片上傳失敗");
-                }
-            }
+			    const photoResponse = await fetch(
+			        `/api/employees/${createdEmpNo}/photo`,
+			        {
+			            method: "POST",
+			            body: formData
+			        }
+			    );
+
+			    if (!photoResponse.ok) {
+			        throw new Error("員工資料已儲存，但照片上傳失敗");
+			    }
+
+			} else if (isEditing && shouldDeletePhoto) {
+
+			    // 編輯員工時有點擊刪除照片：呼叫 DELETE API
+			    const photoResponse = await fetch(
+			        `/api/employees/${createdEmpNo}/photo`,
+			        {
+			            method: "DELETE"
+			        }
+			    );
+
+			    if (!photoResponse.ok) {
+			        throw new Error("員工資料已儲存，但照片刪除失敗");
+			    }
+			}
 
             alert(isEditing ? "員工修改成功！" : "員工新增成功！");
             closeModal();
