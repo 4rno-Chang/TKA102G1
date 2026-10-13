@@ -96,4 +96,51 @@ public interface ReservationRepository extends JpaRepository<ReservationVO, Long
 			""")
 	List<ReservationVO> findUpcomingReservations(@Param("startTime") LocalDateTime startTime,
 			@Param("endTime") LocalDateTime endTime);
+
+	@Query(value = """
+			SELECT
+			    dt.rsv_dt_no AS rsvDtNo,
+			    dt.rsv_dt_datetime AS diningTime,
+			    st.seat_type_no AS tableType,
+			    GREATEST(
+			        CAST(
+			            LEAST(
+			                GREATEST(COALESCE(st.seat_type_rsv_num, 0), 0),
+			                GREATEST(COALESCE(st.seat_type_num, 0), 0)
+			            ) AS SIGNED
+			        )
+			        - CAST(COALESCE(booked.used_tables, 0) AS SIGNED),
+			        0
+			    ) AS remaining
+			FROM reservation_datetime dt
+			CROSS JOIN seat_type st
+			LEFT JOIN (
+			    SELECT
+			        r.rsv_dt_no,
+			        r.seat_type_no,
+			        COUNT(*) AS used_tables
+			    FROM reservation r
+			    JOIN reservation_datetime counted_dt
+			        ON counted_dt.rsv_dt_no = r.rsv_dt_no
+			    WHERE r.rsv_status IN ('預約', '實到')
+			      AND counted_dt.rsv_dt_datetime > :now
+			      AND counted_dt.rsv_dt_datetime < :endExclusive
+			    GROUP BY r.rsv_dt_no, r.seat_type_no
+			) booked
+			    ON booked.rsv_dt_no = dt.rsv_dt_no
+			   AND booked.seat_type_no = st.seat_type_no
+			WHERE dt.rsv_dt_datetime > :now
+			  AND dt.rsv_dt_datetime < :endExclusive
+			  AND st.seat_type_no IN (2, 4, 6)
+			  AND TIME(dt.rsv_dt_datetime) IN (
+			      '11:00:00',
+			      '12:30:00',
+			      '17:00:00',
+			      '18:30:00'
+			  )
+			ORDER BY dt.rsv_dt_datetime, st.seat_type_no
+			""", nativeQuery = true)
+	List<ReservationAvailabilityRow> findAvailability(@Param("now") LocalDateTime now,
+			@Param("endExclusive") LocalDateTime endExclusive);
+
 }

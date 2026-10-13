@@ -237,7 +237,7 @@ public class ReservationController {
 
 		model.addAttribute("createMinDate", LocalDate.now().toString());
 
-		model.addAttribute("createMaxDate", LocalDate.now().plusMonths(3).toString());
+		model.addAttribute("createMaxDate", LocalDate.now(java.time.ZoneId.of("Asia/Taipei")).plusDays(89).toString());
 
 		model.addAttribute("createPhone", phone);
 
