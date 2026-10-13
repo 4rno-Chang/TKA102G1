@@ -173,11 +173,38 @@ public class OrdersVO {
 		}
 		if(hasItem &&allCancelled) return "CANCELLED";
 		if(!hasItem || !allServed)return "ACTIVE"; //有明細或沒有全部已送達
-		return (ordersPay != null && !ordersPay.isEmpty()) ?"PAID"  :"DONE"; //已結帳或是完畢
-		
-		
+		return (ordersPay != null && !ordersPay.isEmpty()) 
+				?"PAID"  //已結帳
+				:"DONE"; //送餐完畢
 		//CANCELLED 取消/ACTIVE 用餐中 /PAID 已付款 /DONE 餐點送完未付款 
 	}
+	@Transient
+	public int  getServedCount() { //已送達
+		int count=0;
+		for(OrdersDetailsVO item : ordersDetails) {
+			if("已送達".equals(item.getOdStatus())) {
+				count++;
+			}
+		}
+		return count;
+	}
+	@Transient
+	public int  getActiveCount() { //訂單進行中
+		int count=0;
+		for(OrdersDetailsVO item :ordersDetails) {
+			if(!"已取消".equals(item.getOdStatus())) {
+				count++;
+			}
+		}
+		return count;
+	}
+	public boolean isPaid() {  //已經付款
+		return  ordersPay!=null &&!ordersPay.isEmpty();
+	}
+	
+	
+	
+	
 
 
 

@@ -66,6 +66,16 @@ public class OrdersService {
 		order.setOrdersActualPrice(total-discount);    //實付金額
 		
 	}
+	
+	//結帳頁左邊重新計算
+	@Transactional
+	public void recalculateUnpaid(Integer orders) {
+		for(OrdersVO o: ordersRepository.findUnpaid()) {
+			recalculate(o.getOrders());
+		}
+	}
+	
+	
 	//修改訂單付款方式
 	@Transactional
 	public void pay(Integer order,String method) { 
@@ -81,12 +91,7 @@ public class OrdersService {
 		ordersRepository.save(orders);  	
 	}
 	
-	
-	
-	
-	
-	
-	//查未結帳狀態
+	//============查未結帳狀態================
 	public List<OrdersVO> getUnpaid() {
 	    return ordersRepository.findUnpaid().stream()  
 	    		.filter(o->!"CANCELLED".equals(o.getStatus()))  //不是取消的
@@ -95,7 +100,16 @@ public class OrdersService {
 	public OrdersVO getOne(Integer orders) {
 	    return ordersRepository.findById(orders).orElse(null);
 	}
-
+	//============查詢workboard訂單=============
+	public List<OrdersVO> getActive(){
+		return ordersRepository.findActive();
+	}
+	
+	public List<OrdersVO> getDone(){
+		return ordersRepository.findUnpaid().stream()
+			.filter(o->"DONE".equals(o.getStatus()))
+			.toList();
+	}
 	
 	
 	

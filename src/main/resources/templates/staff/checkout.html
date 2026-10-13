@@ -78,7 +78,7 @@
               <tbody>
                 <!-- 被取消的餐點不列在明細上（也可以在 Java 先排除，那 th:unless 就不需要了） -->
                 <tr th:each="item : ${order.ordersDetails}" th:unless="${item.odStatus == '已取消'}">
-                  <td th:text="${item.mealNo.mealName}">品名</td>
+                  <td th:text="${item.meal.mealName}">品名</td>
                   <td class="num" th:text="${item.odMealNum}">1</td>
                   <td class="num" th:text="${item.odDiscountPrice}">620</td>
                   <td class="num" th:text="${item.odDiscountPrice * item.odMealNum}">620</td>

@@ -149,6 +149,13 @@ document.addEventListener('click', e => {
   }
 });
 
+/* 後端擋下操作時的提示：訊息由 Controller 用 addFlashAttribute("error", ...) 帶過來，
+   HTML 寫在 #staffToast 的 data-error 上，頁面載入完成後顯示。 */
+window.addEventListener('load', function () {
+  const toast = document.getElementById('staffToast');
+  if (toast && toast.dataset.error) staffToast(toast.dataset.error);//沒有訊息時它是空的
+});
+
 
 // ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
 // ▼▼▼  【假資料・刪除範圍 開始】                                          ▼▼▼

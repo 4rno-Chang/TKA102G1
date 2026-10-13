@@ -91,10 +91,10 @@ public class StaffPageController {
 	// 工作面板：內場／外場／已完成訂單(未結帳)
 	// 【Thymeleaf 串接】加上 @RequestParam(defaultValue = "kitchen") String view 和 Model，
 	// 依照 view 查出要顯示的訂單放進 Model（見 workboard.html 的卡片區）
-	@GetMapping("/workboard")
-	public String workboard() {
-		return "staff/workboard";
-	}
+//	@GetMapping("/workboard")
+//	public String workboard() {
+//		return "staff/workboard";
+//	}
 
 	// 訂單管理：查詢所有訂單
 	// 【Thymeleaf 串接】加上 @RequestParam(required = false) String status、String
