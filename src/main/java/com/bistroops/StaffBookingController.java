@@ -93,7 +93,7 @@ public class StaffBookingController {
 	//    2    GET  /staff/booking/rsv/edit            "staff/booking"               同上（rsvForm 是查出來的那一筆）
 	//    3    POST /staff/booking/rsv/save            成功 redirect；不通過回傳頁面  不通過時：步驟 2 的全部，再加 errorMsg
 	//    4    POST /staff/booking/rsv/cancel          redirect                      用 RedirectAttributes 帶 message
-	//    5    GET  /staff/booking?tab=waiting         "staff/booking"               tab、waitingList、seatBoards
+	//    5    GET  /staff/booking?tab=waiting         "staff/booking"               tab、waitingList、seatBoards、keyword
 	//    6    GET  /staff/booking/waiting/add         "staff/booking"               步驟 5 的全部，再加 waitingForm、seatTypes
 	//    6    GET  /staff/booking/waiting/edit        "staff/booking"               同上（waitingForm 是查出來的那一筆）
 	//    7    POST /staff/booking/waiting/save        成功 redirect；不通過回傳頁面  不通過時：步驟 6 的全部，再加 waitingError
@@ -256,9 +256,20 @@ public class StaffBookingController {
 	//
 	//
 	// ══ 步驟 5：候位的查詢（下面 booking 方法裡 tab 是 "waiting" 的那一支）══
+	//   參數：步驟 1 已經有的 keyword（@RequestParam(required = false) String keyword）在這裡也會用到。
+	//   候位的搜尋：頁面的搜尋表單會送 /staff/booking?tab=waiting&keyword=王。
+	//     keyword 有內容（去掉空白之後不是空的）→ waitingList 只留符合的候位：
+	//         姓名裡有這些字（waitingName）、或電話裡有這些數字（waitingTel）、或候位號碼剛好等於它
+	//       電話不顯示在列表上，但客人通常是報電話或姓名，所以電話也要能找。
+	//       候位一天不會太多筆，可以先照原本的方式查出今天全部的候位，再用迴圈挑出符合的；不一定要另外寫查詢。
+	//     沒有 keyword → 今天全部的候位
+	//     ★ seatBoards（右邊的叫號）不受搜尋影響，永遠用全部的候位去算，不要拿搜尋之後的清單算。
+	//     ★ 過號、儲存編輯之後 redirect 回 /staff/booking?tab=waiting（不帶 keyword），會回到完整的列表。
+	//       想要做完之後留在搜尋結果的話，頁面上那些表單要多藏一個 keyword，這裡再用 redirectAttributes.addAttribute 放回網址。
 	//   放進 Model：
 	//     tab          "waiting"
-	//     waitingList  今天的候位（List<WaitingVO>），排除狀態是「取消」的（規定 C）。
+	//     keyword      搜尋的文字（沒有就不用放；頁面會把它填回搜尋框，並顯示「搜尋『王』的結果」）
+	//     waitingList  今天的候位（List<WaitingVO>），排除狀態是「取消」的（規定 C）。有 keyword 時只放符合的。
 	//                  建議的順序：還在處理中的（已通知、候位中）排前面，再依桌型、候位號碼排
 	//     seatBoards   每種桌型一格（List）。每一格要有這五個屬性（用 Map 或另外寫一個小類別都可以）：
 	//                    seatTypeNo     桌型編號（幾人桌）
