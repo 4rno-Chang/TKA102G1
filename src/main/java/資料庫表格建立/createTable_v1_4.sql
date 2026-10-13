@@ -47,7 +47,8 @@ CREATE TABLE IF NOT EXISTS orders_details(
   od_discount_total INT COMMENT '折扣金額',
   od_actual_price INT COMMENT '小計',
   od_comment VARCHAR(30) COMMENT '備註',
-	od_status VARCHAR(5) COMMENT '訂單狀態',
+  od_status VARCHAR(5) COMMENT '訂單狀態',
+  od_served_at DATETIME NULL COMMENT'送達時間',
   PRIMARY KEY(orders_details_no)
 ) COMMENT '訂單明細';
 
@@ -392,20 +393,21 @@ INSERT INTO promote_meal (promote_no, meal_no, promote_discount) VALUES
 (1, 2, 150),
 (1, 3, 150);
 
--- 9. 插入義餐訂單明細 (orders_details)
-INSERT INTO orders_details (orders_no, meal_no, promote_no, od_meal_num, od_discount_price, od_discount_total, od_actual_price, od_comment, od_status) VALUES 
--- 訂單 1 明細 (A01 桌)
-(1, 1, null, 1, 160, 0, 160, '麵包要烤酥一點', '已送達'),
-(1, 4, 1, 1, 380, 0, 380, '飯軟一點', '已送達'),
-(1,8, null, 1, 130, 0, 130, '少冰', '已取消'),
-(1,11, 2, 1, 160, 50, 110, '', '等待送餐'),
--- 訂單 2 明細 (B01 桌)
-(2,3, null, 1, 200, 0, 200, '', '已送達'),
-(2, 7, 1, 1, 680, 0, 680, '三分熟', '等待送餐'),
-(2, 10, null, 1, 100, 0, 100, '加冰塊與檸檬片', '準備中'),
--- 訂單 3 明細 (C01 桌)
-(3, 6, null, 1, 300, 0, 300, '起司多一點', '準備中'),
-(3, 8, 1, 1, 130, 0, 130, '去冰', '未備料');
+-- 9. 訂單明細 (orders_details)
+-- 狀態統一用：製作中／等待送餐／已送達／已取消；還沒送達的送達時間填 NULL
+INSERT INTO orders_details (orders_no, meal_no, promote_no, od_meal_num, od_discount_price, od_discount_total, od_actual_price, od_comment, od_status, od_served_at) VALUES
+-- 訂單 1 (A01)：烤麵包套用中秋特價 120
+(1,  1,    1, 1, 160, 40, 120, '麵包要烤酥一點', '已送達',   '2026-10-01 18:42:00'),
+(1, 14, NULL, 1, 380,  0, 380, '飯軟一點',       '已送達',   '2026-10-01 18:55:00'),
+(1, 37, NULL, 1, 100,  0, 100, '少冰',           '已取消',   NULL),
+(1, 29, NULL, 1, 160,  0, 160, '',               '等待送餐', NULL),
+-- 訂單 2 (B01)：卡布里沙拉套用中秋特價 150
+(2,  3,    1, 1, 200, 50, 150, '',               '已送達',   '2026-10-01 19:27:00'),
+(2, 21, NULL, 1, 680,  0, 680, '三分熟',         '等待送餐', NULL),
+(2, 37, NULL, 1, 100,  0, 100, '加冰塊與檸檬片', '製作中',   NULL),
+-- 訂單 3 (C01)：剛點完
+(3, 10, NULL, 1, 300,  0, 300, '起司多一點',     '製作中',   NULL),
+(3, 37, NULL, 1, 100,  0, 100, '去冰',           '製作中',   NULL);
 
 -- 10. 候位 (waiting)
 INSERT INTO waiting (

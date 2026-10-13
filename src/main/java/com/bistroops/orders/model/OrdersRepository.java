@@ -26,5 +26,13 @@ public interface OrdersRepository extends JpaRepository<OrdersVO,Integer>{
 				"WHERE o.ordersPay IS NULL OR o.ordersPay = '' ORDER BY o.ordersTime")
 	List<OrdersVO> findUnpaid(); 
 
-	
+	//查廚房工作看板
+	@Query ("SELECT DISTINCT o FROM OrdersVO o "
+			+ "LEFT JOIN FETCH o.ordersDetails d "
+			+ "LEFT JOIN FETCH d.meal m "
+			+ "LEFT JOIN FETCH m.mealType t "
+			+ "WHERE EXISTS (SELECT 1 FROM OrdersDetailsVO x " + 
+			"WHERE x.orders = o AND x.odStatus NOT IN ('已送達', '已取消')) " +  //條件：這張訂單「至少有一筆」還沒送達也沒取消→ 也就是廚房還有事要做的訂單
+		       "ORDER BY o.ordersTime, t.mealtypeNo, d.ordersDetailsNo")
+	List<OrdersVO>findActive();
 }
