@@ -242,7 +242,7 @@ document.querySelectorAll('[data-date-picker]').forEach(refreshDatePicker);
       （最後一行的 })(); 要留著）
      B-1. 假資料 BookingDemo，以及兩個分頁都會用到的小工具
      B-2. 訂位：查詢（日期、午餐／晚餐、搜尋）、列表、新增／修改的對話框、取消訂位、刷新頁面
-     B-3. 候位：左邊今天的候位列表（過號、編輯）、右邊每種桌型的叫號（叫下一號）、新增／修改的對話框、刷新頁面
+     B-3. 候位：左邊今天的候位列表（搜尋、過號、編輯）、右邊每種桌型的叫號（叫下一號）、新增／修改的對話框、刷新頁面
    訂位和候位在同一個頁面的不同分頁，一次只會顯示一個，所以用「頁面上有沒有那個元素」決定要執行哪一段。
 
    兩個分頁共同的規定（資料庫的版本也一樣，寫在 booking.html 開頭和 StaffBookingController.java）：
@@ -679,6 +679,18 @@ function startDemoRsv() {
 function startDemoWaiting() {
   const boards = document.getElementById('demoBoards');
   const summary = document.getElementById('demoWaitingSummary');
+  const keywordInput = document.getElementById('demoWaitingKeyword');
+  const showAllBtn = document.getElementById('demoWaitingAll');   // 「顯示全部」，正在看搜尋結果的時候才出現
+
+  // 目前搜尋的文字（資料庫的版本，這是放在網址上的 keyword）。空字串代表沒有在搜尋
+  let currentKeyword = '';
+
+  // 一筆候位符不符合搜尋的文字：姓名裡有這些字、電話裡有這些數字、或號碼剛好等於它。
+  // 電話雖然不顯示在列表上，還是可以用電話找。資料庫的版本由 Controller／Service 做同樣的判斷
+  function matchesKeyword(w, word) {
+    if (!word) return true;   // 沒有在搜尋：全部都符合
+    return w.waitingName.toLowerCase().includes(word) || w.waitingTel.includes(word) || String(w.waitingNum) === word;
+  }
 
   // 傳給客人的簡訊內容。假資料不會真的傳，只會在畫面下方顯示「已通知」
   // ★ 資料庫的版本：這段文字由 Java 傳簡訊時使用（寫在 StaffBookingController.java 的說明裡），這裡刪掉就好
@@ -713,7 +725,7 @@ function startDemoWaiting() {
       // 叫號中的號碼：紅底是已叫號；超過 10 分鐘的加上 is-late，變成綠底（逾時）
       const callingHtml = calling.length
         ? calling.map(w => `<span class="booking-call${minutesLeft(w) < 0 ? ' is-late' : ''}">${escapeHtml(w.waitingNum)}</span>`).join('')
-        : '<span class="booking-call-none">目前沒有叫號</span>';
+        : '<span class="booking-call-none">尚無叫號</span>';
       return `
         <article class="booking-board">
           <div class="booking-board-head">
@@ -728,14 +740,20 @@ function startDemoWaiting() {
 
     // 左邊：今天的候位。取消的不顯示；還在處理中的（已通知、候位中）排前面，再依桌型、號碼排
     const ORDER = { '已通知': 0, '候位中': 1, '已入座': 2, '過號': 3 };
+    // 有搜尋文字的話只留符合的（右邊的叫號不受搜尋影響，上面已經產生好了）
+    const word = currentKeyword.trim().toLowerCase();
     const list = demo.waitings
-      .filter(w => w.waitingStatus !== '取消')
+      .filter(w => w.waitingStatus !== '取消' && matchesKeyword(w, word))
       .sort((a, b) => ORDER[a.waitingStatus] - ORDER[b.waitingStatus] || a.seatTypeNo - b.seatTypeNo || a.waitingNum - b.waitingNum);
 
-    summary.innerHTML = `今天的候位，共 <b>${list.length}</b> 組`;
+    keywordInput.value = currentKeyword;
+    showAllBtn.hidden = !word;
+    summary.innerHTML = word
+      ? `搜尋「<b>${escapeHtml(currentKeyword.trim())}</b>」的結果，共 <b>${list.length}</b> 組`
+      : `今天的候位，共 <b>${list.length}</b> 組`;
 
     if (list.length === 0) {
-      demoWaitingList.innerHTML = '<tr><td colspan="7" class="staff-empty">目前沒有候位</td></tr>';
+      demoWaitingList.innerHTML = `<tr><td colspan="7" class="staff-empty">${word ? '沒有符合條件的候位' : '目前沒有候位'}</td></tr>`;
       return;
     }
     demoWaitingList.innerHTML = list.map(w => {
@@ -788,7 +806,18 @@ function startDemoWaiting() {
     console.log('（假資料）傳給 ' + next.waitingTel + ' 的簡訊內容：' + SMS_TEXT);   // 按 F12 的 Console 可以看到簡訊的內容
   });
 
-  // 「刷新頁面」：重新讀一次資料，並重新算「剩幾分鐘」
+  // 搜尋：按「查詢」（或在輸入框按 Enter）才會查；「顯示全部」把搜尋的文字清掉
+  document.getElementById('demoWaitingTools').addEventListener('submit', e => {
+    e.preventDefault();   // 假資料不用把表單送到後端
+    currentKeyword = keywordInput.value;
+    render();
+  });
+  showAllBtn.addEventListener('click', () => {
+    currentKeyword = '';
+    render();
+  });
+
+  // 「刷新頁面」：重新讀一次資料，並重新算「剩幾分鐘」（搜尋的文字不變）
   document.getElementById('demoWaitingRefresh').addEventListener('click', () => {
     reloadDemo();
     render();

@@ -46,6 +46,31 @@
 /* 搜尋框：佔掉剩下的寬度 */
 .booking-tool-grow { flex: 1; min-width: 220px; max-width: 420px; }
 
+/* 候位列表上面那一行：左邊「今天的候位，共 N 組」，後面接著小小的搜尋。放不下的時候搜尋會掉到下一行 */
+.booking-waiting-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; margin-bottom: 10px; }
+.booking-waiting-head .booking-summary { margin-bottom: 0; }
+/* 小的搜尋：輸入框和按鈕的字和旁邊那行字一樣大（15px），高度 38px，比後台一般的輸入框（48px）小一號 */
+.booking-mini-search { display: flex; align-items: center; gap: 6px; }
+.booking-mini-search input[type="search"] {
+  width: 230px; height: 38px;
+  padding: 0 12px;
+  background: var(--st-card);
+  border: 1px solid var(--st-border);
+  border-radius: 10px;
+  font-size: 15px;
+}
+.booking-mini-search input[type="search"]:focus { outline: 2px solid var(--st-yellow); outline-offset: 1px; }
+.booking-mini-search button,
+.booking-mini-search a {
+  display: inline-flex; align-items: center;
+  height: 38px; padding: 0 14px;
+  background: var(--st-card);
+  border: 1px solid var(--st-border);
+  border-radius: 10px;
+  font-size: 15px; white-space: nowrap;
+}
+.booking-mini-search button:hover,
+.booking-mini-search a:hover { background: var(--st-soft); }
 /* 目前顯示的是什麼（某一天某個餐期的訂位、搜尋的結果、候位共幾組） */
 .booking-summary { margin-bottom: 10px; color: var(--st-muted); font-size: 15px; }
 .booking-summary b { color: var(--st-text); }
@@ -131,7 +156,7 @@
 
 /* 每種桌型一張小卡，上下排。小卡左邊有一條粗的色線，三種桌型的顏色不一樣（--board-color），方便一眼分辨：
    :nth-child(1) 是「第一張」，所以顏色是照小卡的順序給的（目前是 2、4、6 人桌）。之後桌型變多，照樣往下加就可以。
-   顏色避開紅色和綠色，才不會和裡面號碼的紅底（已叫號）、綠底（逾時）搞混 */
+   顏色用的是後台主頁三個大按鈕的顏色（磚紅、芥末黃、鼠尾草綠，都是 staff.css 的 --st-* 變數），整個後台看起來才一致 */
 .booking-boards { display: grid; gap: 10px; }
 .booking-board {
   display: grid; gap: 8px;
@@ -142,9 +167,9 @@
   border-radius: 14px;
   box-shadow: var(--st-shadow);
 }
-.booking-board:nth-child(1) { --board-color: #dba03c; }   /* 第一張（2 人桌）：芥末黃 */
-.booking-board:nth-child(2) { --board-color: #5b7c99; }   /* 第二張（4 人桌）：灰藍 */
-.booking-board:nth-child(3) { --board-color: #8e6a8a; }   /* 第三張（6 人桌）：紫 */
+.booking-board:nth-child(1) { --board-color: var(--st-green); }    /* 第一張（2 人桌）：鼠尾草綠 */
+.booking-board:nth-child(2) { --board-color: var(--st-yellow); }   /* 第二張（4 人桌）：芥末黃 */
+.booking-board:nth-child(3) { --board-color: var(--st-red); }      /* 第三張（6 人桌）：磚紅 */
 /* 第一行：左邊桌型，右邊「叫下一號」 */
 .booking-board-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .booking-board-head form { display: flex; }   /* 資料庫的版本按鈕包在表單裡 */

@@ -66,6 +66,7 @@
     4. 取消訂位：POST /staff/booking/rsv/cancel。不是真的刪除，是把狀態改成「取消」，資料留著（列表上不再顯示）。
     ── 候位 ──
     5. 查詢：GET /staff/booking?tab=waiting 把 waitingList（今天的候位）和 seatBoards（每種桌型的可用桌數、叫號）放進 Model。
+       有帶 keyword 的話，waitingList 只放姓名、電話或號碼符合的候位，並把 keyword 也放進 Model（右邊的叫號不受搜尋影響）。
     6. 新增／修改的對話框：GET /staff/booking/waiting/add、GET /staff/booking/waiting/edit?waitingNo=1 把 waitingForm 等資料放進 Model。
     7. 儲存：POST /staff/booking/waiting/save（新增是替不會用網路的客人取號；修改可以改資料和狀態）。
     8. 過號：POST /staff/booking/waiting/miss（已通知的客人沒有回來）。
@@ -111,7 +112,7 @@
         <a class="staff-btn" th:if="${tab != 'waiting' and rsvList != null}"
            th:href="@{/staff/booking(date=${date}, meal=${meal}, keyword=${keyword})}">刷新頁面<span class="source-tag source-db">資料庫</span></a>
         <a class="staff-btn" th:if="${tab == 'waiting' and waitingList != null}"
-           th:href="@{/staff/booking(tab='waiting')}">刷新頁面<span class="source-tag source-db">資料庫</span></a>
+           th:href="@{/staff/booking(tab='waiting', keyword=${keyword})}">刷新頁面<span class="source-tag source-db">資料庫</span></a>
 
         <!-- 【資料庫資料】新增訂位：連到 /staff/booking/rsv/add，Controller 放 rsvForm 之後「新增訂位」的對話框就會出現。
              網址帶著目前看的日期和餐期，對話框的日期會先選好那一天，關掉對話框時也回得到同一個列表 -->
@@ -344,6 +345,9 @@
            【資料庫資料】Thymeleaf 串接：候位（左邊：今天的候位列表；右邊：每種桌型的叫號）
            Controller（GET /staff/booking?tab=waiting）放進 Model：
              waitingList  今天的候位（List<WaitingVO>），依候位號碼排序。★ 不要包含狀態是「取消」的。
+                          有搜尋文字（keyword）的時候，只放符合的那幾筆。
+             keyword      搜尋的文字（可以是 null）。找的是：姓名裡有這些字、電話裡有這些數字、或號碼剛好等於它。
+                          電話雖然不顯示在列表上，還是可以用電話找（客人報電話比報號碼常見）。
                           ★ 候位表目前沒有日期的欄位，「今天」怎麼判斷要和組員確認
                             （之前討論過：每天固定時間重設，或另外記錄日期）。
              seatBoards   每種桌型一格（List）。每一格需要這些屬性（名稱是範例）：
@@ -376,14 +380,30 @@
                                要取消候位、改回候位中，都是在編輯的對話框裡改「狀態」。
                ★ 這一頁沒有「入座」和「通知」的按鈕：入座由入座管理負責；通知改成按右邊的「叫下一號」（照號碼順序叫）。 -->
           <div class="booking-split-main">
-            <p class="booking-summary">今天的候位，共 <b th:text="${#lists.size(shownWaiting)}">8</b> 組</p>
+            <!-- 搜尋：用 GET 送到 /staff/booking，網址會變成 /staff/booking?tab=waiting&keyword=王。
+                 藏著的 tab 欄位是告訴 Controller「這是候位的分頁」，少了它會跑到訂位的分頁。
+                 「顯示全部」是連回沒有搜尋文字的候位分頁，正在看搜尋結果的時候才出現。
+                 ★ 搜尋只影響左邊的列表；右邊的叫號永遠是全部的狀況。
+                 ★ 按「過號」、儲存編輯之後會回到沒有搜尋的完整列表（那些表單和連結沒有帶 keyword）。 -->
+            <!-- 版面：.booking-waiting-head 把「今天的候位，共 N 組」和搜尋排在同一行，搜尋接在文字後面，
+                 大小縮到和那行字差不多（.booking-mini-search，不用後台一般的大輸入框和大按鈕）。 -->
+            <div class="booking-waiting-head">
+              <p class="booking-summary" th:if="${#strings.isEmpty(keyword)}">今天的候位，共 <b th:text="${#lists.size(shownWaiting)}">8</b> 組</p>
+              <p class="booking-summary" th:unless="${#strings.isEmpty(keyword)}">搜尋「<b th:text="${keyword}">王</b>」的結果，共 <b th:text="${#lists.size(shownWaiting)}">1</b> 組</p>
+              <form class="booking-mini-search" th:action="@{/staff/booking}" method="get">
+                <input type="hidden" name="tab" value="waiting">
+                <input type="search" name="keyword" th:value="${keyword}" placeholder="搜尋姓名、電話或號碼" aria-label="搜尋候位">
+                <button type="submit">查詢</button>
+                <a th:unless="${#strings.isEmpty(keyword)}" th:href="@{/staff/booking(tab='waiting')}">顯示全部</a>
+              </form>
+            </div>
             <div class="booking-table-wrap">
               <table class="booking-table booking-table-narrow">
                 <thead>
                   <tr><th>號碼</th><th>姓名</th><th>桌型</th><th>狀態</th><th>通知時間</th><th>備註</th><th class="booking-col-act">操作</th></tr>
                 </thead>
                 <tbody>
-                  <tr th:if="${#lists.isEmpty(shownWaiting)}"><td colspan="7" class="staff-empty">目前沒有候位</td></tr>
+                  <tr th:if="${#lists.isEmpty(shownWaiting)}"><td colspan="7" class="staff-empty" th:text="${#strings.isEmpty(keyword)} ? '目前沒有候位' : '沒有符合條件的候位'">目前沒有候位</td></tr>
                   <tr th:each="w : ${shownWaiting}">
                     <td class="booking-no" th:text="${w.waitingNo}">12</td>
                     <td th:text="${w.waitingName}">王小明</td>
@@ -413,13 +433,14 @@
 
           <!-- ═══ 右邊：每種桌型的叫號 ═══
                每種桌型一張小卡：第一行是桌型和「叫下一號」，第二行是可用幾桌、還有幾組在等，再來是「目前叫號」和叫號中的號碼。
-               三種桌型的小卡，左邊那條色線的顏色不一樣（照順序：第一張黃、第二張藍、第三張紫，設定在 booking.css 的 .booking-board:nth-child）。
+               三種桌型的小卡，左邊那條色線的顏色不一樣（照順序：第一張綠、第二張芥末黃、第三張磚紅，和後台主頁三個大按鈕的顏色相同，
+               設定在 booking.css 的 .booking-board:nth-child）。
                號碼的顏色：紅底＝已叫號（還在 10 分鐘內），綠底＝逾時。「叫號」標題旁邊的小字就是這個說明，
                裡面的 <i class="booking-dot"> 是紅色的小圓點，加上 is-late 是綠色的（顏色和號碼的底色相同，設定在 booking.css）。
                叫下一號：POST /staff/booking/waiting/call，帶著 seatTypeNo。
                          Controller 找出這個桌型「候位中」裡號碼最小的那一位，把他改成「已通知」、記下通知時間、傳簡訊，
                          然後 redirect 回 /staff/booking?tab=waiting。沒有候位中的客人時，帶訊息回來就好。
-               叫號中的號碼可以有好幾個（th:each），沒有的時候顯示「目前沒有叫號」。
+               叫號中的號碼可以有好幾個（th:each），沒有的時候顯示「尚無叫號」。
                逾時的號碼：號碼在 b.lateNos 裡的話加上 is-late 這個 class（變成綠底白字）。
                          #lists.contains(清單, 值) 是「清單裡有沒有這個值」。 -->
           <aside class="booking-split-side" th:if="${seatBoards != null}">
@@ -438,7 +459,7 @@
                 <p class="booking-calls">
                   <span class="booking-call" th:each="no : ${b.callingNos}" th:classappend="${#lists.contains(b.lateNos, no)} ? 'is-late'"
                         th:text="${no}">12</span>
-                  <span class="booking-call-none" th:if="${#lists.isEmpty(b.callingNos)}">目前沒有叫號</span>
+                  <span class="booking-call-none" th:if="${#lists.isEmpty(b.callingNos)}">尚無叫號</span>
                 </p>
               </article>
             </div>
@@ -459,8 +480,16 @@
 
         <div class="booking-split">
           <div class="booking-split-main">
-            <!-- 共幾組，由 booking.js 填入 -->
-            <p class="booking-summary" id="demoWaitingSummary"></p>
+            <!-- 搜尋，結構和上面【資料庫資料】的相同；按「查詢」之後由 booking.js 的 B 區重新產生列表 -->
+            <div class="booking-waiting-head">
+              <!-- 共幾組，由 booking.js 填入 -->
+              <p class="booking-summary" id="demoWaitingSummary"></p>
+              <form class="booking-mini-search" id="demoWaitingTools">
+                <input type="search" id="demoWaitingKeyword" placeholder="搜尋姓名、電話或號碼" aria-label="搜尋候位">
+                <button type="submit">查詢</button>
+                <button type="button" id="demoWaitingAll" hidden>顯示全部</button>
+              </form>
+            </div>
             <div class="booking-table-wrap">
               <table class="booking-table booking-table-narrow">
                 <thead>
