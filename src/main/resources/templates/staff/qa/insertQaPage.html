@@ -31,7 +31,7 @@
       <p class="staff-clock" id="staffClock"></p>
     </header>
 
-    <p class="ann-alert" th:if="${errorMsg != null}" th:text="${errorMsg}" role="alert">錯誤訊息</p>
+    <p class="ann-alert" th:if="${errorMsg != null}" th:text="${errorMsg}" role="alert"></p>
 
     <section class="staff-card">
       <form class="ann-form" th:action="@{/staff/qa/insert}" method="post">
