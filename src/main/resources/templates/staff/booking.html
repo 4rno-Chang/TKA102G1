@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="zh-Hant" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bistroops 後台｜訂候位</title>
+  <link rel="icon" th:href="@{/images/logo-mark.svg}" type="image/svg+xml">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;700&display=swap">
+  <link rel="stylesheet" th:href="@{/css/staff/staff.css}" />
+  <link rel="stylesheet" th:href="@{/css/staff/booking.css}" />
+  <script th:src="@{/js/staff/staff.js}" defer></script>
+  <script th:src="@{/js/staff/booking.js}" defer></script>
+</head>
+
+<!--
+  後台「訂候位」：工作人員管理訂位和候位的頁面。一個頁面、兩個分頁（訂位／候位），用網址上的 tab 切換：
+    /staff/booking             訂位（預設）
+    /staff/booking?tab=waiting 候位
+  Controller 是 com.bistroops.booking.controller.StaffBookingController，回傳的名稱是 "staff/booking"（這個檔案是 templates/staff/booking.html）。
+  CSS：static/css/staff/booking.css　JS：static/js/staff/booking.js
+
+  對應的資料表（createTable_v1_4.sql）和 VO：
+    訂位      reservation            ReservationVO          rsvNo、member（會員）、rsvDt（訂位時段）、seatType（桌型）、rsvCreateTime、rsvStatus、rsvComment
+    訂位時段  reservation_datetime   ReservationDatetimeVO  rsvDtNo、rsvDtDatetime
+    候位      waiting                WaitingVO              waitingNo、seatType、member、waitingTel、waitingName、waitingComment、waitingStatus、waitingNotifyTime
+    桌型      seat_type              SeatTypeVO             seatTypeNo（2、4、6 人桌）、seatTypeNum、seatTypeRsvNum、seatTypeTakeNum（取號）、seatTypeCallNum（入座號）、seatTypePending（目前可使用）
+    會員      member                 MemberVO               memNo、memTel、memName …
+
+  這一頁的畫面有「兩份」，上下排在一起：
+    【資料庫資料】用 Thymeleaf 寫好的版本。Controller 還沒把資料放進 Model 時，這一塊不會出現。
+    【假資料】    booking.js 用假資料產生的版本，目前看到的就是這一塊。
+  兩份同時出現時，各自上方會多一個「資料庫資料」「假資料」的小標籤，可以對照著看。
+
+  ★ 這一頁的幾個規定（資料庫和假資料的版本都一樣，寫 Java 的時候要照著做）：
+    (1) 餐期：營業時間先當作 11:00～14:00（午餐）和 17:00～21:00（晚餐）。訂位的列表一次只看「某一天的午餐」或「某一天的晚餐」。
+        分界是 15:30（14:00 和 17:00 的中間）：訂位時段在 15:30 以前算午餐，15:30（含）以後算晚餐。
+        剛打開頁面、網址沒有指定餐期時：現在的時間在 15:30 以前 → 顯示今天的午餐；之後 → 今天的晚餐。
+        ★ 營業時間、分界的時間都尚可再討論，決定之後改 StaffBookingController 和 booking.js 裡的數字。
+    (2) 可以訂的時段：先固定寫 11:00、12:30（午餐）、17:00、17:30（晚餐）四個，寫死在這個檔案的對話框裡。
+        之後要改成從資料庫（reservation_datetime）拿的做法，寫在 StaffBookingController.java 的步驟 2。
+    (3) 狀態是「取消」的訂位、候位，兩個分頁都不顯示（資料還在資料庫裡，只是這一頁不列出來）。
+    (4) 入座不在這一頁處理：訂位的「實到」、候位的「已入座」由負責「入座管理」的組員在安排入座時設定。
+        這一頁沒有入座的按鈕，修改的對話框也選不到這兩個狀態。
+    (5) 刷新頁面：右上角的「刷新頁面」會重新向資料庫要一次目前的資料（別台裝置新增、取消的才看得到），
+        並保持目前看的日期、餐期、搜尋文字。
+
+  ★ 日期都是用「自製的月曆」選（不是瀏覽器內建的日期欄位），寫法和注意的地方在下面訂位查詢表單的說明。
+    月曆只能選年月日，沒有時間；訂位的「時段」另外用一排可以點的時段來選（在新增／修改訂位的對話框裡）。
+
+  ★★ 欄位名稱、Model 的名稱都是「範例」★★
+    【資料庫資料】裡 ${...} 用的是目前 VO 的屬性名稱；Model 的名稱（rsvList、meal、waitingList、seatBoards 等）是我先取的。
+    組員可以照自己的想法改名，只要 Controller 放進去的名稱和這裡寫的相同就好；VO 的屬性改名時這裡也要跟著改。
+
+  【Thymeleaf 串接】步驟（詳細的參數、要注意的事寫在 StaffBookingController.java，步驟的號碼相同）
+    ── 訂位 ──
+    1. 查詢：GET /staff/booking 把 rsvList（要顯示的訂位）、date（日期）、meal（餐期，'lunch' 或 'dinner'）、keyword（搜尋的文字）放進 Model。
+       沒有帶條件 → 今天、依現在的時間決定午餐或晚餐；有 keyword → 用姓名或電話找「所有日期」的訂位（不看日期和餐期）。
+       只要 rsvList 不是 null，【資料庫資料】就會出現。查不到請放空的清單，不要放 null。
+    2. 新增／修改的對話框：GET /staff/booking/rsv/add、GET /staff/booking/rsv/edit?rsvNo=1 把 rsvForm 等資料放進 Model，對話框就會出現。
+    3. 儲存：POST /staff/booking/rsv/save。會員用電話去找，找不到就建立一筆（之前討論的做法）。
+    4. 取消訂位：POST /staff/booking/rsv/cancel。不是真的刪除，是把狀態改成「取消」，資料留著（列表上不再顯示）。
+    ── 候位 ──
+    5. 查詢：GET /staff/booking?tab=waiting 把 waitingList（今天的候位）和 seatBoards（每種桌型的可用桌數、叫號）放進 Model。
+    6. 新增／修改的對話框：GET /staff/booking/waiting/add、GET /staff/booking/waiting/edit?waitingNo=1 把 waitingForm 等資料放進 Model。
+    7. 儲存：POST /staff/booking/waiting/save（新增是替不會用網路的客人取號；修改可以改資料和狀態）。
+    8. 過號：POST /staff/booking/waiting/miss（已通知的客人沒有回來）。
+    9. 叫下一號：POST /staff/booking/waiting/call?seatTypeNo=2，替那個桌型通知下一位候位中的客人，並傳簡訊。
+    ★ 候位的取號、入座號、目前可用桌數之後預計改接 Redis，並在候位表加一個「候位號碼」的欄位。
+      和這些有關的地方都標了「★ Redis」「★ 候位號碼」，改的時候找這兩個記號。
+    ── 最後 ──
+    10. 確認資料庫的版本沒問題後，刪除假資料：
+         a. 這個檔案裡用 ▼▼▼【假資料・刪除範圍 開始】到 ▲▲▲【假資料・刪除範圍 結束】框起來的每一段（共 5 段）
+         b. booking.js 的「B. 假資料」整區（一樣用 ▼▼▼ 和 ▲▲▲ 框起來）
+       刪掉之後，小標籤 <p class="source-line">...</p> 和 <span class="source-tag ...">...</span> 也可以一起拿掉。
+-->
+<body class="staff-layout">
+  <!-- 左邊的選單：'booking' 是這一頁在選單上的名稱（staff_sidebar.html 的「訂候位」） -->
+  <nav th:replace="~{staff/staff_sidebar :: sidebar('booking')}"></nav>
+
+  <main class="staff-main">
+    <header class="staff-header">
+      <div>
+        <p class="staff-eyebrow">Booking</p>
+        <h1 class="staff-title">訂候位</h1>
+      </div>
+      <p class="staff-clock" id="staffClock"></p>
+    </header>
+
+    <!-- ================================================================
+         最上面一列：左邊是分頁（訂位／候位），右邊是「刷新頁面」和「新增」的按鈕
+         分頁是連結，換分頁就是重新連到 /staff/booking 或 /staff/booking?tab=waiting。
+         Controller 把目前的分頁放進 Model（名稱 tab，值是 'rsv' 或 'waiting'），下面用它決定哪一顆是選取中、要顯示哪一塊。
+         ================================================================ -->
+    <div class="booking-top">
+      <div class="chips booking-tabs">
+        <a class="chip" th:href="@{/staff/booking}" th:classappend="${tab != 'waiting'} ? 'active'">訂位</a>
+        <a class="chip" th:href="@{/staff/booking(tab='waiting')}" th:classappend="${tab == 'waiting'} ? 'active'">候位</a>
+      </div>
+
+      <div class="booking-top-actions">
+        <!-- 【資料庫資料】刷新頁面：就是一個連結，連回「目前這個畫面的網址」，Controller 會重新向資料庫查一次，
+             別台裝置（或客人自己在網站上）新增、取消的訂位和候位就會出現。不需要另外寫方法。
+             訂位：網址帶著目前的 date、meal、keyword，刷新頁面之後還是看同一天、同一個餐期。
+             候位：連回 /staff/booking?tab=waiting。
+             Controller 還沒放 rsvList／waitingList 之前，這兩顆不會出現 -->
+        <a class="staff-btn" th:if="${tab != 'waiting' and rsvList != null}"
+           th:href="@{/staff/booking(date=${date}, meal=${meal}, keyword=${keyword})}">刷新頁面<span class="source-tag source-db">資料庫</span></a>
+        <a class="staff-btn" th:if="${tab == 'waiting' and waitingList != null}"
+           th:href="@{/staff/booking(tab='waiting')}">刷新頁面<span class="source-tag source-db">資料庫</span></a>
+
+        <!-- 【資料庫資料】新增訂位：連到 /staff/booking/rsv/add，Controller 放 rsvForm 之後「新增訂位」的對話框就會出現。
+             網址帶著目前看的日期和餐期，對話框的日期會先選好那一天，關掉對話框時也回得到同一個列表 -->
+        <a class="staff-btn btn-pay" th:if="${tab != 'waiting' and rsvList != null}"
+           th:href="@{/staff/booking/rsv/add(date=${date}, meal=${meal})}">＋ 新增訂位<span class="source-tag source-db">資料庫</span></a>
+        <!-- 【資料庫資料】新增候位：連到 /staff/booking/waiting/add，Controller 放 waitingForm 之後「新增候位」的對話框就會出現 -->
+        <a class="staff-btn btn-pay" th:if="${tab == 'waiting' and waitingList != null}"
+           th:href="@{/staff/booking/waiting/add}">＋ 新增候位<span class="source-tag source-db">資料庫</span></a>
+
+        <!-- ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
+             ▼▼▼【假資料・刪除範圍 開始】（第 1 段，共 5 段）假資料的「刷新頁面」「新增」按鈕，由 booking.js 的 B 區控制
+             ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼ -->
+        <button type="button" class="staff-btn" id="demoRsvRefresh" th:if="${tab != 'waiting'}">刷新頁面<span class="source-tag" th:if="${rsvList != null}">假資料</span></button>
+        <button type="button" class="staff-btn btn-pay" id="demoRsvAdd" th:if="${tab != 'waiting'}">＋ 新增訂位<span class="source-tag" th:if="${rsvList != null}">假資料</span></button>
+        <button type="button" class="staff-btn" id="demoWaitingRefresh" th:if="${tab == 'waiting'}">刷新頁面<span class="source-tag" th:if="${waitingList != null}">假資料</span></button>
+        <button type="button" class="staff-btn btn-pay" id="demoWaitingAdd" th:if="${tab == 'waiting'}">＋ 新增候位<span class="source-tag" th:if="${waitingList != null}">假資料</span></button>
+        <!-- ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
+             ▲▲▲【假資料・刪除範圍 結束】（第 1 段）
+             ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲ -->
+      </div>
+    </div>
+
+    <!-- 操作完成的訊息（兩個分頁共用）。Controller 用 RedirectAttributes 的 addFlashAttribute("message", "...") 帶過來就會顯示 -->
+    <p class="booking-alert booking-alert-ok" th:if="${message != null}" th:text="${message}">已新增訂位</p>
+
+
+    <!-- ╔══════════════════════════════════════════════════════════════╗
+         ║  分頁一：訂位（tab 不是 'waiting' 的時候顯示）                ║
+         ╚══════════════════════════════════════════════════════════════╝ -->
+    <th:block th:if="${tab != 'waiting'}">
+
+      <!-- ================================================================
+           【資料庫資料】Thymeleaf 串接：訂位的查詢與列表
+           Controller（GET /staff/booking）放進 Model：
+             rsvList   要顯示的訂位（List<ReservationVO>），依訂位時段排序（早的在前面）。★ 不要包含狀態是「取消」的。
+             date      目前顯示的日期（LocalDate）。網址沒有帶 date 就放今天。
+             meal      目前顯示的餐期（文字）：'lunch'（午餐）或 'dinner'（晚餐）。
+                       網址沒有帶 meal 就依現在的時間決定：15:30 以前是 'lunch'，之後是 'dinner'。
+             keyword   搜尋的文字（可以是 null）。有值的時候，rsvList 是「所有日期裡」姓名或電話符合的訂位，
+                       包含過往的；這時候 date、meal 只是讓畫面上的欄位有值，查詢不看它們。
+           查詢的三種情況：
+             什麼都沒帶                      → 今天、依現在的時間決定午餐或晚餐
+             date=2026-10-20&meal=dinner     → 那一天晚餐的訂位（訂位時段在 15:30（含）以後的）
+             keyword=王 或 0912              → 姓名裡有這些字、或電話裡有這些數字的訂位（不限日期、餐期）
+           組員已經寫好的 ReservationService.search(date, status) 可以查「某一天」；依餐期分、用姓名電話查的方法要另外加。
+           ★ ReservationVO 的 member、rsvDt、seatType 都是 fetch = LAZY（用到才去資料庫讀）。
+             這裡會用到 r.member.memName 這些，如果出現 LazyInitializationException，
+             要在查詢時用 JOIN FETCH 一次查好，或確認 spring.jpa.open-in-view 沒有被關掉。
+
+           下面 th:with 的 shownRsv：把 rsvList 裡狀態是「取消」的再濾掉一次，當作第二層保險。
+             ${rsvList.?[rsvStatus != '取消']} 的意思是「從 rsvList 裡挑出 rsvStatus 不是『取消』的那些」（.?[條件] 是挑選的寫法）。
+             Controller 查詢時已經排除「取消」的話，這裡挑出來的結果會和 rsvList 一樣。之後想顯示取消的訂位，把 shownRsv 換回 rsvList 就可以。
+           ================================================================ -->
+      <div class="source-block" th:if="${rsvList != null}" th:with="shownRsv=${rsvList.?[rsvStatus != '取消']}">
+        <p class="source-line"><span class="source-tag source-db">資料庫資料</span></p>
+
+        <!-- 查詢的表單：用 GET 送到 /staff/booking，條件都帶在網址上。
+               日期    ：按日期的按鈕會跳出月曆，選了某一天就「直接送出查詢」，顯示那一天的訂位（不用再按「查詢」）。
+               餐期    ：「午餐」「晚餐」是兩個連結（午餐 11:00～14:00、晚餐 17:00～21:00，按鈕上不顯示時間），網址帶著目前的日期和 meal=lunch／meal=dinner，按了就換餐期。
+                         表單裡另外藏了一個 name="meal" 的欄位，換日期、按「查詢」時才會把目前的餐期一起送出去。
+               搜尋    ：輸入姓名或電話按「查詢」，找所有日期的訂位。有輸入搜尋文字時，以搜尋為準、不看日期和餐期。
+                         想回到某一天的列表：按「午餐」或「晚餐」（連結不帶搜尋文字），或在月曆上選日期。
+
+             ★ 自製的月曆（這一頁每個選日期的地方都是這個寫法，外觀和行為由 booking.js 的 A-2 和 booking.css 處理）：
+                 <div class="booking-date" data-date-picker>            ← 一個日期欄位
+                   <input type="hidden" name="date" value="2026-10-14">  ← 真正送出去的值，格式是 年-月-日
+                   <button data-date-toggle><span data-date-text></span></button>   ← 顯示日期的按鈕，按了跳出月曆
+                   <div data-date-panel hidden></div>                    ← 月曆（內容由 booking.js 產生）
+                 </div>
+               外層的 div 可以加這些設定：
+                 data-min="today"            今天以前的日子不能選（新增訂位用；查詢過往的訂位不能加）
+                 data-date-submit="按鈕的id" 選了日期之後，自動按下那顆按鈕（等於幫使用者把表單送出）
+                 data-date-clear="欄位的id"  選了日期之後，先把那個欄位清空
+               這裡用了後面兩個：選日期 → 把搜尋的文字清空 → 自動按「查詢」。
+               清空搜尋文字的原因：有搜尋文字時查詢是「不看日期」的，不清掉的話選了日期也沒有效果。
+               th:value="${date}"：date 是 LocalDate，Thymeleaf 會自己轉成 2026-10-14 這種格式。 -->
+        <form class="booking-tools" th:action="@{/staff/booking}" method="get">
+          <div class="booking-tool">
+            <span>日期</span>
+            <div class="booking-date" data-date-picker data-date-submit="dbRsvSearchBtn" data-date-clear="dbRsvKeyword">
+              <input type="hidden" name="date" th:value="${date}">
+              <button type="button" class="booking-date-btn" data-date-toggle aria-label="選擇要看的日期">
+                <span data-date-text>請選擇日期</span>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M8 3v4M16 3v4"/></svg>
+              </button>
+              <div class="booking-date-panel" data-date-panel hidden></div>
+            </div>
+          </div>
+          <div class="booking-tool">
+            <span>餐期</span>
+            <input type="hidden" name="meal" th:value="${meal}">
+            <!-- 選取中（深色）的那一顆：meal 是 'dinner' 就是晚餐，其他都當作午餐。正在看搜尋結果的時候兩顆都不選 -->
+            <div class="chips booking-meals">
+              <a class="chip" th:href="@{/staff/booking(date=${date}, meal='lunch')}"
+                 th:classappend="${#strings.isEmpty(keyword) and meal != 'dinner'} ? 'active'">午餐</a>
+              <a class="chip" th:href="@{/staff/booking(date=${date}, meal='dinner')}"
+                 th:classappend="${#strings.isEmpty(keyword) and meal == 'dinner'} ? 'active'">晚餐</a>
+            </div>
+          </div>
+          <label class="booking-tool booking-tool-grow">
+            <span>搜尋</span>
+            <input type="search" class="staff-input" id="dbRsvKeyword" name="keyword" th:value="${keyword}" placeholder="姓名或電話（可查過往的訂位）">
+          </label>
+          <button type="submit" class="staff-btn" id="dbRsvSearchBtn">查詢</button>
+        </form>
+
+        <!-- 目前顯示的是什麼：某一天某個餐期的訂位，或搜尋的結果 -->
+        <p class="booking-summary" th:if="${#strings.isEmpty(keyword)}">
+          <b th:text="${#temporals.format(date, 'yyyy/MM/dd')}">2026/10/14</b>
+          <b th:text="${meal == 'dinner'} ? '晚餐' : '午餐'">午餐</b> 的訂位，共 <b th:text="${#lists.size(shownRsv)}">6</b> 筆
+        </p>
+        <p class="booking-summary" th:unless="${#strings.isEmpty(keyword)}">
+          搜尋「<b th:text="${keyword}">王</b>」的結果（所有日期），共 <b th:text="${#lists.size(shownRsv)}">3</b> 筆
+        </p>
+
+        <!-- 訂位的列表。每一列：訂位時段、姓名、電話、桌型、狀態、備註、操作（編輯、取消訂位）。
+             訂位時段：r.rsvDt.rsvDtDatetime（LocalDateTime），用 #temporals.format 轉成「月/日 時:分」。
+             姓名、電話：r.member.memName、r.member.memTel（訂位表只存會員編號，姓名電話在會員表）。
+             桌型：r.seatType.seatTypeNo 就是幾人桌（2、4、6）。
+             備註：只顯示一行，放不下的部分會變成「…」。文字要包在 <span> 裡，省略的效果是設定在 span 上的（booking.css 的 .booking-note span）；
+                   th:title 讓滑鼠移上去時看得到完整的內容。
+             狀態：r.rsvStatus。顏色：預約＝黃、實到＝綠、其他＝灰。★ 狀態的文字是範例（資料表是 VARCHAR(2)）：
+                   預約（剛訂好）、未到（時間到了客人沒有來）、取消、實到（客人來了，由入座管理設定）。
+                   組員決定有哪些狀態之後，這裡的顏色判斷和對話框裡的選項要跟著改。
+             編輯：連到 /staff/booking/rsv/edit?rsvNo=編號（帶著目前的 date、meal、keyword，關掉對話框時回得到同一個列表）。
+             取消訂位：★ 不是真的刪除資料，是把這筆訂位的狀態改成「取消」（訂位紀錄要留著）。取消之後這一頁就不再顯示它。
+                   會改到資料，所以用 method="post" 的表單送到 /staff/booking/rsv/cancel；
+                   表單上的 data-confirm 是按下去時要先問的話，staff.js（A-6. 送出前先確認）會跳出確認的視窗，按「取消」就不會送出。
+                   已經「實到」的訂位不顯示這顆按鈕（客人都來了，不應該再取消）。 -->
+        <div class="booking-table-wrap">
+          <table class="booking-table">
+            <thead>
+              <tr><th>訂位時段</th><th>姓名</th><th>電話</th><th>桌型</th><th>狀態</th><th>備註</th><th class="booking-col-act">操作</th></tr>
+            </thead>
+            <tbody>
+              <tr th:if="${#lists.isEmpty(shownRsv)}"><td colspan="7" class="staff-empty">沒有符合條件的訂位</td></tr>
+              <tr th:each="r : ${shownRsv}">
+                <td class="booking-time" th:text="${#temporals.format(r.rsvDt.rsvDtDatetime, 'MM/dd HH:mm')}">10/14 17:00</td>
+                <td th:text="${r.member.memName}">王小明</td>
+                <td th:text="${r.member.memTel}">0912345678</td>
+                <td th:text="|${r.seatType.seatTypeNo} 人桌|">4 人桌</td>
+                <td>
+                  <span class="tag" th:classappend="${r.rsvStatus == '預約'} ? 'tag-yellow' : (${r.rsvStatus == '實到'} ? 'tag-green' : 'tag-gray')"
+                        th:text="${r.rsvStatus}">預約</span>
+                </td>
+                <td class="booking-note"><span th:text="${r.rsvComment}" th:title="${r.rsvComment}">靠窗</span></td>
+                <td class="booking-col-act">
+                  <div class="booking-actions">
+                    <a class="staff-btn booking-btn-sm" th:href="@{/staff/booking/rsv/edit(rsvNo=${r.rsvNo}, date=${date}, meal=${meal}, keyword=${keyword})}">編輯</a>
+                    <form th:action="@{/staff/booking/rsv/cancel}" method="post" th:if="${r.rsvStatus != '實到'}"
+                          th:attr="data-confirm=|確定要取消 ${r.member.memName} 的訂位嗎？|">
+                      <input type="hidden" name="rsvNo" th:value="${r.rsvNo}">
+                      <input type="hidden" name="date" th:value="${date}">
+                      <input type="hidden" name="meal" th:value="${meal}">
+                      <input type="hidden" name="keyword" th:value="${keyword}">
+                      <button type="submit" class="staff-btn btn-danger-outline booking-btn-sm">取消訂位</button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+
+      <!-- ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
+           ▼▼▼【假資料・刪除範圍 開始】（第 2 段，共 5 段）訂位的假資料：查詢與列表
+           ▼▼▼ 由 booking.js 的「B. 假資料」（B-2 訂位）產生與控制。資料存在瀏覽器裡，不會送到後端。
+           ▼▼▼ 查詢的規則和資料庫的版本相同（預設今天、依現在的時間決定午餐或晚餐、有搜尋文字就查所有日期、不顯示取消的），
+           ▼▼▼ 可以當作寫 Service 的參考。
+           ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼ -->
+      <div class="source-block">
+        <p class="source-line" th:if="${rsvList != null}"><span class="source-tag">假資料</span></p>
+
+        <form class="booking-tools" id="demoRsvTools">
+          <div class="booking-tool">
+            <span>日期</span>
+            <!-- 自製的月曆，結構和上面【資料庫資料】的相同。選了日期之後由 booking.js 的 B 區重新查假資料 -->
+            <div class="booking-date" data-date-picker id="demoRsvDatePicker">
+              <input type="hidden" id="demoRsvDate">
+              <button type="button" class="booking-date-btn" data-date-toggle aria-label="選擇要看的日期">
+                <span data-date-text>請選擇日期</span>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M8 3v4M16 3v4"/></svg>
+              </button>
+              <div class="booking-date-panel" data-date-panel hidden></div>
+            </div>
+          </div>
+          <div class="booking-tool">
+            <span>餐期</span>
+            <!-- 假資料的餐期是按鈕（不用連到後端）；哪一顆是選取中由 booking.js 決定 -->
+            <div class="chips booking-meals" id="demoRsvMeals">
+              <button type="button" class="chip" data-meal="lunch">午餐</button>
+              <button type="button" class="chip" data-meal="dinner">晚餐</button>
+            </div>
+          </div>
+          <label class="booking-tool booking-tool-grow">
+            <span>搜尋</span>
+            <input type="search" class="staff-input" id="demoRsvKeyword" placeholder="姓名或電話（可查過往的訂位）">
+          </label>
+          <button type="submit" class="staff-btn">查詢</button>
+        </form>
+
+        <!-- 目前顯示的是什麼，由 booking.js 填入 -->
+        <p class="booking-summary" id="demoRsvSummary"></p>
+
+        <div class="booking-table-wrap">
+          <table class="booking-table">
+            <thead>
+              <tr><th>訂位時段</th><th>姓名</th><th>電話</th><th>桌型</th><th>狀態</th><th>備註</th><th class="booking-col-act">操作</th></tr>
+            </thead>
+            <!-- 每一筆訂位一列，由 booking.js 產生（結構和上面【資料庫資料】的相同） -->
+            <tbody id="demoRsvList"></tbody>
+          </table>
+        </div>
+      </div>
+      <!-- ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
+           ▲▲▲【假資料・刪除範圍 結束】（第 2 段）
+           ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲ -->
+
+    </th:block>
+
+
+    <!-- ╔══════════════════════════════════════════════════════════════╗
+         ║  分頁二：候位（tab 是 'waiting' 的時候顯示）                  ║
+         ╚══════════════════════════════════════════════════════════════╝ -->
+    <th:block th:if="${tab == 'waiting'}">
+
+      <!-- ================================================================
+           【資料庫資料】Thymeleaf 串接：候位（左邊：今天的候位列表；右邊：每種桌型的叫號）
+           Controller（GET /staff/booking?tab=waiting）放進 Model：
+             waitingList  今天的候位（List<WaitingVO>），依候位號碼排序。★ 不要包含狀態是「取消」的。
+                          ★ 候位表目前沒有日期的欄位，「今天」怎麼判斷要和組員確認
+                            （之前討論過：每天固定時間重設，或另外記錄日期）。
+             seatBoards   每種桌型一格（List）。每一格需要這些屬性（名稱是範例）：
+                            seatTypeNo     桌型編號，也就是幾人桌（2、4、6）
+                            pending        目前可以使用的桌數          ★ Redis（現在是 seat_type.seat_type_pending）
+                            waitingCount   還在等的組數（狀態是「候位中」的筆數）
+                            callingNos     叫號中的號碼（List，可以不只一個） ★ Redis、★ 候位號碼
+                                           ＝ 狀態是「已通知」的候位號碼。客人入座、過號或取消之後就不在裡面了
+                            lateNos        callingNos 裡「通知後已經超過 10 分鐘」的號碼（List）。畫面上會從紅底變成綠底，
+                                           提醒工作人員可以按「過號」了。★ 沒有逾時的也要放「空的清單」，不能不放這個屬性
+                          可以用 Map，也可以另外寫一個小類別來裝；這裡用 b.seatTypeNo 這種寫法兩種都讀得到。
+           下面 th:with 的 shownWaiting：把 waitingList 裡狀態是「取消」的再濾掉一次（和訂位的 shownRsv 相同的做法）。
+           ================================================================ -->
+      <div class="source-block" th:if="${waitingList != null}" th:with="shownWaiting=${waitingList.?[waitingStatus != '取消']}">
+        <p class="source-line"><span class="source-tag source-db">資料庫資料</span></p>
+
+        <!-- .booking-split：左右兩欄。左邊（.booking-split-main）是候位的列表，右邊（.booking-split-side）是叫號。
+             畫面比較窄的時候（booking.css 第 4 區的設定）會變成上下排：叫號在上面、列表在下面 -->
+        <div class="booking-split">
+
+          <!-- ═══ 左邊：今天的候位 ═══
+               每一列：號碼、姓名、桌型、狀態、通知時間、備註、操作。（電話不顯示在列表上，要看、要改請按「編輯」）
+               號碼    ：★ 候位號碼。目前先顯示 w.waitingNo（候位編號）；候位表加了「候位號碼」的欄位之後，換成那個屬性。
+               狀態    ：w.waitingStatus。組員的 WaitingService 已經定義了五種：候位中、已通知、已入座、取消、過號。
+                         這一頁只會把狀態改成 已通知（叫號）、過號、取消、候位中；「已入座」由入座管理設定。
+               通知時間：w.waitingNotifyTime（LocalTime），還沒通知是空的。
+               操作    ：過號  已通知的客人才有這顆。method="post" 的表單送到 /staff/booking/waiting/miss（WaitingService.missWaiting），
+                               按下去會先確認（data-confirm，staff.js 的 A-6）。
+                         編輯  連到 /staff/booking/waiting/edit?waitingNo=編號，Controller 放 waitingForm 之後「修改候位」的對話框就會出現。
+                               要取消候位、改回候位中，都是在編輯的對話框裡改「狀態」。
+               ★ 這一頁沒有「入座」和「通知」的按鈕：入座由入座管理負責；通知改成按右邊的「叫下一號」（照號碼順序叫）。 -->
+          <div class="booking-split-main">
+            <p class="booking-summary">今天的候位，共 <b th:text="${#lists.size(shownWaiting)}">8</b> 組</p>
+            <div class="booking-table-wrap">
+              <table class="booking-table booking-table-narrow">
+                <thead>
+                  <tr><th>號碼</th><th>姓名</th><th>桌型</th><th>狀態</th><th>通知時間</th><th>備註</th><th class="booking-col-act">操作</th></tr>
+                </thead>
+                <tbody>
+                  <tr th:if="${#lists.isEmpty(shownWaiting)}"><td colspan="7" class="staff-empty">目前沒有候位</td></tr>
+                  <tr th:each="w : ${shownWaiting}">
+                    <td class="booking-no" th:text="${w.waitingNo}">12</td>
+                    <td th:text="${w.waitingName}">王小明</td>
+                    <td th:text="|${w.seatType.seatTypeNo} 人桌|">2 人桌</td>
+                    <td>
+                      <span class="tag"
+                            th:classappend="${w.waitingStatus == '候位中'} ? 'tag-yellow' : (${w.waitingStatus == '已通知'} ? 'tag-red' : (${w.waitingStatus == '已入座'} ? 'tag-green' : 'tag-gray'))"
+                            th:text="${w.waitingStatus}">候位中</span>
+                    </td>
+                    <td th:text="${w.waitingNotifyTime != null} ? ${#temporals.format(w.waitingNotifyTime, 'HH:mm')} : '—'">18:20</td>
+                    <td class="booking-note"><span th:text="${w.waitingComment}" th:title="${w.waitingComment}">靠窗</span></td>
+                    <td class="booking-col-act">
+                      <div class="booking-actions">
+                        <form th:action="@{/staff/booking/waiting/miss}" method="post" th:if="${w.waitingStatus == '已通知'}"
+                              th:attr="data-confirm=|確定要把 ${w.waitingNo} 號（${w.waitingName}）設為過號嗎？|">
+                          <input type="hidden" name="waitingNo" th:value="${w.waitingNo}">
+                          <button type="submit" class="staff-btn btn-danger-outline booking-btn-sm">過號</button>
+                        </form>
+                        <a class="staff-btn booking-btn-sm" th:href="@{/staff/booking/waiting/edit(waitingNo=${w.waitingNo})}">編輯</a>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- ═══ 右邊：每種桌型的叫號 ═══
+               每種桌型一張小卡：第一行是桌型和「叫下一號」，第二行是可用幾桌、還有幾組在等，再來是「目前叫號」和叫號中的號碼。
+               三種桌型的小卡，左邊那條色線的顏色不一樣（照順序：第一張黃、第二張藍、第三張紫，設定在 booking.css 的 .booking-board:nth-child）。
+               號碼的顏色：紅底＝已叫號（還在 10 分鐘內），綠底＝逾時。「叫號」標題旁邊的小字就是這個說明，
+               裡面的 <i class="booking-dot"> 是紅色的小圓點，加上 is-late 是綠色的（顏色和號碼的底色相同，設定在 booking.css）。
+               叫下一號：POST /staff/booking/waiting/call，帶著 seatTypeNo。
+                         Controller 找出這個桌型「候位中」裡號碼最小的那一位，把他改成「已通知」、記下通知時間、傳簡訊，
+                         然後 redirect 回 /staff/booking?tab=waiting。沒有候位中的客人時，帶訊息回來就好。
+               叫號中的號碼可以有好幾個（th:each），沒有的時候顯示「目前沒有叫號」。
+               逾時的號碼：號碼在 b.lateNos 裡的話加上 is-late 這個 class（變成綠底白字）。
+                         #lists.contains(清單, 值) 是「清單裡有沒有這個值」。 -->
+          <aside class="booking-split-side" th:if="${seatBoards != null}">
+            <h2 class="booking-side-title">叫號<small><i class="booking-dot is-late"></i>已為逾時，<i class="booking-dot"></i>為已叫號</small></h2>
+            <div class="booking-boards">
+              <article class="booking-board" th:each="b : ${seatBoards}">
+                <div class="booking-board-head">
+                  <h3 class="booking-board-title" th:text="|${b.seatTypeNo} 人桌|">2 人桌</h3>
+                  <form th:action="@{/staff/booking/waiting/call}" method="post">
+                    <input type="hidden" name="seatTypeNo" th:value="${b.seatTypeNo}">
+                    <button type="submit" class="staff-btn btn-card booking-btn-sm">叫下一號</button>
+                  </form>
+                </div>
+                <p class="booking-board-meta">可用 <b th:text="${b.pending}">3</b> 桌<i>・</i>等候 <b th:text="${b.waitingCount}">4</b> 組</p>
+                <p class="booking-calls-label">目前叫號</p>
+                <p class="booking-calls">
+                  <span class="booking-call" th:each="no : ${b.callingNos}" th:classappend="${#lists.contains(b.lateNos, no)} ? 'is-late'"
+                        th:text="${no}">12</span>
+                  <span class="booking-call-none" th:if="${#lists.isEmpty(b.callingNos)}">目前沒有叫號</span>
+                </p>
+              </article>
+            </div>
+            <!-- 給工作人員看的說明：叫號會傳什麼簡訊。文字要和 Java 實際傳的簡訊一致（寫在 StaffBookingController.java） -->
+            <p class="booking-sms">按「叫下一號」會傳簡訊給客人：<b>您的候位已到號，請在 10 分鐘內回到店門口；逾時未到將視為過號，過號需重新填寫候位表單。</b></p>
+          </aside>
+        </div>
+      </div>
+
+
+      <!-- ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
+           ▼▼▼【假資料・刪除範圍 開始】（第 3 段，共 5 段）候位的假資料：左邊今天的候位列表 ＋ 右邊每種桌型的叫號
+           ▼▼▼ 由 booking.js 的「B. 假資料」（B-3 候位）產生與控制。
+           ▼▼▼ 按「叫下一號」不會真的傳簡訊，只會在畫面下方跳出提示。
+           ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼ -->
+      <div class="source-block">
+        <p class="source-line" th:if="${waitingList != null}"><span class="source-tag">假資料</span></p>
+
+        <div class="booking-split">
+          <div class="booking-split-main">
+            <!-- 共幾組，由 booking.js 填入 -->
+            <p class="booking-summary" id="demoWaitingSummary"></p>
+            <div class="booking-table-wrap">
+              <table class="booking-table booking-table-narrow">
+                <thead>
+                  <tr><th>號碼</th><th>姓名</th><th>桌型</th><th>狀態</th><th>通知時間</th><th>備註</th><th class="booking-col-act">操作</th></tr>
+                </thead>
+                <!-- 每一筆候位一列，由 booking.js 產生（結構和上面【資料庫資料】的相同） -->
+                <tbody id="demoWaitingList"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <aside class="booking-split-side">
+            <h2 class="booking-side-title">叫號<small><i class="booking-dot is-late"></i>已為逾時，<i class="booking-dot"></i>為已叫號</small></h2>
+            <!-- 每種桌型一張小卡，由 booking.js 產生（結構和上面【資料庫資料】的相同） -->
+            <div class="booking-boards" id="demoBoards"></div>
+            <p class="booking-sms">按「叫下一號」會傳簡訊給客人：<b>您的候位已到號，請在 10 分鐘內回到店門口；逾時未到將視為過號，過號需重新填寫候位表單。</b>（假資料不會真的傳簡訊）</p>
+          </aside>
+        </div>
+      </div>
+      <!-- ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
+           ▲▲▲【假資料・刪除範圍 結束】（第 3 段）
+           ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲ -->
+
+    </th:block>
+  </main>
+
+
+  <!-- ================================================================
+       【資料庫資料】Thymeleaf 串接：新增／修改訂位的對話框
+       打開：Controller 把 rsvForm 放進 Model，下面的 th:if 成立，對話框就出現（後面的列表也要照常放 rsvList、date、meal）。
+               新增 GET /staff/booking/rsv/add?date=2026-10-20&meal=dinner    放一個空的：new ReservationVO()
+               修改 GET /staff/booking/rsv/edit?rsvNo=1                       放從資料庫查出來的那一筆
+             rsvForm.rsvNo 是 null → 畫面當作「新增訂位」；有值 → 當作「修改訂位」。
+       Model 還要放：
+             formDate   對話框裡選的日期（LocalDate）。新增時用網址的 date（沒有帶、或已經過了就今天）；修改時用那筆訂位的日期。
+             formTime   對話框裡選的時段（文字，例如 "17:00"）。新增時不用放（或放 null）；
+                        修改時放那筆訂位的時間：把 rsvDt.rsvDtDatetime 的時間部分轉成「時:分」的文字。
+             seatTypes  所有桌型（List<SeatTypeVO>），給「桌型」的選單用。
+             errorMsg   （儲存不通過時才放）錯誤訊息。
+       日期和時段：日期用自製的月曆選（只有年月日），時段另外用下面那一排選。
+               ★ 時段目前是「寫死」的四個：11:00、12:30（午餐）、17:00、17:30（晚餐），每一天都一樣，所以換日期不用重新載入頁面。
+                 要改時段：改下面兩個 th:each 裡的清單就可以（午餐一個清單、晚餐一個清單）。
+                 之後要改成「從資料庫拿那一天可以訂的時段」的做法，寫在 StaffBookingController.java 的步驟 2。
+       儲存：表單送到 POST /staff/booking/rsv/save，欄位：
+               rsvNo        訂位編號。新增時是空的，修改時有值
+               memName      姓名（必填）
+               memTel       電話（必填，10 個數字）。★ 訂位表存的是會員編號：Java 用電話去找會員，
+                            找不到就建立一筆會員，再把會員編號存進訂位（之前討論的做法，這部分由組員撰寫）
+               formDate     日期（年-月-日，必填）
+               rsvTime      時段（必填），送出的是 17:00 這種文字。★ 訂位表存的是「訂位時段編號」：
+                            Java 要把 formDate 和 rsvTime 合成一個時間，去訂位時段表找那一筆，拿到它的編號才能存
+               seatTypeNo   桌型編號（必填）
+               rsvStatus    狀態（修改時才有這個欄位；新增固定是「預約」，由 Java 設定）
+               rsvComment   備註（最多 50 個字）
+               date、meal、keyword   列表目前的查詢條件（藏著的欄位）。儲存不通過、要再顯示這一頁時，後面的列表才知道要查什麼
+             成功   → 帶 message redirect 回 /staff/booking?date=那一天&meal=那個時段的餐期
+             不通過 → 放 errorMsg，連同 rsvForm、formDate、formTime、seatTypes 和後面的列表，回傳這一頁
+       關閉：背景、右上角的 ×、「取消」都是連結，回到沒有對話框的 /staff/booking（帶著 date、meal、keyword）。
+       ★ rsvForm.member?.memName 裡的問號：新增時 member 是 null，少了問號頁面會出錯；有問號的話遇到 null 就當作空的。
+       ================================================================ -->
+  <div class="booking-modal" th:if="${rsvForm != null}">
+    <a class="booking-backdrop" th:href="@{/staff/booking(date=${date}, meal=${meal}, keyword=${keyword})}" aria-label="關閉"></a>
+
+    <section class="booking-dialog" role="dialog" aria-modal="true" aria-labelledby="dbRsvHeading">
+      <header class="booking-dialog-head">
+        <h2 class="booking-dialog-title" id="dbRsvHeading">
+          <span th:text="${rsvForm.rsvNo == null} ? '新增訂位' : '修改訂位'">新增訂位</span>
+          <span class="source-tag source-db">資料庫</span>
+        </h2>
+        <a class="booking-close" th:href="@{/staff/booking(date=${date}, meal=${meal}, keyword=${keyword})}" aria-label="關閉">×</a>
+      </header>
+
+      <form class="booking-form" th:action="@{/staff/booking/rsv/save}" method="post">
+        <input type="hidden" name="rsvNo" th:value="${rsvForm.rsvNo}">
+        <input type="hidden" name="date" th:value="${date}">
+        <input type="hidden" name="meal" th:value="${meal}">
+        <input type="hidden" name="keyword" th:value="${keyword}">
+
+        <div class="booking-dialog-body">
+          <p class="booking-alert" th:if="${errorMsg != null}" th:text="${errorMsg}">錯誤訊息</p>
+
+          <div class="booking-field-row">
+            <div class="booking-field">
+              <label class="booking-label" for="dbRsvName">姓名 <b>*</b></label>
+              <input type="text" class="staff-input" id="dbRsvName" name="memName" maxlength="30" required
+                     th:value="${rsvForm.member?.memName}" autocomplete="off">
+            </div>
+            <div class="booking-field">
+              <label class="booking-label" for="dbRsvTel">電話 <b>*</b><small>10 個數字</small></label>
+              <input type="tel" class="staff-input" id="dbRsvTel" name="memTel" maxlength="10" pattern="[0-9]{10}" required
+                     th:value="${rsvForm.member?.memTel}" placeholder="0912345678" autocomplete="off">
+            </div>
+          </div>
+
+          <div class="booking-field">
+            <span class="booking-label">日期 <b>*</b></span>
+            <!-- 自製的月曆。新增的時候不能選今天以前的日子（data-min="today"）；修改過往的訂位不限制，才改得了狀態。
+                 th:attr 的寫法：條件成立才加上 data-min 這個屬性。 -->
+            <div class="booking-date" data-date-picker th:attr="data-min=${rsvForm.rsvNo == null} ? 'today'">
+              <input type="hidden" name="formDate" th:value="${formDate}">
+              <button type="button" class="booking-date-btn" data-date-toggle aria-label="選擇訂位的日期">
+                <span data-date-text>請選擇日期</span>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M8 3v4M16 3v4"/></svg>
+              </button>
+              <div class="booking-date-panel" data-date-panel hidden></div>
+            </div>
+          </div>
+
+          <!-- ═══ 訂位時段：一排可以點的時段，點一個選一個 ═══
+               每個時段是一個 <label class="booking-slot">，裡面藏著一個單選的欄位（radio），外觀是那個 <span>。
+               選到的那一個會變成深色（booking.css 的 .booking-slot）。四個 radio 的 name 都是 rsvTime，所以四個裡只能選一個。
+
+               ★ 時段是寫死的：${ {'11:00', '12:30'} } 是直接在頁面上寫一個清單，th:each 把裡面的時間一個一個變成時段。
+                 午餐、晚餐各一個清單。要增加或修改時段，改清單裡的文字就好（格式固定是 時:分，例如 '18:30'）。
+                   th:value="${t}"                送出的值就是那個時間的文字
+                   th:required="${stat.first}"    required 只要寫在這一組的第一個，代表「這一組一定要選一個」
+                   th:checked="${formTime == t}"  Controller 放的 formTime 和這個時間相同，就先選起來（修改訂位時用）
+                 ★ 改了這裡的時段，booking.js 假資料的 RSV_TIMES 和 Java 檢查「時段對不對」的地方要一起改。 -->
+          <div class="booking-field">
+            <span class="booking-label">訂位時段 <b>*</b></span>
+            <div class="booking-slots">
+              <span class="booking-slot-group">午餐</span>
+              <label class="booking-slot" th:each="t, stat : ${ {'11:00', '12:30'} }">
+                <input type="radio" name="rsvTime" th:value="${t}" th:required="${stat.first}" th:checked="${formTime == t}">
+                <span th:text="${t}">11:00</span>
+              </label>
+              <span class="booking-slot-group">晚餐</span>
+              <label class="booking-slot" th:each="t : ${ {'17:00', '17:30'} }">
+                <input type="radio" name="rsvTime" th:value="${t}" th:checked="${formTime == t}">
+                <span th:text="${t}">17:00</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="booking-field-row">
+            <div class="booking-field">
+              <label class="booking-label" for="dbRsvSeat">桌型 <b>*</b></label>
+              <select class="staff-input" id="dbRsvSeat" name="seatTypeNo" required>
+                <option value="">請選擇</option>
+                <option th:each="t : ${seatTypes}" th:value="${t.seatTypeNo}" th:text="|${t.seatTypeNo} 人桌|"
+                        th:selected="${rsvForm.seatType != null and rsvForm.seatType.seatTypeNo == t.seatTypeNo}">4 人桌</option>
+              </select>
+            </div>
+
+            <!-- 狀態：修改的時候才能改；新增固定是「預約」。★ 選項是範例，組員決定有哪些狀態之後跟著改。
+                 可以選的只有「預約」「未到」：
+                   ・「實到」不在這裡：客人到了、安排入座的時候，由負責入座管理的組員把狀態改成實到。
+                   ・「取消」不在這裡：要取消請按列表上的「取消訂位」。
+                 這筆訂位如果已經是「實到」，會多出一個選起來的「實到（由入座管理設定）」，
+                 這樣只是改備註、桌型的時候，存檔才不會把狀態改掉。 -->
+            <div class="booking-field" th:if="${rsvForm.rsvNo != null}">
+              <label class="booking-label" for="dbRsvStatus">狀態</label>
+              <select class="staff-input" id="dbRsvStatus" name="rsvStatus">
+                <option th:each="st : ${ {'預約', '未到'} }" th:value="${st}" th:text="${st}"
+                        th:selected="${rsvForm.rsvStatus == st}">預約</option>
+                <option th:if="${rsvForm.rsvStatus == '實到'}" value="實到" selected>實到（由入座管理設定）</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="booking-field">
+            <label class="booking-label" for="dbRsvComment">備註<small>最多 50 個字</small></label>
+            <input type="text" class="staff-input" id="dbRsvComment" name="rsvComment" maxlength="50"
+                   th:value="${rsvForm.rsvComment}" placeholder="例如：靠窗、兒童椅" autocomplete="off">
+          </div>
+        </div>
+
+        <footer class="booking-dialog-foot">
+          <a class="staff-btn" th:href="@{/staff/booking(date=${date}, meal=${meal}, keyword=${keyword})}">取消</a>
+          <button type="submit" class="staff-btn btn-pay">儲存</button>
+        </footer>
+      </form>
+    </section>
+  </div>
+
+
+  <!-- ================================================================
+       【資料庫資料】Thymeleaf 串接：新增／修改候位的對話框（做法和上面訂位的對話框相同）
+       打開：Controller 把 waitingForm 放進 Model，下面的 th:if 成立，對話框就出現（後面的列表也要照常放 waitingList、seatBoards）。
+               新增 GET /staff/booking/waiting/add               放一個空的：new WaitingVO()（替不會用網路的客人取號）
+               修改 GET /staff/booking/waiting/edit?waitingNo=1  放從資料庫查出來的那一筆
+             waitingForm.waitingNo 是 null → 畫面當作「新增候位」；有值 → 當作「修改候位」。
+       Model 還要放：
+             seatTypes     所有桌型（List<SeatTypeVO>），給「桌型」的選單用。
+             waitingError  （儲存不通過時才放）錯誤訊息。
+       儲存：表單送到 POST /staff/booking/waiting/save，欄位：
+               waitingNo       候位編號。新增時是空的，修改時有值
+               waitingName     姓名（必填，最多 30 個字）
+               waitingTel      電話（必填，10 個數字；叫號的簡訊會傳到這支電話）。列表上不顯示電話，要看、要改都在這裡
+               seatTypeNo      桌型編號（必填）
+               waitingStatus   狀態（修改時才有這個欄位；新增固定是「候位中」，組員的 WaitingService.addWaiting 會設定）
+               waitingComment  備註（最多 20 個字）
+             ★ 候位號碼：新增時要替這個桌型取下一個號碼（現在是 seat_type.seat_type_take_num 加 1，之後改用 Redis）。
+               修改時如果換了桌型，號碼要怎麼辦（重新取號，或不准換桌型）請和組員討論，寫在 StaffBookingController.java 的步驟 7。
+             成功   → 帶 message（例如「已新增候位：2 人桌 13 號」）redirect 回 /staff/booking?tab=waiting
+             不通過 → 放 waitingError，連同 waitingForm（裝著使用者填的內容）、seatTypes 和後面的列表，回傳這一頁
+       關閉：背景、右上角的 ×、「取消」都是連結，回到沒有對話框的 /staff/booking?tab=waiting。
+       ================================================================ -->
+  <div class="booking-modal" th:if="${waitingForm != null}">
+    <a class="booking-backdrop" th:href="@{/staff/booking(tab='waiting')}" aria-label="關閉"></a>
+
+    <section class="booking-dialog" role="dialog" aria-modal="true" aria-labelledby="dbWaitingHeading">
+      <header class="booking-dialog-head">
+        <h2 class="booking-dialog-title" id="dbWaitingHeading">
+          <span th:text="${waitingForm.waitingNo == null} ? '新增候位' : '修改候位'">新增候位</span>
+          <span class="source-tag source-db">資料庫</span>
+        </h2>
+        <a class="booking-close" th:href="@{/staff/booking(tab='waiting')}" aria-label="關閉">×</a>
+      </header>
+
+      <form class="booking-form" th:action="@{/staff/booking/waiting/save}" method="post">
+        <input type="hidden" name="waitingNo" th:value="${waitingForm.waitingNo}">
+
+        <div class="booking-dialog-body">
+          <p class="booking-alert" th:if="${waitingError != null}" th:text="${waitingError}">錯誤訊息</p>
+
+          <div class="booking-field-row">
+            <div class="booking-field">
+              <label class="booking-label" for="dbWaitingName">姓名 <b>*</b></label>
+              <input type="text" class="staff-input" id="dbWaitingName" name="waitingName" maxlength="30" required
+                     th:value="${waitingForm.waitingName}" autocomplete="off">
+            </div>
+            <div class="booking-field">
+              <label class="booking-label" for="dbWaitingTel">電話 <b>*</b><small>10 個數字</small></label>
+              <input type="tel" class="staff-input" id="dbWaitingTel" name="waitingTel" maxlength="10" pattern="[0-9]{10}" required
+                     th:value="${waitingForm.waitingTel}" placeholder="0912345678" autocomplete="off">
+            </div>
+          </div>
+
+          <div class="booking-field-row">
+            <div class="booking-field">
+              <label class="booking-label" for="dbWaitingSeat">桌型 <b>*</b></label>
+              <select class="staff-input" id="dbWaitingSeat" name="seatTypeNo" required>
+                <option value="">請選擇</option>
+                <option th:each="t : ${seatTypes}" th:value="${t.seatTypeNo}" th:text="|${t.seatTypeNo} 人桌|"
+                        th:selected="${waitingForm.seatType != null and waitingForm.seatType.seatTypeNo == t.seatTypeNo}">2 人桌</option>
+              </select>
+            </div>
+
+            <!-- 狀態：修改的時候才能改；新增固定是「候位中」。
+                 可以選的有四個：候位中、已通知、過號、取消（選了「取消」，存檔之後這一筆就不會出現在列表上）。
+                   ・「已入座」不在這裡：客人入座的時候，由負責入座管理的組員把狀態改成已入座。
+                 這筆候位如果已經是「已入座」，會多出一個選起來的「已入座（由入座管理設定）」，存檔才不會把狀態改掉。
+                 ★ 在這裡把狀態改成「已通知」不會傳簡訊（只是改資料）；要通知客人請按「叫下一號」。 -->
+            <div class="booking-field" th:if="${waitingForm.waitingNo != null}">
+              <label class="booking-label" for="dbWaitingStatus">狀態</label>
+              <select class="staff-input" id="dbWaitingStatus" name="waitingStatus">
+                <option th:each="st : ${ {'候位中', '已通知', '過號', '取消'} }" th:value="${st}" th:text="${st}"
+                        th:selected="${waitingForm.waitingStatus == st}">候位中</option>
+                <option th:if="${waitingForm.waitingStatus == '已入座'}" value="已入座" selected>已入座（由入座管理設定）</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="booking-field">
+            <label class="booking-label" for="dbWaitingComment">備註<small>最多 20 個字</small></label>
+            <input type="text" class="staff-input" id="dbWaitingComment" name="waitingComment" maxlength="20"
+                   th:value="${waitingForm.waitingComment}" placeholder="例如：兒童椅" autocomplete="off">
+          </div>
+        </div>
+
+        <footer class="booking-dialog-foot">
+          <a class="staff-btn" th:href="@{/staff/booking(tab='waiting')}">取消</a>
+          <button type="submit" class="staff-btn btn-pay" th:text="${waitingForm.waitingNo == null} ? '取號' : '儲存'">取號</button>
+        </footer>
+      </form>
+    </section>
+  </div>
+
+
+  <!-- ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
+       ▼▼▼【假資料・刪除範圍 開始】（第 4 段，共 5 段）假資料：新增／修改訂位的對話框
+       ▼▼▼ 開關與內容由 booking.js 的「B. 假資料」（B-2 訂位）控制。
+       ▼▼▼ 時段和資料庫的版本一樣是固定的四個（寫在 booking.js 的 RSV_TIMES）。
+       ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼ -->
+  <div class="booking-modal" id="demoRsvModal" th:if="${tab != 'waiting'}" hidden>
+    <div class="booking-backdrop" data-demo-close></div>
+
+    <section class="booking-dialog" role="dialog" aria-modal="true" aria-labelledby="demoRsvHeading">
+      <header class="booking-dialog-head">
+        <h2 class="booking-dialog-title" id="demoRsvHeading">
+          <!-- 「新增訂位」或「修改訂位」，由 booking.js 填入 -->
+          <span id="demoRsvTitle">新增訂位</span>
+          <span class="source-tag" th:if="${rsvList != null}">假資料</span>
+        </h2>
+        <button type="button" class="booking-close" data-demo-close aria-label="關閉">×</button>
+      </header>
+
+      <!-- novalidate：不用瀏覽器內建的檢查，改由 booking.js 檢查並顯示中文的錯誤訊息 -->
+      <form class="booking-form" id="demoRsvForm" novalidate>
+        <div class="booking-dialog-body">
+          <p class="booking-alert" id="demoRsvError" hidden></p>
+
+          <div class="booking-field-row">
+            <div class="booking-field">
+              <label class="booking-label" for="demoRsvName">姓名 <b>*</b></label>
+              <input type="text" class="staff-input" id="demoRsvName" name="memName" maxlength="30" autocomplete="off">
+            </div>
+            <div class="booking-field">
+              <label class="booking-label" for="demoRsvTel">電話 <b>*</b><small>10 個數字</small></label>
+              <input type="tel" class="staff-input" id="demoRsvTel" name="memTel" maxlength="10" placeholder="0912345678" autocomplete="off">
+            </div>
+          </div>
+
+          <div class="booking-field">
+            <span class="booking-label">日期 <b>*</b></span>
+            <!-- 自製的月曆。要不要限制「不能選今天以前」由 booking.js 在打開對話框時設定（新增才限制） -->
+            <div class="booking-date" data-date-picker id="demoRsvFormDatePicker">
+              <input type="hidden" name="formDate" id="demoRsvFormDate">
+              <button type="button" class="booking-date-btn" data-date-toggle aria-label="選擇訂位的日期">
+                <span data-date-text>請選擇日期</span>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M8 3v4M16 3v4"/></svg>
+              </button>
+              <div class="booking-date-panel" data-date-panel hidden></div>
+            </div>
+          </div>
+
+          <div class="booking-field">
+            <span class="booking-label">訂位時段 <b>*</b></span>
+            <!-- 一排可以點的時段，由 booking.js 產生（結構和上面【資料庫資料】的相同，時間是寫死在 booking.js 的那四個） -->
+            <div class="booking-slots" id="demoRsvSlots"></div>
+          </div>
+
+          <div class="booking-field-row">
+            <div class="booking-field">
+              <label class="booking-label" for="demoRsvSeat">桌型 <b>*</b></label>
+              <select class="staff-input" id="demoRsvSeat" name="seatTypeNo">
+                <option value="">請選擇</option>
+                <option value="2">2 人桌</option>
+                <option value="4">4 人桌</option>
+                <option value="6">6 人桌</option>
+              </select>
+            </div>
+            <!-- 修改時才顯示（顯示或隱藏、有哪些選項都由 booking.js 控制：預約、未到；已經實到的多一個固定的實到） -->
+            <div class="booking-field" id="demoRsvStatusField" hidden>
+              <label class="booking-label" for="demoRsvStatus">狀態</label>
+              <select class="staff-input" id="demoRsvStatus" name="rsvStatus"></select>
+            </div>
+          </div>
+
+          <div class="booking-field">
+            <label class="booking-label" for="demoRsvComment">備註<small>最多 50 個字</small></label>
+            <input type="text" class="staff-input" id="demoRsvComment" name="rsvComment" maxlength="50" placeholder="例如：靠窗、兒童椅" autocomplete="off">
+          </div>
+        </div>
+
+        <footer class="booking-dialog-foot">
+          <button type="button" class="staff-btn" data-demo-close>取消</button>
+          <button type="submit" class="staff-btn btn-pay">儲存</button>
+        </footer>
+      </form>
+    </section>
+  </div>
+  <!-- ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
+       ▲▲▲【假資料・刪除範圍 結束】（第 4 段）
+       ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲ -->
+
+
+  <!-- ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
+       ▼▼▼【假資料・刪除範圍 開始】（第 5 段，共 5 段）假資料：新增／修改候位的對話框
+       ▼▼▼ 開關與內容由 booking.js 的「B. 假資料」（B-3 候位）控制。
+       ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼ -->
+  <div class="booking-modal" id="demoWaitingModal" th:if="${tab == 'waiting'}" hidden>
+    <div class="booking-backdrop" data-demo-close></div>
+
+    <section class="booking-dialog" role="dialog" aria-modal="true" aria-labelledby="demoWaitingHeading">
+      <header class="booking-dialog-head">
+        <h2 class="booking-dialog-title" id="demoWaitingHeading">
+          <!-- 「新增候位」或「修改候位」，由 booking.js 填入 -->
+          <span id="demoWaitingTitle">新增候位</span>
+          <span class="source-tag" th:if="${waitingList != null}">假資料</span>
+        </h2>
+        <button type="button" class="booking-close" data-demo-close aria-label="關閉">×</button>
+      </header>
+
+      <form class="booking-form" id="demoWaitingForm" novalidate>
+        <div class="booking-dialog-body">
+          <p class="booking-alert" id="demoWaitingError" hidden></p>
+
+          <div class="booking-field-row">
+            <div class="booking-field">
+              <label class="booking-label" for="demoWaitingName">姓名 <b>*</b></label>
+              <input type="text" class="staff-input" id="demoWaitingName" name="waitingName" maxlength="30" autocomplete="off">
+            </div>
+            <div class="booking-field">
+              <label class="booking-label" for="demoWaitingTel">電話 <b>*</b><small>10 個數字</small></label>
+              <input type="tel" class="staff-input" id="demoWaitingTel" name="waitingTel" maxlength="10" placeholder="0912345678" autocomplete="off">
+            </div>
+          </div>
+
+          <div class="booking-field-row">
+            <div class="booking-field">
+              <label class="booking-label" for="demoWaitingSeat">桌型 <b>*</b></label>
+              <select class="staff-input" id="demoWaitingSeat" name="seatTypeNo">
+                <option value="">請選擇</option>
+                <option value="2">2 人桌</option>
+                <option value="4">4 人桌</option>
+                <option value="6">6 人桌</option>
+              </select>
+            </div>
+            <!-- 修改時才顯示（顯示或隱藏、有哪些選項都由 booking.js 控制：候位中、已通知、過號、取消；已經入座的多一個固定的已入座） -->
+            <div class="booking-field" id="demoWaitingStatusField" hidden>
+              <label class="booking-label" for="demoWaitingStatus">狀態</label>
+              <select class="staff-input" id="demoWaitingStatus" name="waitingStatus"></select>
+            </div>
+          </div>
+
+          <div class="booking-field">
+            <label class="booking-label" for="demoWaitingComment">備註<small>最多 20 個字</small></label>
+            <input type="text" class="staff-input" id="demoWaitingComment" name="waitingComment" maxlength="20" placeholder="例如：兒童椅" autocomplete="off">
+          </div>
+        </div>
+
+        <footer class="booking-dialog-foot">
+          <button type="button" class="staff-btn" data-demo-close>取消</button>
+          <!-- 「取號」（新增）或「儲存」（修改），由 booking.js 填入 -->
+          <button type="submit" class="staff-btn btn-pay" id="demoWaitingSubmit">取號</button>
+        </footer>
+      </form>
+    </section>
+  </div>
+  <!-- ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
+       ▲▲▲【假資料・刪除範圍 結束】（第 5 段）
+       ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲ -->
+
+  <!-- 畫面下方跳出來的提示（staff.js 的 staffToast）。左側選單「尚未開放」的項目也會用到，要留著 -->
+  <div class="staff-toast" id="staffToast" role="status" aria-live="polite"></div>
+</body>
+
+</html>

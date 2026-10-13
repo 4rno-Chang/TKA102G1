@@ -1,14 +1,46 @@
+/* =========================================================
+   Bistroops 員工後台：活動管理（查詢、詳細、新增、修改、刪除活動）
+   對應的 HTML（都在 templates/staff/promote/，兩頁共用這一個檔案）：
+     promote_list.html   列表頁：查詢、卡片、分頁、「活動詳細」的對話框
+     promote_form.html   表單頁：新增／修改活動的表單、「套用已有活動」的對話框
+   對應的 CSS ：static/css/staff/promote.css
+   要先載入 staff.js（左側選單、時鐘、「送出前先確認」等共用的功能在那裡）
 
+   畫面上的資料都是 Controller 從資料庫查出來、用 Thymeleaf 顯示的，查詢、換頁、看詳細、套用都是連結或表單，
+   不需要 JS。這個檔案只做「瀏覽器這一邊才做得到」的事：
+     1. 送出前先確認（列表頁的「刪除」）──★ 程式不在這裡，在 staff.js，說明見下面
+     2. 送出表單前先檢查一次，有問題就把訊息顯示在表單上方、不送出
+     3. 選了圖片之後，檢查檔案並在預覽框顯示新選的那一張
+     4. 日期選擇：自己做的月曆（只選年月日，不能選今天以前，結束日期最早是開始日期的隔天）
+   2～4 是表單頁用的，列表頁用不到。頁面上沒有對應的東西時，那一段什麼都不會做。
+
+   ★ 這些檢查只是方便使用者，可以被跳過，所以 Java（PromoteController、PromoteService）收到資料後都會再檢查一次。
+     規則有改的話，這裡和 Java 兩邊要一起改。
+   ========================================================= */
+
+// 用 (() => { ... })() 包起來，避免這裡的變數名稱和其他檔案互相衝突
 (() => {
 
 
+/* ---------- 1. 送出前先確認（列表頁「活動詳細」的「刪除」） ----------
+   ★ 這個功能的程式在 staff.js（A-6. 送出前先確認），後台每一頁都會載入它，所以這裡「不用、也不能」再寫一次：
+     HTML 的表單寫了 data-confirm="要問的話"，按下去送出之前 staff.js 就會跳出確認的視窗，按「取消」就不送出。
+     這裡如果再寫一段一樣的程式，同一次送出會被問兩次（之前確認的視窗跳兩次就是這個原因）。
+   之後別的表單也想先確認再送出，在 <form> 加上 data-confirm 就可以了，JS 不用改。 */
 
-document.addEventListener('submit', e => {
-  const message = e.target.dataset.confirm;  
-  if (message && !confirm(message)) e.preventDefault();
-});
 
+/* ---------- 日期的小工具（2 的檢查和 4 的月曆都會用到） ----------
+   活動的開始、結束只選「年月日」，不選幾點幾分。月曆和這裡的檢查用的日期是 '2026-10-15' 這種文字。
+   文字的格式都一樣（年-月-日，月和日都補成兩位數），所以直接比文字的大小就等於比日期的先後。
 
+   ★ 送到 Controller 的是「完整的時間」：開始是那一天的 00:00、結束是那一天的 23:59，
+     文字長這樣：2026-10-15T00:00、2026-10-16T23:59（中間的 T 是日期和時間的分隔）。
+     這樣 Controller 才能直接用 PromoteVO 接（VO 的開始、結束是 LocalDateTime）。
+     所以一個日期欄位有兩個隱藏欄位：
+       data-date-value   只有年月日，給月曆和檢查用，沒有 name，不會送出
+       data-date-full    完整的時間，name 是 promoteBegin／promoteEnd，會送出；下面的 refreshDatePicker 會讓它跟著日期更新 */
+
+// Date 物件 → '2026-10-15'
 function toDateText(date) {
   const two = n => String(n).padStart(2, '0');   // 個位數前面補 0
   return date.getFullYear() + '-' + two(date.getMonth() + 1) + '-' + two(date.getDate());
@@ -22,24 +54,27 @@ function addDays(dateText, days) {
   const [y, m, d] = dateText.split('-').map(Number);
   return toDateText(new Date(y, m - 1, d + days));
 }
-
+// 一個日期欄位（picker）裡「只有年月日」的那個隱藏欄位（HTML 上有 data-date-value）
 function dateInput(picker) {
   return picker.querySelector('[data-date-value]');
 }
-
+// 讀表單裡選好的日期：which 是 'begin'（開始）或 'end'（結束）。回傳 '2026-10-15'，還沒選是空字串
 function getDate(form, which) {
   const picker = form.querySelector('[data-date-picker="' + which + '"]');
   return picker ? dateInput(picker).value : '';
 }
-
+// 開始日期是不是被鎖住（進行中的活動不能改開始日期，HTML 會在那一格加上 data-locked="yes"）
 function isBeginLocked(form) {
   const picker = form.querySelector('[data-date-picker="begin"]');
   return Boolean(picker && picker.dataset.locked === 'yes');
 }
 
 
-/* ---------- A-1. 送出前的檢查 ---------- */
+/* ---------- 2. 送出前的檢查 ---------- */
 
+// 檢查表單的內容。沒問題回傳空字串，有問題回傳要顯示的訊息。
+// 活動名稱用 name 取得（form.promoteName）；開始、結束日期用上面的 getDate 讀「只有年月日」的那個欄位
+// ★ 這些規則 Java 存檔前也要再檢查一次（頁面上的檢查可以被跳過）
 function checkPromoteForm(form) {
   const name = form.promoteName.value.trim();
   const begin = getDate(form, 'begin');   // 格式是 2026-10-15（只有年月日）
@@ -47,24 +82,25 @@ function checkPromoteForm(form) {
   const today = todayText();
   if (!name) return '請輸入活動名稱';
   if (name.length > 10) return '活動名稱最多 10 個字';
+  // 開始、結束日期都是必填：沒選的那一格標成紅框（promote.css 的 .promote-date.is-invalid），選了之後紅框會自己消失
   form.querySelectorAll('[data-date-picker]').forEach(picker => {
     picker.classList.toggle('is-invalid', !dateInput(picker).value);
   });
   if (!begin) return '請選擇開始日期';
   if (!end) return '請選擇結束日期';
-
+  // 開始日期不能早於今天。進行中的活動開始日期是鎖住的（本來就在今天以前），所以不檢查
   if (!isBeginLocked(form) && begin < today) return '開始日期不能早於今天';
   if (end < today) return '結束日期不能早於今天';
- 
+  // 結束日期最早是開始日期的隔天（不能同一天）。addDays(begin, 1) 就是開始日期的隔天
   if (end < addDays(begin, 1)) return '結束日期最早是開始日期的隔天';
-
+  // 圖片的大小：選檔案的時候已經檢查過一次（3），送出前再確認一次比較保險
   const imgInput = form.querySelector('[data-img-input]');
   const sizeError = imgInput && imgInput.files ? checkImgSize(imgInput.files[0]) : '';
   if (sizeError) return sizeError;
   return '';
 }
 
-
+// 把訊息顯示在表單上方（HTML 裡有 data-form-error 的那一行）；text 是空的就把那一行藏起來
 function showFormError(form, text) {
   const box = form.querySelector('[data-form-error]');
   if (!box) return;
@@ -72,24 +108,45 @@ function showFormError(form, text) {
   box.hidden = !text;
 }
 
-// 資料庫的表單：送出前先檢查，有問題就不送出
-const dbPromoteForm = document.getElementById('dbPromoteForm');
-if (dbPromoteForm) {
-  dbPromoteForm.addEventListener('submit', e => {
-
-    dbPromoteForm.querySelectorAll('[data-date-picker]').forEach(refreshDatePicker);
-    const error = checkPromoteForm(dbPromoteForm);
-    showFormError(dbPromoteForm, error);
+// 新增／修改的表單（promote_form.html 的 <form id="promoteForm">）：送出前先檢查，有問題就不送出。
+// 列表頁沒有這個表單，promoteForm 會是 null，就什麼都不做
+const promoteForm = document.getElementById('promoteForm');
+if (promoteForm) {
+  promoteForm.addEventListener('submit', e => {
+    // 送出前再確認一次「完整的時間」和選的日期一致（平常選日期的時候就會更新，這裡是保險）
+    promoteForm.querySelectorAll('[data-date-picker]').forEach(refreshDatePicker);
+    const error = checkPromoteForm(promoteForm);
+    showFormError(promoteForm, error);
     if (error) e.preventDefault();   // 取消這一次的送出
   });
 }
 
 
-/* ---------- A-2. 活動圖片：選了圖片之後，顯示預覽 ----------*/
+/* ---------- 3. 活動圖片：選了圖片之後，檢查並顯示預覽 ----------
+   活動圖片會顯示在首頁的輪播，輪播的框是 16:9，圖片用 CSS 拉開填滿（object-fit: fill）：
+   其他比例的圖片會被拉成 16:9（會變形），不留白、不裁切。
+   表單裡的預覽框用的是同樣的 CSS，所以選了圖片之後，在預覽框看到的就是它在首頁上的樣子。
 
+   選到的檔案會先檢查兩件事，不通過就不接受、並在表單上方顯示警示：
+     1. 是不是圖片
+     2. 有沒有超過 5MB（後端最多收 10MB，前端設得小一點，見下面的 IMG_MAX_MB）
+   通過之後才「把新選的圖片放進預覽框」。圖片檔案本身不會被改動：
+   按「儲存」送到 Controller、存進資料庫的，是使用者選的原本的圖片。
+
+   HTML 的寫法：
+     預覽框   <div class="promote-img-box" data-img-preview>
+     檔案欄位 <input type="file" name="upImg" data-img-input>
+     兩個要放在同一個 <div class="promote-field"> 裡面，這裡才找得到對方。 */
+
+// 圖片檔案最大可以多大。
+// 後端（application.properties 的 spring.servlet.multipart.max-file-size）設定的是 10MB，超過的話伺服器會直接出錯，
+// 使用者只會看到錯誤頁。所以前端先擋，而且設得比後端小一點（5MB）留點空間：
+// 表單送出時除了圖片還有其他欄位，整個請求會比圖片本身再大一些。
+// ★ 這個數字和後端的設定要一起看：後端如果調小，這裡也要跟著調到比它更小。
 const IMG_MAX_MB = 5;
-const IMG_MAX_BYTES = IMG_MAX_MB * 1024 * 1024; 
+const IMG_MAX_BYTES = IMG_MAX_MB * 1024 * 1024;   // 換算成位元組（1MB = 1024 × 1024 位元組），檔案的大小 file.size 是用位元組算的
 
+// 檢查圖片檔案的大小。沒問題回傳空字串，太大回傳要顯示的訊息
 function checkImgSize(file) {
   if (!file || file.size <= IMG_MAX_BYTES) return '';
   const sizeMB = (file.size / 1024 / 1024).toFixed(1);   // 這個檔案是幾 MB，取到小數一位
@@ -106,7 +163,7 @@ function showImgPreview(box, src) {
   box.appendChild(img);
 }
 
-// 頁面上每一個選擇圖片的欄位
+// 頁面上每一個選擇圖片的欄位（有 data-img-input 的）都套用
 document.querySelectorAll('[data-img-input]').forEach(input => {
   const preview = input.closest('.promote-field').querySelector('[data-img-preview]');
   const original = preview.innerHTML;   // 預覽框一開始的內容（目前的圖片，或「尚無圖片」）
@@ -117,7 +174,7 @@ document.querySelectorAll('[data-img-input]').forEach(input => {
     // 打開選檔案的視窗又按了取消：預覽框回到一開始的內容
     if (!file) { preview.innerHTML = original; return; }
 
-
+    // 選到的不是圖片（file.type 是檔案的種類，圖片都是 image/ 開頭，例如 image/png）
     if (!file.type.startsWith('image/')) {
       input.value = '';                 // 清掉選到的檔案
       preview.innerHTML = original;
@@ -128,19 +185,41 @@ document.querySelectorAll('[data-img-input]').forEach(input => {
     // 檔案太大（超過 5MB）：不接受這個檔案，顯示警示
     const sizeError = checkImgSize(file);
     if (sizeError) {
-      input.value = '';             
+      input.value = '';                 // 清掉選到的檔案，這樣按「儲存」時不會把它送出去
       preview.innerHTML = original;
       if (input.form) showFormError(input.form, sizeError);
       return;
     }
 
+    // URL.createObjectURL 會替這個檔案產生一個暫時的網址，<img> 用它就能顯示還沒上傳的圖片
     showImgPreview(preview, URL.createObjectURL(file));
     if (input.form) showFormError(input.form, '');
   });
 });
 
 
-//製作月曆
+/* ---------- 4. 日期選擇：自己做的月曆 ----------
+   不用瀏覽器內建的日期欄位（每個瀏覽器長得不一樣，也不好限制），改成自己畫的月曆。
+   月曆是「跳出來浮在畫面上」的小視窗，不佔版面的位置：按日期的按鈕就出現在按鈕旁邊，
+   選了日期、點到別的地方、或捲動畫面時會自己關掉。
+
+   HTML 的寫法：
+     <div class="promote-date" data-date-picker="begin">      ← begin 是開始日期，end 是結束日期
+       <input type="hidden" data-date-value>                  ← 選到的日期，格式 2026-10-15（不會送出）
+       <input type="hidden" name="promoteBegin" data-date-full>   ← 真正送出去的值，格式 2026-10-15T00:00（結束是 T23:59）
+       <button type="button" class="promote-date-btn" data-date-toggle><span data-date-text></span>…</button>
+       <div class="promote-date-panel" data-date-panel hidden></div>   ← 月曆（跳出來的小視窗），內容和位置由這裡決定
+     </div>
+
+   可以選的範圍：
+     開始日期：不能早於今天
+     結束日期：不能早於今天，而且最早是開始日期的隔天（不能和開始日期同一天）
+   選了開始日期之後，如果原本的結束日期變成不能選的，會把結束日期清掉，請使用者重選。
+   進行中的活動不能改開始日期：那一格有 data-locked="yes"，按鈕會鎖住。
+
+   ★ 這裡只是讓使用者「選不到」不對的日期。隱藏欄位的值還是可以被改，所以 Java 存檔前要用同樣的規則再檢查一次。
+   ★ 送到 Controller 的時間是這裡補的（開始 00:00、結束 23:59），一樣可以被改；
+     Java 存檔前要自己再把時間設成 00:00 和 23:59，不要直接相信送來的幾點幾分。 */
 const WEEKDAYS = '日一二三四五六';
 
 // '2026-10-15' → '2026/10/15（四）'
@@ -149,23 +228,26 @@ function dateLabel(dateText) {
   return dateText.split('-').join('/') + '（' + WEEKDAYS[new Date(y, m - 1, d).getDay()] + '）';
 }
 
-
+// 這個日期欄位最早可以選哪一天
 function minDateOf(picker) {
   const today = todayText();
-  if (picker.dataset.datePicker !== 'end') return today;   
+  if (picker.dataset.datePicker !== 'end') return today;   // 開始日期：今天
+  // 結束日期：今天，或「開始日期的隔天」，看哪一個比較晚
   const form = picker.closest('form');
   const begin = form ? getDate(form, 'begin') : '';
   if (!begin) return today;
-  const afterBegin = addDays(begin, 1);
+  const afterBegin = addDays(begin, 1);   // 開始日期的隔天
   return afterBegin > today ? afterBegin : today;
 }
 
-
+// 依照選到的日期，更新按鈕上的文字、鎖住的狀態，以及要送出的「完整的時間」
 function refreshDatePicker(picker) {
   const input = dateInput(picker);
   const button = picker.querySelector('[data-date-toggle]');
 
-
+  // 要送出的完整時間：開始日期補 T00:00，結束日期補 T23:59；還沒選日期就是空的。
+  // 鎖住的開始日期（進行中的活動）不動它，維持 Thymeleaf 放進去的原本的時間。
+  // （HTML 裡萬一沒有這個欄位，full 會是 null，就不用處理）
   const full = picker.querySelector('[data-date-full]');
   if (full && picker.dataset.locked !== 'yes') {
     const time = picker.dataset.datePicker === 'end' ? 'T23:59' : 'T00:00';
@@ -184,22 +266,24 @@ function closeDatePanel(picker) {
   picker.classList.remove('is-open');
 }
 
-
+// 決定跳出來的月曆要出現在畫面的哪裡：預設貼在日期按鈕的下面，下面放不下就改放上面。
+// 月曆是 position: fixed（見 promote.css），所以位置是用「離畫面上緣、左緣多遠」來指定
 function placeDatePanel(picker) {
   const panel = picker.querySelector('[data-date-panel]');
-
+  // getBoundingClientRect() 會告訴我們按鈕現在在畫面上的位置（top、bottom、left 都是離畫面邊緣的距離）
   const button = picker.querySelector('[data-date-toggle]').getBoundingClientRect();
-  const GAP = 6;    
-  const MARGIN = 10; 
+  const GAP = 6;       // 月曆和按鈕之間的距離
+  const MARGIN = 10;   // 月曆離畫面邊緣至少要留多少
 
+  // 上下：先試下面；下面會超出畫面、而且上面放得下，就放上面
   let top = button.bottom + GAP;
   const fitsBelow = top + panel.offsetHeight <= window.innerHeight - MARGIN;
   const topIfAbove = button.top - GAP - panel.offsetHeight;
   if (!fitsBelow && topIfAbove >= MARGIN) top = topIfAbove;
-
+  // 上下都放不下（畫面很矮）：盡量留在畫面裡
   top = Math.max(MARGIN, Math.min(top, window.innerHeight - panel.offsetHeight - MARGIN));
 
-
+  // 左右：左邊對齊按鈕；會超出畫面右邊就往左移
   let left = Math.min(button.left, window.innerWidth - panel.offsetWidth - MARGIN);
   left = Math.max(MARGIN, left);
 
@@ -246,27 +330,28 @@ function drawDatePanel(picker, year, month) {
     <div class="promote-cal-days">${days}</div>
     <p class="promote-cal-hint">${hint}</p>`;
 
-
+  // 月曆開著的時候（例如按了上個月、下個月），每個月的列數不一樣、高度會變，所以重新算一次位置
   if (!panel.hidden) placeDatePanel(picker);
 }
 
+// 打開月曆：顯示「已經選的那個月」；還沒選就顯示最早可以選的那個月
 function openDatePanel(picker) {
   document.querySelectorAll('[data-date-picker]').forEach(other => { if (other !== picker) closeDatePanel(other); });
   const value = dateInput(picker).value;
   const min = minDateOf(picker);
   const [y, m] = (value && value >= min ? value : min).split('-').map(Number);
-
+  // 先讓月曆出現，再畫內容：要先出現，瀏覽器才量得到它的高度，位置才算得出來（drawDatePanel 最後會算位置）
   picker.querySelector('[data-date-panel]').hidden = false;
   picker.classList.add('is-open');
   drawDatePanel(picker, y, m - 1);
 }
 
-
+// 把所有打開的月曆關掉
 function closeAllDatePanels() {
   document.querySelectorAll('[data-date-picker].is-open').forEach(closeDatePanel);
 }
 
-
+// 更新一個表單裡所有的日期欄位（頁面載入時、或程式改了隱藏欄位的值之後呼叫）
 function refreshDatePickers(root) {
   root.querySelectorAll('[data-date-picker]').forEach(picker => {
     closeDatePanel(picker);
@@ -275,7 +360,7 @@ function refreshDatePickers(root) {
 }
 
 document.addEventListener('click', e => {
-
+  // (1) 按日期的按鈕：打開或關掉月曆
   const toggle = e.target.closest('[data-date-toggle]');
   if (toggle) {
     const picker = toggle.closest('[data-date-picker]');
@@ -284,15 +369,18 @@ document.addEventListener('click', e => {
     return;
   }
 
+  // (2) 按「上個月」「下個月」
   const nav = e.target.closest('[data-date-nav]');
   if (nav) {
     const picker = nav.closest('[data-date-picker]');
     const panel = picker.querySelector('[data-date-panel]');
+    // new Date 會自動處理跨年：12 月的下個月會變成隔年 1 月
     const target = new Date(Number(panel.dataset.year), Number(panel.dataset.month) + Number(nav.dataset.dateNav), 1);
     drawDatePanel(picker, target.getFullYear(), target.getMonth());
     return;
   }
 
+  // (3) 選了某一天：把日期放進隱藏欄位、關掉月曆
   const day = e.target.closest('[data-date-day]');
   if (day) {
     const picker = day.closest('[data-date-picker]');
@@ -301,7 +389,7 @@ document.addEventListener('click', e => {
     closeDatePanel(picker);
     refreshDatePicker(picker);
 
-
+    // 改了開始日期：結束日期如果變成不能選的（比開始日期早），就清掉請使用者重選
     if (picker.dataset.datePicker === 'begin' && form) {
       const endPicker = form.querySelector('[data-date-picker="end"]');
       const endInput = dateInput(endPicker);
@@ -312,11 +400,13 @@ document.addEventListener('click', e => {
     return;
   }
 
+  // (4) 點到月曆以外的地方：把打開的月曆關掉
   if (!e.target.closest('[data-date-picker]')) closeAllDatePanels();
 });
 
 // 月曆是固定浮在畫面上的，按鈕的位置一變（捲動頁面、平板轉向、視窗大小改變），
-
+// 月曆就會和按鈕對不上，所以這些時候直接把它關掉，要選再按一次。
+// 第三個參數 true：頁面裡面「可以自己捲動的區塊」捲動時也收得到（一般的寫法只收得到整個頁面的捲動）
 window.addEventListener('scroll', closeAllDatePanels, true);
 window.addEventListener('resize', closeAllDatePanels);
 // 按 Esc 也關掉月曆
@@ -324,8 +414,7 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') closeAllDatePanels();
 });
 
+// 頁面載入時：Thymeleaf 已經把日期放進隱藏欄位了，先把按鈕上的文字顯示出來，並把要送出的完整時間準備好
 refreshDatePickers(document);
-
-
 
 })();
