@@ -567,45 +567,46 @@
 							<h3 class="panel-title">歷史訂單</h3>
 							<!-- 【Thymeleaf 串接】歷史訂單
               Controller 把登入會員的訂單清單放進 Model（名稱 orders），沒登入時放空的清單。
-              把下面那行 div 換成這一段，th:each 會替每一筆訂單產生一塊畫面：
+              把下面那行 div 換成這一段，th:each 會替每一筆訂單產生一塊畫面：-->
 
-                <div class="record-list" id="ordersList">
+                <div class="record-list" id="ordersList"> 
                   <p class="empty-text" th:if="${#lists.isEmpty(orders)}">目前沒有訂單紀錄</p>
 
                   <div class="record-item" th:each="order : ${orders}">
                     <button type="button" class="record-head" data-toggle-record aria-expanded="false">
                       <span class="record-info">
-                        <span th:text="${order.date}">2026年09月20日 11:30</span>
-                        <span th:text="|${order.people} 人|">3 人</span>
-                        <span th:text="${order.type}">用餐</span>
+                        <span th:text="${#temporals.format(order.ordersTime,'yyyy年 MM月 dd日  HH:mm')}">2026年09月20日 11:30</span>
+                        <!-- <span th:text="|${order.people} 人|">3 人</span> -->
+                        <!-- <span th:text="${order.type}">用餐</span> -->
+                        <span class="num" th:text=" '$' + ${order.ordersActualPrice}">$100</span>
                       </span>
                       <span class="record-icon">+</span>
                     </button>
-                    <div class="record-body" hidden>
-                      <table class="order-table">
-                        <thead><tr><th>品項</th><th class="num">數量</th><th class="num">小計</th></tr></thead>
-                        <tbody>
-                          <tr th:each="item : ${order.items}">
-                            <td th:text="${item.name}">品項名稱</td>
-                            <td class="num" th:text="|× ${item.qty}|">× 1</td>
-                            <td class="num" th:text="'$' + ${item.price * item.qty}">$100</td>
-                          </tr>
-                        </tbody>
-                      </table>
-                      <p class="order-total" th:text="'合計　$' + ${order.total}">合計　$100</p>
-                    </div>
+	                    <div class="record-body" hidden>
+	                      <table class="order-table">
+	                        <thead><tr><th>品項</th><th class="num">數量</th><th class="num">小計</th></tr></thead>
+	                        <tbody>
+	                          <tr th:each="item : ${order.ordersDetails}">
+	                            <td th:text="${item.meal.mealName}">品項名稱</td>
+	                            <td class="num" th:text="|× ${item.odMealNum}|">× 1</td>
+	                            <td class="num" th:text="'$' + ${item.odDiscountPrice * item.odMealNum}">$100</td>
+	                          </tr>
+	                        </tbody>
+	                      </table>
+	                      <!-- <p class="order-total" th:text="'合計　$' + ${order.total}">合計　$100</p> -->
+	                    </div>
                   </div>
                 </div>
 
-              日期要顯示成「2026年09月20日」的話，可以用 #temporals.format(order.date, 'yyyy年MM月dd日')
+            <!--   日期要顯示成「2026年09月20日」的話，可以用 #temporals.format(order.date, 'yyyy年MM月dd日')
               （欄位是 LocalDate / LocalDateTime 時）或 #dates.format(...)（欄位是 java.util.Date 時）。
               合計 order.total 請在 Java 那邊算好。
 
               注意：這個對話框每個頁面都會放，所以「每個頁面的 Controller」都要把 orders 等清單放進 Model。
               不想每個 Controller 都寫一次的話，可以另外寫一個加了 @ControllerAdvice 的類別，
-              裡面用 @ModelAttribute("orders") 的方法回傳清單，所有頁面就都會有。
-            -->
-							<div class="record-list" id="ordersList"></div>
+              裡面用 @ModelAttribute("orders") 的方法回傳清單，所有頁面就都會有。 -->
+            
+						<!-- 假資料 -->	<!-- <div class="record-list" id="ordersList"></div> -->
 						</section>
 
 						<!-- ---------- 預約紀錄（內容由 member.js 產生） ---------- -->

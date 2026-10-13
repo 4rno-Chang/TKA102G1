@@ -35,4 +35,16 @@ public interface OrdersRepository extends JpaRepository<OrdersVO,Integer>{
 			"WHERE x.orders = o AND x.odStatus NOT IN ('已送達', '已取消')) " +  //條件：這張訂單「至少有一筆」還沒送達也沒取消→ 也就是廚房還有事要做的訂單
 		       "ORDER BY o.ordersTime, t.mealtypeNo, d.ordersDetailsNo")
 	List<OrdersVO>findActive();
+	
+	
+	//===========查看會員歷史訂單===========
+	@Query("SELECT DISTINCT o FROM OrdersVO o LEFT JOIN FETCH o.ordersDetails " + 
+			"WHERE o.member.memNo = :memNo ORDER BY o.ordersTime DESC")  //:memNo 是具名參數的佔位符,代表「這裡的值等執行時再填」。
+	public List<OrdersVO> findByMemNo(@Param("memNo") Integer memNo);
+	
+	
+	
+	
+	
+	
 }

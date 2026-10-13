@@ -111,6 +111,14 @@ public class OrdersService {
 			.toList();
 	}
 	
+	//===========查看會員歷史訂單===========
+	
+	public List<OrdersVO> getByMemNo(Integer memNo){
+		return ordersRepository.findByMemNo(memNo).stream()
+				.filter(o->!"CANCELLED".equals(o.getStatus()))  //不是取消的
+				.toList();
+	}
+	
 	
 	
 	
