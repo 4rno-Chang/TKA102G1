@@ -14,7 +14,15 @@
 <!-- staff.css：後台共用；staff_index.css：這一頁自己的樣式（要寫在 staff.css 後面） -->
 <link rel="stylesheet" th:href="@{/css/staff/staff.css}" />
 <link rel="stylesheet" th:href="@{/css/staff/staff_index.css}" />
+<!-- 首次修改密碼彈窗樣式 -->
+<link rel="stylesheet" th:href="@{/css/staff/staff_change_password.css}" />
 <script th:src="@{/js/staff/staff.js}" defer></script>
+<!-- 首次登入修改密碼功能 -->
+<script th:src="@{/js/staff/staff_change_password.js}" defer></script>
+<!-- 員工個人選單樣式 -->
+<link rel="stylesheet" th:href="@{/css/staff/staff_account.css}" />
+<!-- 員工個人選單功能 -->
+<script th:src="@{/js/staff/staff_account.js}" defer></script>
 </head>
 
 <body class="staff-layout">
@@ -36,8 +44,8 @@
 			<a class="home-tile tile-red" th:href="@{/staff/workboard}"> <svg
 					class="home-tile-icon" viewBox="0 0 24 24" aria-hidden="true">
 					<rect x="4" y="5" width="16" height="15" rx="2" />
-					<path d="M9 5V3h6v2M8 11h8M8 15h5" /></svg> <span class="home-tile-title">工作面板</span>
-				<span class="home-tile-desc">內場出餐、外場送餐</span>
+					<path d="M9 5V3h6v2M8 11h8M8 15h5" /></svg> <span
+				class="home-tile-title">工作面板</span> <span class="home-tile-desc">內場出餐、外場送餐</span>
 			</a> <a class="home-tile tile-yellow" th:href="@{/staff/checkout}"> <svg
 					class="home-tile-icon" viewBox="0 0 24 24" aria-hidden="true">
 					<circle cx="12" cy="12" r="9" />
@@ -108,6 +116,9 @@
 
 	<div class="staff-toast" id="staffToast" role="status"
 		aria-live="polite"></div>
+
+	<!-- 首次登入修改密碼彈窗 -->
+	<div th:replace="~{staff/staff_change_password :: passwordModal}"></div>
 </body>
 
 </html>

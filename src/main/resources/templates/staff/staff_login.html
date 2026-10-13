@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>Bistroops 員工登入</title>
+
+    <!-- 員工登入 CSS -->
+    <link rel="stylesheet" href="/css/staff/staff_login.css">
+</head>
+
+<body>
+
+    <div class="login-box">
+
+        <h1>Bistroops</h1>
+        <div class="subtitle">員工後台登入系統</div>
+
+        <form id="loginForm">
+
+            <label for="empNo">員工編號</label>
+            <input type="text"
+                   id="empNo"
+                   inputmode="numeric"
+                   placeholder="請輸入員工編號"
+                   required>
+
+            <label for="password">密碼</label>
+            <input type="password"
+                   id="password"
+                   placeholder="請輸入密碼"
+                   autocomplete="current-password"
+                   required>
+
+            <button type="submit">登入</button>
+
+        </form>
+
+        <div id="message"></div>
+
+    </div>
+
+    <script>
+        document.getElementById("loginForm")
+            .addEventListener("submit", async function(event) {
+
+                event.preventDefault();
+
+                const empNo =
+                    document.getElementById("empNo").value.trim();
+
+                const password =
+                    document.getElementById("password").value;
+
+                const message =
+                    document.getElementById("message");
+
+                message.textContent = "";
+
+                try {
+                    const response = await fetch(
+                        "/api/employees/login",
+                        {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json"
+                            },
+                            body: JSON.stringify({
+                                empNo: empNo,
+                                password: password
+                            })
+                        }
+                    );
+
+                    const result = await response.json();
+
+                    if (!response.ok) {
+                        message.textContent =
+                            result.message || "登入失敗";
+                        return;
+                    }
+
+                    // 登入成功後統一進入後台首頁
+                    // 首次登入修改密碼彈窗由後端判斷
+                    window.location.href = "/staff";
+
+                } catch (error) {
+                    message.textContent =
+                        "系統發生錯誤，請稍後再試";
+                }
+            });
+    </script>
+
+</body>
+</html>
