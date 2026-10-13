@@ -49,8 +49,102 @@ public class EmployeeService {
 		// 4. 新增員工預設為在職
 		employee.setEmpStatus("1");
 
+		// 新增員工尚未完成首次密碼修改
+		employee.setEmpPwdChanged(false);
+
 		// 5. 儲存員工
 		return employeeRepository.save(employee);
+	}
+
+	// 員工登入驗證
+	@Transactional(readOnly = true)
+	public EmployeeVO login(Integer empNo, String password) {
+
+		// 1. 根據員工編號查詢
+		EmployeeVO employee = employeeRepository.findById(empNo).orElse(null);
+
+		// 2. 員工不存在
+		if (employee == null) {
+			return null;
+		}
+
+		// 3. 停用員工不可登入
+		if (!"1".equals(employee.getEmpStatus())) {
+			return null;
+		}
+
+		// 4. 驗證員工密碼（BCrypt），並相容資料庫中帶有 {bcrypt} 前綴的密碼
+		BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
+
+		String storedPassword = employee.getEmpPassword();
+
+		// 資料庫沒有密碼，登入失敗
+		if (storedPassword == null) {
+			return null;
+		}
+
+		// 移除 {bcrypt} 前綴，讓 BCryptPasswordEncoder 可以正常驗證
+		if (storedPassword.startsWith("{bcrypt}")) {
+			storedPassword = storedPassword.substring("{bcrypt}".length());
+		}
+
+		// 比對使用者輸入的密碼與資料庫中的密碼
+		if (password == null || !encoder.matches(password, storedPassword)) {
+			return null;
+		}
+
+		// 5. 驗證成功，回傳員工資料
+		return employee;
+	}
+
+	// 員工修改密碼
+	@Transactional
+	public void changePassword(Integer empNo, String oldPassword, String newPassword) {
+
+		// 1. 查詢員工
+		EmployeeVO employee = employeeRepository.findById(empNo)
+				.orElseThrow(() -> new IllegalArgumentException("找不到員工"));
+
+		// 2. 確認員工仍在職
+		if (!"1".equals(employee.getEmpStatus())) {
+			throw new IllegalArgumentException("此員工已停用");
+		}
+
+		BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
+
+		// 3. 驗證舊密碼，並相容 {bcrypt} 前綴
+		String storedPassword = employee.getEmpPassword();
+
+		if (storedPassword == null) {
+			throw new IllegalArgumentException("原密碼錯誤");
+		}
+
+		if (storedPassword.startsWith("{bcrypt}")) {
+			storedPassword = storedPassword.substring("{bcrypt}".length());
+		}
+
+		if (oldPassword == null || !encoder.matches(oldPassword, storedPassword)) {
+			throw new IllegalArgumentException("原密碼錯誤");
+		}
+
+		// 4. 檢查新密碼：至少8碼，必須包含英文與數字
+		if (newPassword == null || !newPassword.matches("^(?=.*[A-Za-z])(?=.*\\d)[A-Za-z\\d]{8,}$")) {
+			throw new IllegalArgumentException("新密碼至少8碼，且必須包含英文及數字");
+		}
+
+		// 5. 新密碼不可與舊密碼相同
+		if (encoder.matches(newPassword, storedPassword)) {
+			throw new IllegalArgumentException("新密碼不可與原密碼相同");
+		}
+
+		// 6. 將新密碼加密後儲存
+		employee.setEmpPassword(encoder.encode(newPassword));
+
+		// 7. 標記已完成首次密碼修改
+		employee.setEmpPwdChanged(true);
+
+		// 8. 更新資料庫
+		employeeRepository.save(employee);
 	}
 
 	// 查詢所有員工
@@ -198,25 +292,25 @@ public class EmployeeService {
 
 		return employee.getEmpPhoto();
 	}
-	
+
 	// 刪除員工照片
 	@Transactional
 	public void deleteEmployeePhoto(Integer empNo) {
 
-	    // 1. 確認員工存在
-	    EmployeeVO employee = employeeRepository.findById(empNo)
-	            .orElseThrow(() -> new IllegalArgumentException("找不到員工：" + empNo));
+		// 1. 確認員工存在
+		EmployeeVO employee = employeeRepository.findById(empNo)
+				.orElseThrow(() -> new IllegalArgumentException("找不到員工：" + empNo));
 
-	    // 2. 停用員工不可修改照片
-	    if ("2".equals(employee.getEmpStatus())) {
-	        throw new IllegalArgumentException("此員工已停用，無法刪除照片");
-	    }
+		// 2. 停用員工不可修改照片
+		if ("2".equals(employee.getEmpStatus())) {
+			throw new IllegalArgumentException("此員工已停用，無法刪除照片");
+		}
 
-	    // 3. 清除員工照片
-	    employee.setEmpPhoto(null);
+		// 3. 清除員工照片
+		employee.setEmpPhoto(null);
 
-	    // 4. 更新資料庫
-	    employeeRepository.save(employee);
+		// 4. 更新資料庫
+		employeeRepository.save(employee);
 	}
-	
+
 }

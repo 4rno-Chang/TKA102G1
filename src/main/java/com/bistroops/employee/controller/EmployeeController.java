@@ -1,6 +1,8 @@
 package com.bistroops.employee.controller;
 
 import java.util.List;
+import java.util.Map;
+import jakarta.servlet.http.HttpSession;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -34,6 +36,94 @@ public class EmployeeController {
 
 	public EmployeeController(EmployeeService employeeService) {
 		this.employeeService = employeeService;
+	}
+	
+	// 員工登入
+	@PostMapping("/login")
+	public ResponseEntity<Map<String, Object>> login(
+	        @RequestBody Map<String, String> data,
+	        HttpSession session) {
+
+	    // 1. 取得員工編號與密碼
+	    String empNoText = data.get("empNo");
+	    String password = data.get("password");
+
+	    if (empNoText == null || !empNoText.matches("\\d+")
+	            || password == null || password.isBlank()) {
+	        return ResponseEntity.badRequest()
+	                .body(Map.of("message", "請輸入正確的員工編號及密碼"));
+	    }
+
+	    Integer empNo;
+	    try {
+	        empNo = Integer.valueOf(empNoText);
+	    } catch (NumberFormatException e) {
+	        return ResponseEntity.badRequest()
+	                .body(Map.of("message", "員工編號格式錯誤"));
+	    }
+
+	    // 2. 呼叫 Service 驗證帳號密碼
+	    EmployeeVO employee = employeeService.login(empNo, password);
+
+	    if (employee == null) {
+	        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+	                .body(Map.of("message", "員工編號或密碼錯誤，或帳號已停用"));
+	    }
+
+	    // 3. 登入成功，記錄員工編號到 Session
+	    session.setAttribute("employeeNo", employee.getEmpNo());
+
+	    // 4. 回傳登入結果
+	    return ResponseEntity.ok(Map.of(
+	            "message", "登入成功",
+	            "empNo", employee.getEmpNo(),
+	            "empName", employee.getEmpName(),
+	            "mustChangePassword", !Boolean.TRUE.equals(employee.getEmpPwdChanged())
+	    ));
+	}
+	
+	// 員工修改密碼
+	@PostMapping("/change-password")
+	public ResponseEntity<Map<String, String>> changePassword(
+	        @RequestBody Map<String, String> data,
+	        HttpSession session) {
+
+	    // 1. 確認員工已登入
+	    Integer empNo = (Integer) session.getAttribute("employeeNo");
+
+	    if (empNo == null) {
+	        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+	                .body(Map.of("message", "請先登入"));
+	    }
+
+	    // 2. 取得舊密碼與新密碼
+	    String oldPassword = data.get("oldPassword");
+	    String newPassword = data.get("newPassword");
+
+	    // 3. 呼叫 Service 修改密碼
+	    try {
+	        employeeService.changePassword(empNo, oldPassword, newPassword);
+
+	        return ResponseEntity.ok(
+	                Map.of("message", "密碼修改成功")
+	        );
+
+	    } catch (IllegalArgumentException e) {
+	        return ResponseEntity.badRequest()
+	                .body(Map.of("message", e.getMessage()));
+	    }
+	}
+	
+	// 員工登出
+	@PostMapping("/logout")
+	public ResponseEntity<Map<String, String>> logout(HttpSession session) {
+
+	    // 只清除員工登入資訊
+	    session.removeAttribute("employeeNo");
+
+	    return ResponseEntity.ok(
+	            Map.of("message", "登出成功")
+	    );
 	}
 
 	// 查詢全部員工

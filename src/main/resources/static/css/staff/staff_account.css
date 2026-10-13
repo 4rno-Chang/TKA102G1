@@ -1,0 +1,28 @@
+/* ========== 員工個人選單 ========== */
+
+.staff-account-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: auto;
+}
+
+/* 預設隱藏個人資料與登出 */
+.staff-account-group .staff-submenu {
+    display: none;
+}
+
+/* 點擊員工姓名後展開 */
+.staff-account-group.open .staff-submenu {
+    display: flex;
+}
+
+/* 展開時文字變色 */
+.staff-account-group.open .staff-group-toggle {
+    color: var(--st-text);
+}
+
+/* 展開時箭頭旋轉 */
+.staff-account-group.open .staff-group-arrow {
+    transform: rotate(180deg);
+}

@@ -31,6 +31,11 @@ public class EmployeeVO {
 	@Column(name = "emp_password")
 	private String empPassword;
 	
+	// 是否已完成首次密碼修改
+	@JsonIgnore
+	@Column(name = "emp_pwd_changed", nullable = false)
+	private Boolean empPwdChanged = false;
+	
 	@Column(name = "emp_tel")
 	private String empTel;
 	
@@ -94,6 +99,14 @@ public class EmployeeVO {
 
 	public void setEmpPassword(String empPassword) {
 		this.empPassword = empPassword;
+	}
+	
+	public Boolean getEmpPwdChanged() {
+	    return empPwdChanged;
+	}
+
+	public void setEmpPwdChanged(Boolean empPwdChanged) {
+	    this.empPwdChanged = empPwdChanged;
 	}
 
 

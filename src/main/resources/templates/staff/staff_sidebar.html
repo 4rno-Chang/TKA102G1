@@ -142,13 +142,45 @@
        登入之後  ：文字改成顯示員工姓名，例如 <span th:text="${session.loginStaff?.name ?: '員工登入'}">員工登入</span>
                    （loginStaff 後面的問號不能省略，沒登入時它是 null，少了問號頁面會出錯）
        另外可以寫一個攔截器（Interceptor），沒登入的人打開 /staff 底下的頁面時，一律轉到登入頁。 -->
-		<button type="button" class="staff-menu-item staff-menu-bottom"
-			data-coming-soon="員工登入">
+		<!-- 未登入：顯示員工登入 -->
+		<a th:if="${session.employeeNo == null}"
+			class="staff-menu-item staff-menu-bottom" th:href="@{/staff/login}">
 			<svg viewBox="0 0 24 24" aria-hidden="true">
-				<circle cx="12" cy="8" r="4" />
-				<path d="M4 21c0-4 3.600-7 8-7s8 3 8 7" /></svg>
-			<span>員工登入</span>
-		</button>
+        <circle cx="12" cy="8" r="4" />
+        <path d="M4 21c0-4 3.600-7 8-7s8 3 8 7" />
+    </svg> <span>員工登入</span>
+		</a>
+
+		<!-- 已登入：員工個人選單 -->
+		<div th:if="${session.employeeNo != null}"
+			class="staff-account-group">
+
+			<button type="button"
+				class="staff-menu-item staff-menu-bottom staff-group-toggle"
+				data-account-toggle aria-expanded="false">
+
+				<svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="8" r="4" />
+            <path d="M4 21c0-4 3.600-7 8-7s8 3 8 7" />
+        </svg>
+
+				<span> <span th:text="${staffEmployeeName}">員工姓名</span> <span
+					class="staff-group-arrow" aria-hidden="true">▾</span>
+				</span>
+			</button>
+
+			<div class="staff-submenu">
+				<button type="button" class="staff-menu-item staff-sub-item"
+					id="staffProfileButton">
+					<span>個人資料</span>
+				</button>
+
+				<button type="button" class="staff-menu-item staff-sub-item"
+					id="staffLogoutButton">
+					<span>登出</span>
+				</button>
+			</div>
+		</div>
 	</nav>
 
 </body>
