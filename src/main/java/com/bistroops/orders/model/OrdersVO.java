@@ -55,14 +55,6 @@ public class OrdersVO {
 	
 	@Column(name="orders_time")
 	private LocalDateTime ordersTime;
-	
-	public MemberVO getMember() {
-		return member;
-	}
-
-	public void setMember(MemberVO member) {
-		this.member = member;
-	}
 
 	@Column(name="orders_total") //總金額
 	private Integer ordersTotal;
@@ -110,7 +102,13 @@ public class OrdersVO {
 		this.seatNo = seatNo;
 	}
 
+	public MemberVO getMember() {
+		return member;
+	}
 
+	public void setMember(MemberVO member) {
+		this.member = member;
+	}
 
 
 	public LocalDateTime getOrdersTime() {

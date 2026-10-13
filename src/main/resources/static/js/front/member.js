@@ -1267,7 +1267,7 @@
     //   JS 就不用再組畫面了，把整個函式換成空的：
     //     function loadOrders() {}
     //   下面「點 + 展開／收合」的程式不用動，th:each 產生的畫面一樣能用
-    async function loadOrders() {
+/*    async function loadOrders() {
         const orders = await memberApi.getOrders();
         if (orders.length === 0) {
             ordersList.innerHTML = '<p class="empty-text">目前沒有訂單紀錄</p>';
@@ -1303,7 +1303,7 @@
       </div>`;
         }).join('');
     }
-
+*/
     // 點「+」或「訂位明細」展開／收合下方內容（歷史訂單與預約紀錄共用）
     memberContent.addEventListener('click', e => {
         const toggle = e.target.closest('[data-toggle-record]');
