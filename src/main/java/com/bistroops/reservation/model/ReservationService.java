@@ -476,7 +476,13 @@ public class ReservationService {
 
 	// 開啟訂位頁時，補齊含今日90天的時段，
 	// 再一次查詢各日期、桌型與時段的剩餘桌數。
+	// 一般新增訂位：所有訂位都計入已占用桌數。
 	public Map<String, Object> getAvailabilitySnapshot() {
+		return getAvailabilitySnapshot(null);
+	}
+
+	// 編輯訂位：排除目前正在編輯的這筆訂位。
+	public Map<String, Object> getAvailabilitySnapshot(Long excludedReservationNo) {
 
 		LocalDateTime now = LocalDateTime.now(RESERVATION_ZONE);
 
@@ -489,7 +495,7 @@ public class ReservationService {
 		// 查詢包含最後一天，使用隔天00:00作為排除上限。
 		LocalDateTime endExclusive = maxDate.plusDays(1).atStartOfDay();
 
-		List<ReservationAvailabilityRow> rows = repository.findAvailability(now, endExclusive);
+		List<ReservationAvailabilityRow> rows = repository.findAvailability(now, endExclusive, excludedReservationNo);
 
 		Map<String, Map<String, List<Map<String, Object>>>> slotsByDate = new LinkedHashMap<>();
 

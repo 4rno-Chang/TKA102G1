@@ -411,7 +411,7 @@ public class ReservationFrontController {
 		model.addAttribute("originalBooking", Map.of("date", diningTime.toLocalDate().toString(), "tableType",
 				reservation.getSeatType().getSeatTypeNo(), "rsvDtNo", reservation.getRsvDt().getRsvDtNo()));
 
-		model.addAttribute("reservationAvailability", reservationService.getAvailabilitySnapshot());
+		model.addAttribute("reservationAvailability", reservationService.getAvailabilitySnapshot(rsvNo));
 
 		return "front/reservation/reservation_edit";
 	}

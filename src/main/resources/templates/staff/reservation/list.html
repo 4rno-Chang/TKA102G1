@@ -159,7 +159,10 @@
                         r.rsvDt.rsvDtDatetime, 'yyyy/MM/dd HH:mm')}"></dd>
 
 						<dt>聯絡人</dt>
-						<dd th:text="${r.member.memName}"></dd>
+						<dd
+							th:text="${#strings.isEmpty(r.rsvName)
+   												 ? '未填寫' : r.rsvName}">
+						</dd>
 
 						<dt>聯絡電話</dt>
 						<dd th:text="${r.member.memTel}"></dd>
@@ -255,7 +258,7 @@
 						</select>
 						</label> <label class="rsv-search-keyword"> 搜尋 <input
 							type="search" name="keyword" maxlength="100"
-							placeholder="編號、姓名、電話、備註" th:value="${selectedKeyword}">
+							placeholder="訂位編號或電話" th:value="${selectedKeyword}">
 						</label>
 
 						<div class="rsv-period-picker">
@@ -327,7 +330,10 @@
 									th:text="${r.rsvStatus}"></span>
 							</div>
 
-							<h4 th:text="${r.member.memName}"></h4>
+							<h4
+								th:text="${#strings.isEmpty(r.rsvName)
+    												? '未填寫' : r.rsvName}">
+							</h4>
 
 							<p class="rsv-booking-phone" th:text="${r.member.memTel}"></p>
 

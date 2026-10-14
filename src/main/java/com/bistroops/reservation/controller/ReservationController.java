@@ -3,7 +3,7 @@ package com.bistroops.reservation.controller;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
-import java.util.Locale;
+
 import java.util.Set;
 
 import org.springframework.format.annotation.DateTimeFormat;
@@ -22,6 +22,8 @@ import com.bistroops.reservationdatetime.model.ReservationDatetimeService;
 @Controller
 @RequestMapping("/staff/reservations")
 public class ReservationController {
+
+	private static final java.time.ZoneId BUSINESS_ZONE = java.time.ZoneId.of("Asia/Taipei");
 
 	private static final Set<String> STATUSES = Set.of("預約", "實到", "未到", "取消");
 
@@ -52,7 +54,7 @@ public class ReservationController {
 			Model model) {
 
 		// 預設查詢今日；其他日期由日期欄位選擇。
-		LocalDate selectedDate = date == null ? LocalDate.now() : date;
+		LocalDate selectedDate = date == null ? LocalDate.now(BUSINESS_ZONE) : date;
 
 		String selectedStatus = normalizeStatus(status);
 		String selectedPeriod = normalizePeriod(period);
@@ -176,11 +178,12 @@ public class ReservationController {
 			return true;
 		}
 
-		String searchText = (reservation.getRsvNo() + " " + safe(reservation.getMember().getMemName()) + " "
-				+ safe(reservation.getMember().getMemTel()) + " " + safe(reservation.getRsvComment()))
-				.toLowerCase(Locale.ROOT);
+		String reservationNo = String.valueOf(reservation.getRsvNo());
 
-		return searchText.contains(keyword.toLowerCase(Locale.ROOT));
+		String phone = reservation.getMember() == null ? "" : safe(reservation.getMember().getMemTel());
+
+		// 訂位編號完整比對，電話可輸入完整號碼或部分號碼。
+		return reservationNo.equals(keyword) || phone.contains(keyword);
 	}
 
 	private String normalizeStatus(String status) {
@@ -222,7 +225,7 @@ public class ReservationController {
 
 			Model model) {
 
-		LocalDate selectedDate = date == null ? LocalDate.now() : date;
+		LocalDate selectedDate = date == null ? LocalDate.now(BUSINESS_ZONE) : date;
 
 		Integer selectedTableType = Set.of(2, 4, 6).contains(tableType) ? tableType : 2;
 
@@ -235,9 +238,9 @@ public class ReservationController {
 
 		model.addAttribute("createTableType", selectedTableType);
 
-		model.addAttribute("createMinDate", LocalDate.now().toString());
+		model.addAttribute("createMinDate", LocalDate.now(BUSINESS_ZONE).toString());
 
-		model.addAttribute("createMaxDate", LocalDate.now(java.time.ZoneId.of("Asia/Taipei")).plusDays(89).toString());
+		model.addAttribute("createMaxDate", LocalDate.now(BUSINESS_ZONE).plusDays(89).toString());
 
 		model.addAttribute("createPhone", phone);
 
