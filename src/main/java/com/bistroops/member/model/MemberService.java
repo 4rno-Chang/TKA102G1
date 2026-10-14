@@ -100,6 +100,14 @@ public class MemberService {
 
 		// 依手機號碼查詢會員資料
 		MemberVO member = dao.findByMemTel(memTel);
+		System.out.println("會員是否存在：" + (member != null));
+		if (member != null) {
+		    System.out.println("會員驗證狀態：" + member.getMemStatus());
+		    System.out.println("是否為預設密碼：" +
+		            passwordEncoder.matches("00000000", member.getMemPassword()));
+		    System.out.println("輸入密碼是否正確：" +
+		            passwordEncoder.matches(memPassword, member.getMemPassword()));
+		}
 
 		// 防呆：若會員資料不存在，則登入失敗
 		if (member == null) {
