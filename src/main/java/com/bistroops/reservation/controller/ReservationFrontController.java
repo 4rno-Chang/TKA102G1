@@ -1,6 +1,9 @@
 package com.bistroops.reservation.controller;
 
 import java.time.LocalDate;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.ResponseBody;
+import com.bistroops.member.model.MemberService;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -22,6 +25,11 @@ import com.bistroops.reservation.model.ReservationVO;
 import com.bistroops.reservationdatetime.model.ReservationDatetimeService;
 
 import jakarta.servlet.http.HttpSession;
+import java.util.LinkedHashMap;
+import java.time.LocalDateTime;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 @Controller
 @RequestMapping("/bistroops/reservation")
@@ -29,11 +37,14 @@ public class ReservationFrontController {
 
 	private final ReservationService reservationService;
 	private final ReservationDatetimeService rsvDtService;
+	private final MemberService memberService;
 
-	public ReservationFrontController(ReservationService reservationService, ReservationDatetimeService rsvDtService) {
+	public ReservationFrontController(ReservationService reservationService, ReservationDatetimeService rsvDtService,
+			MemberService memberService) {
 
 		this.reservationService = reservationService;
 		this.rsvDtService = rsvDtService;
+		this.memberService = memberService;
 	}
 
 	// 日期、桌型與剩餘桌數一次預載。
@@ -274,5 +285,191 @@ public class ReservationFrontController {
 		}
 
 		return ids;
+	}
+
+	@GetMapping("/mine")
+	@ResponseBody
+	public ResponseEntity<?> getMyReservations(HttpSession session) {
+
+		Object stored = session.getAttribute("member");
+
+		if (!(stored instanceof MemberVO member)) {
+			return ResponseEntity.status(401).header("Cache-Control", "no-store").body(Map.of("message", "請先登入會員"));
+		}
+
+		MemberVO current = memberService.getMemNoQuery(member.getMemNo());
+
+		if (current == null) {
+			session.removeAttribute("member");
+
+			return ResponseEntity.status(401).header("Cache-Control", "no-store")
+					.body(Map.of("message", "登入已失效，請重新登入"));
+		}
+
+		boolean canManage = "已驗證".equals(member.getMemStatus()) && "已驗證".equals(current.getMemStatus());
+
+		Map<String, Object> result = new LinkedHashMap<>();
+
+		result.putAll(reservationService.getMemberReservationSnapshot(current.getMemNo()));
+
+		result.put("canManage", canManage);
+		result.put("csrfToken", canManage ? reservationActionToken(session, current.getMemNo()) : "");
+
+		return ResponseEntity.ok().header("Cache-Control", "no-store").body(result);
+	}
+
+	// 確認這個登入 Session 及資料庫中的會員都已驗證。
+	private MemberVO requireVerifiedReservationMember(HttpSession session) {
+
+		Object stored = session.getAttribute("member");
+
+		if (!(stored instanceof MemberVO member)) {
+			throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "請先登入會員");
+		}
+
+		MemberVO current = memberService.getMemNoQuery(member.getMemNo());
+
+		if (current == null) {
+			throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "登入已失效");
+		}
+
+		if (!"已驗證".equals(member.getMemStatus()) || !"已驗證".equals(current.getMemStatus())) {
+			throw new ResponseStatusException(HttpStatus.FORBIDDEN, "請先完成電話驗證");
+		}
+
+		return current;
+	}
+
+	// 操作憑證與登入會員綁定，供編輯及取消使用。
+	private String reservationActionToken(HttpSession session, Integer memNo) {
+
+		synchronized (session) {
+			Object owner = session.getAttribute("memberRsvTokenOwner");
+			Object token = session.getAttribute("memberRsvActionToken");
+
+			if (!memNo.equals(owner) || !(token instanceof String)) {
+				token = UUID.randomUUID().toString();
+
+				session.setAttribute("memberRsvTokenOwner", memNo);
+				session.setAttribute("memberRsvActionToken", token);
+			}
+
+			return (String) token;
+		}
+	}
+
+	private void checkReservationActionToken(HttpSession session, Integer memNo, String token) {
+
+		synchronized (session) {
+			Object owner = session.getAttribute("memberRsvTokenOwner");
+			Object expected = session.getAttribute("memberRsvActionToken");
+
+			if (!memNo.equals(owner) || token == null || !token.equals(expected)) {
+				throw new ResponseStatusException(HttpStatus.FORBIDDEN, "操作已失效，請重新開啟預約紀錄");
+			}
+		}
+	}
+
+	// 獨立編輯頁。
+	@GetMapping("/edit")
+	public String showEditReservation(@RequestParam(name = "rsvNo") Long rsvNo, HttpSession session, Model model) {
+
+		MemberVO member = requireVerifiedReservationMember(session);
+
+		ReservationVO reservation = reservationService.getOneForMember(rsvNo, member.getMemNo());
+
+		LocalDateTime diningTime = reservation.getRsvDt().getRsvDtDatetime();
+
+		if (!"預約".equals(reservation.getRsvStatus())
+				|| !diningTime.isAfter(LocalDateTime.now(java.time.ZoneId.of("Asia/Taipei")))) {
+			throw new ResponseStatusException(HttpStatus.CONFLICT, "這筆訂位已無法編輯");
+		}
+
+		model.addAttribute("rsvNo", rsvNo);
+		model.addAttribute("editToken", reservationActionToken(session, member.getMemNo()));
+
+		if (!model.containsAttribute("date")) {
+			model.addAttribute("date", diningTime.toLocalDate());
+		}
+
+		if (!model.containsAttribute("tableType")) {
+			model.addAttribute("tableType", reservation.getSeatType().getSeatTypeNo());
+		}
+
+		if (!model.containsAttribute("selectedRsvDtNo")) {
+			model.addAttribute("selectedRsvDtNo", reservation.getRsvDt().getRsvDtNo());
+		}
+
+		if (!model.containsAttribute("bookingName")) {
+			model.addAttribute("bookingName", reservation.getRsvName() == null ? "" : reservation.getRsvName());
+		}
+
+		if (!model.containsAttribute("note")) {
+			model.addAttribute("note", reservation.getRsvComment() == null ? "" : reservation.getRsvComment());
+		}
+
+		model.addAttribute("originalBooking", Map.of("date", diningTime.toLocalDate().toString(), "tableType",
+				reservation.getSeatType().getSeatTypeNo(), "rsvDtNo", reservation.getRsvDt().getRsvDtNo()));
+
+		model.addAttribute("reservationAvailability", reservationService.getAvailabilitySnapshot());
+
+		return "front/reservation/reservation_edit";
+	}
+
+	// 儲存編輯結果。
+	@PostMapping("/edit")
+	public String saveEditReservation(@RequestParam(name = "rsvNo") Long rsvNo,
+			@RequestParam(name = "date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+			@RequestParam(name = "tableType") Integer tableType, @RequestParam(name = "rsvDtNo") Long rsvDtNo,
+			@RequestParam(name = "bookingName", defaultValue = "") String bookingName,
+			@RequestParam(name = "note", defaultValue = "") String note,
+			@RequestParam(name = "editToken") String editToken, HttpSession session,
+			RedirectAttributes redirectAttributes) {
+
+		MemberVO member = requireVerifiedReservationMember(session);
+
+		checkReservationActionToken(session, member.getMemNo(), editToken);
+
+		try {
+			reservationService.editForMember(rsvNo, member.getMemNo(), date, rsvDtNo, tableType, bookingName, note);
+
+			redirectAttributes.addFlashAttribute("startTab", "reservations");
+			redirectAttributes.addFlashAttribute("toastMsg", "訂位已更新");
+
+			return "redirect:/bistroops/reservation";
+
+		} catch (IllegalArgumentException ex) {
+			redirectAttributes.addFlashAttribute("error", ex.getMessage());
+
+			redirectAttributes.addFlashAttribute("date", date);
+			redirectAttributes.addFlashAttribute("tableType", tableType);
+			redirectAttributes.addFlashAttribute("selectedRsvDtNo", rsvDtNo);
+			redirectAttributes.addFlashAttribute("bookingName", bookingName);
+			redirectAttributes.addFlashAttribute("note", note);
+
+			redirectAttributes.addAttribute("rsvNo", rsvNo);
+
+			return "redirect:/bistroops/reservation/edit";
+		}
+	}
+
+	// 取消訂位：保留資料，不實際刪除資料列。
+	@PostMapping("/cancel")
+	@ResponseBody
+	public ResponseEntity<?> cancelMyReservation(@RequestParam(name = "rsvNo") Long rsvNo,
+			@RequestParam(name = "csrfToken") String csrfToken, HttpSession session) {
+
+		MemberVO member = requireVerifiedReservationMember(session);
+
+		checkReservationActionToken(session, member.getMemNo(), csrfToken);
+
+		try {
+			reservationService.cancelForMember(rsvNo, member.getMemNo());
+
+			return ResponseEntity.ok(Map.of("message", "訂位已取消"));
+
+		} catch (IllegalArgumentException ex) {
+			return ResponseEntity.badRequest().body(Map.of("message", ex.getMessage()));
+		}
 	}
 }

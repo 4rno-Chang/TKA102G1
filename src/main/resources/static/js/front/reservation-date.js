@@ -18,6 +18,25 @@
   }
 
   const slotsByDate = data.slotsByDate || {};
+  const editData = window.bistroopsReservationEdit;
+
+  if (editData?.original) {
+      const original = editData.original;
+
+      const originalSlot =
+          slotsByDate[original.date]?.[String(original.tableType)]
+              ?.find(slot =>
+                  String(slot.rsvDtNo) === String(original.rsvDtNo)
+              );
+
+      if (originalSlot) {
+          // 僅供編輯頁選擇；送出時仍由後端重新確認。
+          originalSlot.remaining = Number(originalSlot.remaining) + 1;
+          originalSlot.full = false;
+      }
+  }
+  
+  
   const minDate = data.minDate;
   const maxDate = data.maxDate;
 
@@ -191,6 +210,14 @@
       input.name = 'rsvDtNo';
       input.value = String(slot.rsvDtNo);
       input.disabled = !available(slot);
+	  if (editData
+	          && dateInput.value === editData.selectedDate
+	          && tableType() === String(editData.selectedTableType)
+	          && String(slot.rsvDtNo) === String(editData.selectedSlot)) {
+
+	      input.checked = !input.disabled;
+	  }
+	  
       input.dataset.time = slot.timeText;
       input.dataset.startAt = String(slot.startAt);
 

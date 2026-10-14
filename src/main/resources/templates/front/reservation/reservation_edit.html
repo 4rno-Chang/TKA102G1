@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="zh-Hant" xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Bistroops｜編輯訂位</title>
+
+<link rel="stylesheet" th:href="@{/css/front/front.css}">
+<link rel="stylesheet" th:href="@{/css/front/member.css}">
+<link rel="stylesheet" th:href="@{/css/front/reservation.css}">
+
+<script th:inline="javascript">
+	window.bistroopsReservationAvailability =
+	/*[[${reservationAvailability}]]*/{};
+
+	window.bistroopsReservationEdit = {
+		original : /*[[${originalBooking}]]*/{},
+		selectedDate : /*[[${date.toString()}]]*/'',
+		selectedTableType : /*[[${tableType}]]*/2,
+		selectedSlot : /*[[${selectedRsvDtNo}]]*/null
+	};
+</script>
+
+<script th:src="@{/js/front/member.js}" defer></script>
+<script th:src="@{/js/front/reservation-date.js}" defer></script>
+</head>
+
+<body>
+	<div th:replace="~{front/member/member_modals :: modals}"></div>
+
+	<header th:replace="~{front/front_layout :: header('reservation')}"></header>
+
+	<main class="booking">
+		<div class="container">
+
+			<header class="booking-head">
+				<p class="eyebrow">Reservation</p>
+				<h1 class="booking-title">編輯訂位</h1>
+
+				<p class="booking-lead">選擇新的日期、桌型與時段；儲存成功前，原訂位仍保留。</p>
+			</header>
+
+			<div class="booking-layout">
+
+				<section class="booking-card">
+					<h2 class="booking-card-title" th:text="|編輯訂位 #${rsvNo}|"></h2>
+
+					<form id="resvForm" th:action="@{/bistroops/reservation/edit}"
+						method="post">
+
+						<input type="hidden" name="rsvNo" th:value="${rsvNo}"> <input
+							type="hidden" name="editToken" th:value="${editToken}"> <input
+							type="hidden" id="resvDate" name="date" th:value="${date}">
+
+						<p class="form-msg error" th:if="${error != null}"
+							th:text="${error}"></p>
+
+						<div class="booking-block">
+							<h3 class="booking-label">
+								用餐日期 <small>可預約含今日起算90天內的日期</small>
+							</h3>
+
+							<button type="button" class="date-field" id="calendarToggle"
+								aria-expanded="false" hidden>
+								<span class="date-field-value"></span> <span
+									class="date-field-action">開啟日曆 ▾</span>
+							</button>
+
+							<div class="calendar" id="calendar"></div>
+						</div>
+
+						<div class="booking-block">
+							<h3 class="booking-label">選擇桌型</h3>
+
+							<div class="choice-row">
+								<label class="choice"> <input type="radio"
+									name="tableType" value="2" th:checked="${tableType == 2}">
+									<span class="choice-box">2 人桌</span>
+								</label> <label class="choice"> <input type="radio"
+									name="tableType" value="4" th:checked="${tableType == 4}">
+									<span class="choice-box">4 人桌</span>
+								</label> <label class="choice"> <input type="radio"
+									name="tableType" value="6" th:checked="${tableType == 6}">
+									<span class="choice-box">6 人桌</span>
+								</label>
+							</div>
+						</div>
+
+						<div class="booking-block">
+							<h3 class="booking-label">用餐時段</h3>
+
+							<p class="booking-empty" id="slotEmpty"></p>
+							<div class="slot-grid" id="slotGrid"></div>
+						</div>
+
+						<div class="field">
+							<label for="editBookingName">聯絡姓名（選填）</label> <input type="text"
+								id="editBookingName" name="bookingName" maxlength="30"
+								autocomplete="name" th:value="${bookingName}">
+						</div>
+
+						<div class="field">
+							<label for="editBookingNote"> 備註（選填，最多50個字元） </label>
+
+							<textarea id="editBookingNote" name="note" rows="4"
+								maxlength="50" th:text="${note}"></textarea>
+						</div>
+
+						<div class="booking-actions">
+							<a class="btn-outline" th:href="@{/bistroops/reservation}">
+								返回訂位頁 </a>
+
+							<button type="submit" class="btn-solid" id="resvNext" disabled>
+								儲存變更</button>
+						</div>
+					</form>
+				</section>
+
+				<aside class="booking-summary">
+					<h2 class="booking-card-title">修改後的訂位</h2>
+
+					<dl class="summary-list">
+						<div>
+							<dt>日期</dt>
+							<dd id="sumDate"></dd>
+						</div>
+
+						<div>
+							<dt>桌型</dt>
+							<dd id="sumTable"></dd>
+						</div>
+
+						<div>
+							<dt>時段</dt>
+							<dd id="sumTime"></dd>
+						</div>
+					</dl>
+
+					<p class="summary-hint">送出時會再次確認剩餘桌數。 修改失敗時，原訂位不受影響。</p>
+				</aside>
+
+			</div>
+		</div>
+	</main>
+
+	<footer th:replace="~{front/front_layout :: footer}"></footer>
+	<button th:replace="~{front/front_layout :: backToTop}"></button>
+</body>
+</html>

@@ -625,3 +625,47 @@ button.record-head:hover { color: var(--color-primary); }
     font-weight: 500;
     letter-spacing: 2px;
 }
+.member-reservation-note {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+.member-reservation-notice {
+    margin: 16px 0;
+    padding: 14px 16px;
+    background: #f6efdf;
+    border-left: 3px solid #b99752;
+    color: #85745f;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.member-reservation-notice[hidden] {
+    display: none !important;
+}
+
+.member-reservation-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 20px;
+}
+
+.member-reservation-actions a {
+    text-decoration: none;
+}
+
+.member-reservation-note {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+/* 編輯與取消訂位的文字統一置中 */
+.member-reservation-actions .btn-small {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    text-align: center;
+}
