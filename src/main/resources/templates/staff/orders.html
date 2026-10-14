@@ -124,7 +124,7 @@
 
           <div class="order-item" th:each="order : ${orderslistAll}">
             <button type="button" class="order-row" data-toggle-order aria-expanded="false">
-              <span class="order-id" th:text="${order.orders}">訂單編號</span>
+              <span class="order-id" th:text="${#numbers.formatInteger(order.orders,8)}">訂單編號</span>
               <span><span class="badge badge-table" th:text="${order.seatNo.seatNo}">A1</span></span>
               <span th:text="${#temporals.format(order.ordersTime,'HH:mm')}">12:30</span>
               <span class="num order-amount" th:text="'$' + ${order.ordersActualPrice}">$1,246</span>
