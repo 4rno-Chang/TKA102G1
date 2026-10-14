@@ -548,3 +548,75 @@
   .cal-day { height: 42px; }
   .slot-box { padding: 0 12px; }
 }
+/* 訂位頁：電話輸入框與查詢按鈕 */
+.reservation-lookup {
+    width: 100%;
+    max-width: 560px;
+    margin: 0 auto 32px;
+}
+
+.reservation-lookup-label {
+    display: block;
+    margin-bottom: 8px;
+    color: #85745f;
+    font-size: 14px;
+}
+
+.reservation-lookup-row {
+    display: flex;
+    align-items: stretch;
+    gap: 12px;
+}
+
+.reservation-lookup-row input {
+    flex: 1;
+    min-width: 0;
+    width: 0;
+    box-sizing: border-box;
+    padding: 12px 14px;
+    border: 1px solid #d8c4a4;
+    border-radius: 0;
+    background: #fff;
+    color: #332b22;
+    font: inherit;
+}
+
+.reservation-lookup-row input:focus {
+    outline: 2px solid #b88636;
+    outline-offset: 2px;
+}
+
+.reservation-lookup-row button {
+    flex-shrink: 0;
+    margin: 0;
+    padding: 12px 20px;
+    white-space: nowrap;
+    font: inherit;
+    cursor: pointer;
+}
+
+.reservation-lookup-results {
+    margin-top: 20px;
+    text-align: left;
+}
+
+.reservation-lookup-item {
+    padding: 12px 0;
+    border-bottom: 1px solid #e8dcc9;
+}
+
+.reservation-lookup-note {
+    margin-top: 16px;
+    color: #85745f;
+    font-size: 14px;
+}
+
+@media (max-width: 480px) {
+    .reservation-lookup-row {
+        gap: 8px;
+    }
+
+    .reservation-lookup-row button {
+        padding: 12px;
+    }
+}
