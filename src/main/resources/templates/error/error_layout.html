@@ -25,6 +25,8 @@
 <body class="error-page">
   <main class="error-box" th:with="isStaff=${path != null and #strings.startsWith(path, '/staff')}">
     <img class="error-logo" th:src="@{/images/logo-dark.svg}" alt="Bistroops">
+    <!-- 500 頁的插圖：圖檔放在 static/images/500error.jpg；其他錯誤頁不顯示 -->
+    <img class="error-image" th:if="${code == '500'}" th:src="@{/images/500error.jpg}" alt="">
     <p class="error-code" th:text="${code}"></p>
     <h1 class="error-title" th:text="${title}"></h1>
     <p class="error-message" th:text="${message}"></p>
