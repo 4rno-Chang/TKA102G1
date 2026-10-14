@@ -16,6 +16,8 @@ import java.util.Set;
 @Transactional(readOnly = true)
 public class ReservationDatetimeService {
 
+	private static final ZoneId BUSINESS_ZONE = ZoneId.of("Asia/Taipei");
+
 	private final ReservationDatetimeRepository repository;
 
 	public ReservationDatetimeService(ReservationDatetimeRepository repository) {
@@ -27,11 +29,11 @@ public class ReservationDatetimeService {
 	}
 
 	public List<ReservationDatetimeVO> getAvailableByDate(LocalDate date) {
-		if (date.isBefore(LocalDate.now())) {
+		if (date == null || date.isBefore(LocalDate.now(BUSINESS_ZONE))) {
 			return List.of();
 		}
 
-		LocalDateTime now = LocalDateTime.now();
+		LocalDateTime now = LocalDateTime.now(BUSINESS_ZONE);
 
 		Set<LocalTime> allowedTimes = Set.of(LocalTime.of(11, 0), LocalTime.of(12, 30), LocalTime.of(17, 0),
 				LocalTime.of(18, 30));
@@ -45,9 +47,7 @@ public class ReservationDatetimeService {
 
 	public List<LocalDate> getOpenDates() {
 
-		ZoneId zone = ZoneId.of("Asia/Taipei");
-
-		LocalDateTime now = LocalDateTime.now(zone);
+		LocalDateTime now = LocalDateTime.now(BUSINESS_ZONE);
 		LocalDate today = now.toLocalDate();
 
 		Set<LocalTime> allowedTimes = Set.of(LocalTime.of(11, 0), LocalTime.of(12, 30), LocalTime.of(17, 0),

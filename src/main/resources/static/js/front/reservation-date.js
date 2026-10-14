@@ -20,20 +20,14 @@
   const slotsByDate = data.slotsByDate || {};
   const editData = window.bistroopsReservationEdit;
 
-  if (editData?.original) {
-      const original = editData.original;
+  // 每個日期及桌型，各自記住最後選擇的時段。
+  const selectedSlots = new Map();
 
-      const originalSlot =
-          slotsByDate[original.date]?.[String(original.tableType)]
-              ?.find(slot =>
-                  String(slot.rsvDtNo) === String(original.rsvDtNo)
-              );
+  if (editData?.selectedDate && editData.selectedSlot != null) {
+      const key =
+          `${editData.selectedDate}|${editData.selectedTableType}`;
 
-      if (originalSlot) {
-          // 僅供編輯頁選擇；送出時仍由後端重新確認。
-          originalSlot.remaining = Number(originalSlot.remaining) + 1;
-          originalSlot.full = false;
-      }
+      selectedSlots.set(key, String(editData.selectedSlot));
   }
   
   
@@ -182,66 +176,92 @@
   }
 
   function renderSlots() {
-    slotGrid.replaceChildren();
+      // 先保留目前畫面選到的時段，再重新產生下一組選項。
+      const previousKey = slotGrid.dataset.selectionKey;
 
-    if (!dateInput.value) {
-      slotEmpty.hidden = false;
-      slotEmpty.textContent =
-        '請先選擇日期，以查看可預約的時段。';
+      const previousSelection = slotGrid.querySelector(
+          'input[name="rsvDtNo"]:checked'
+      );
+
+      if (previousKey && previousSelection) {
+          selectedSlots.set(previousKey, previousSelection.value);
+      }
+
+      slotGrid.replaceChildren();
+
+      const selectionKey = `${dateInput.value}|${tableType()}`;
+      slotGrid.dataset.selectionKey = selectionKey;
+
+      if (!dateInput.value) {
+          slotEmpty.hidden = false;
+          slotEmpty.textContent = '請先選擇日期，以查看可預約的時段。';
+
+          updateSummary();
+          return;
+      }
+
+      const slots = slotsFor(dateInput.value);
+      const selectedSlot = selectedSlots.get(selectionKey);
+
+      slotEmpty.hidden = slots.length > 0;
+      slotEmpty.textContent = '這一天沒有可選的時段，請選擇其他日期。';
+
+      for (const slot of slots) {
+          const future = Number(slot.startAt) > serverNow();
+
+          const label = document.createElement('label');
+          label.className = 'slot';
+
+          const input = document.createElement('input');
+          input.type = 'radio';
+          input.name = 'rsvDtNo';
+          input.value = String(slot.rsvDtNo);
+          input.disabled = !available(slot);
+
+          input.checked =
+              !input.disabled
+              && input.value === selectedSlot;
+
+          input.dataset.time = slot.timeText;
+          input.dataset.startAt = String(slot.startAt);
+
+          const box = document.createElement('span');
+          box.className = 'slot-box';
+
+          const time = document.createElement('span');
+          time.className = 'slot-time';
+          time.textContent = slot.timeText;
+
+          const state = document.createElement('span');
+          state.className = 'slot-state';
+
+          const original = editData?.original;
+
+          const isOriginalSlot = original
+              && dateInput.value === original.date
+              && tableType() === String(original.tableType)
+              && String(slot.rsvDtNo) === String(original.rsvDtNo);
+
+          if (!future) {
+              state.textContent = '已開始';
+
+          } else if (!available(slot)) {
+              state.textContent = '已額滿';
+
+          } else if (isOriginalSlot) {
+              state.textContent =
+                  `可選 ${slot.remaining} 桌（含原訂位）`;
+
+          } else {
+              state.textContent = `剩餘 ${slot.remaining} 桌`;
+          }
+
+          box.append(time, state);
+          label.append(input, box);
+          slotGrid.append(label);
+      }
 
       updateSummary();
-      return;
-    }
-
-    const slots = slotsFor(dateInput.value);
-
-    slotEmpty.hidden = slots.length > 0;
-    slotEmpty.textContent =
-      '這一天沒有可選的時段，請選擇其他日期。';
-
-    for (const slot of slots) {
-      const future = Number(slot.startAt) > serverNow();
-
-      const label = document.createElement('label');
-      label.className = 'slot';
-
-      const input = document.createElement('input');
-      input.type = 'radio';
-      input.name = 'rsvDtNo';
-      input.value = String(slot.rsvDtNo);
-      input.disabled = !available(slot);
-	  if (editData
-	          && dateInput.value === editData.selectedDate
-	          && tableType() === String(editData.selectedTableType)
-	          && String(slot.rsvDtNo) === String(editData.selectedSlot)) {
-
-	      input.checked = !input.disabled;
-	  }
-	  
-      input.dataset.time = slot.timeText;
-      input.dataset.startAt = String(slot.startAt);
-
-      const box = document.createElement('span');
-      box.className = 'slot-box';
-
-      const time = document.createElement('span');
-      time.className = 'slot-time';
-      time.textContent = slot.timeText;
-
-      const state = document.createElement('span');
-      state.className = 'slot-state';
-      state.textContent = !future
-        ? '已開始'
-        : available(slot)
-          ? `剩餘 ${slot.remaining} 桌`
-          : '已額滿';
-
-      box.append(time, state);
-      label.append(input, box);
-      slotGrid.append(label);
-    }
-
-    updateSummary();
   }
 
   calendar.addEventListener('click', event => {
