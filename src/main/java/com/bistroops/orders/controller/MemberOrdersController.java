@@ -2,6 +2,9 @@ package com.bistroops.orders.controller;
 
 import java.util.List;
 
+import com.bistroops.member.model.MemberService;
+
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.ControllerAdvice;
@@ -23,19 +26,34 @@ public class MemberOrdersController {
 	@Autowired
 	OrdersService ordersService;
 	
+	@Autowired
+	private MemberService memberService;
+
+	@ModelAttribute("member")
+	public MemberVO currentMember(HttpSession session) {
+	    Integer memNo = (Integer) session.getAttribute("memberNo");
+
+	    if (memNo == null) {
+	        return null;
+	    }
+
+	    return memberService.getMemNoQuery(memNo);
+	}
+	
 	
 	//===========查看會員歷史訂單===========
 	@ModelAttribute("orders")
 	public List<OrdersVO> memberOrders(HttpSession session) {
-		MemberVO member =(MemberVO) session.getAttribute("member");
-		
-		if (member == null) {
-			return List.of();  // 沒登入給空清單
+		// 從 Session 取得目前登入的會員編號
+		Integer memNo = (Integer) session.getAttribute("memberNo");
+
+		if (memNo == null) {
+		    return List.of();
 		}
 //		model.addAttribute("orders", ordersService.getByMemNo(member.getMemNo()));
-		return ordersService.getByMemNo(member.getMemNo()).stream()
-				.filter(o->o.isPaid())  //只顯示已付款的訂單;
-				.toList();
+		return ordersService.getByMemNo(memNo).stream()
+		        .filter(o -> o.isPaid())
+		        .toList();
 	}
 	
 	

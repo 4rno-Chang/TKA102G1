@@ -120,14 +120,22 @@ public class MemberController {
 		// 更改密碼：手機號碼不從前端取得，而是從登入中的會員取得
 		if ("change".equals(purpose)) {
 
-			MemberVO member = (MemberVO) session.getAttribute("member");
+		    // 從 Session 取得會員編號
+		    Integer memNo = (Integer) session.getAttribute("memberNo");
 
-			// 沒有登入
-			if (member == null) {
-				return "請先登入";
-			}
+		    // 沒有登入
+		    if (memNo == null) {
+		        return "請先登入";
+		    }
 
-			phone = member.getMemTel();
+		    // 從 MySQL 取得會員資料
+		    MemberVO member = memberService.getMemNoQuery(memNo);
+
+		    if (member == null) {
+		        return "請先登入";
+		    }
+
+		    phone = member.getMemTel();
 		}
 
 		// 手機號碼格式檢查
@@ -191,12 +199,19 @@ public class MemberController {
 	@ResponseBody
 	public String sendVerifyPhoneCode(HttpSession session) {
 
-		// 取得目前登入會員
-		MemberVO member = (MemberVO) session.getAttribute("member");
+		// 從 Session 取得會員編號
+		Integer memNo = (Integer) session.getAttribute("memberNo");
 
 		// 尚未登入
+		if (memNo == null) {
+		    return "NOT_LOGIN";
+		}
+
+		// 從 MySQL 取得最新會員資料
+		MemberVO member = memberService.getMemNoQuery(memNo);
+
 		if (member == null) {
-			return "NOT_LOGIN";
+		    return "NOT_LOGIN";
 		}
 
 		// 已經驗證過
@@ -240,18 +255,18 @@ public class MemberController {
 	@ResponseBody
 	public String verifyPhone(@RequestParam String code, HttpSession session) {
 
-		// 取得目前登入會員
-		MemberVO member = (MemberVO) session.getAttribute("member");
+		// 從 Session 取得會員編號
+		Integer memNo = (Integer) session.getAttribute("memberNo");
 
-		if (member == null) {
-			return "NOT_LOGIN";
+		if (memNo == null) {
+		    return "NOT_LOGIN";
 		}
 
-		// 從資料庫取得最新會員資料
-		MemberVO currentMember = memberService.getMemNoQuery(member.getMemNo());
+		// 從 MySQL 取得最新會員資料
+		MemberVO currentMember = memberService.getMemNoQuery(memNo);
 
 		if (currentMember == null) {
-			return "NOT_LOGIN";
+		    return "NOT_LOGIN";
 		}
 
 		// 已經驗證過
@@ -322,10 +337,6 @@ public class MemberController {
 		if (!result) {
 			return "UPDATE_ERROR";
 		}
-
-		// 同步更新 Session 中的會員狀態
-		currentMember.setMemStatus("已驗證");
-		session.setAttribute("member", currentMember);
 
 		// 驗證碼使用完畢，立即刪除
 		session.removeAttribute("memberVerifyCode");
@@ -420,10 +431,14 @@ public class MemberController {
 
 		if (member != null) {
 
-			// 登入成功，把會員資料存進 Session
-			session.setAttribute("member", member);
+			// 登入成功，只儲存會員編號到 Redis Session
+			session.setAttribute("memberNo", member.getMemNo());
 
-			return "OK";
+		    // 會員登入後固定 2 小時到期
+			session.setAttribute("memberExpireAt",
+			        System.currentTimeMillis() + 2 * 60 * 60 * 1000L);
+
+		    return "OK";
 		}
 
 		// 帳號或密碼錯誤
@@ -441,7 +456,8 @@ public class MemberController {
 		}
 
 		// 移除 Session 中的會員資料
-		session.removeAttribute("member");
+		session.removeAttribute("memberNo");
+		session.removeAttribute("memberExpireAt");
 
 		// 登出時一併清除會員手機認證資料
 		session.removeAttribute("memberVerifyCode");
@@ -462,17 +478,18 @@ public class MemberController {
 	@ResponseBody
 	public Map<String, Object> getProfile(HttpSession session) {
 
-		Object sessionMember = session.getAttribute("member");
+		Integer memNo = (Integer) session.getAttribute("memberNo");
 
-		if (!(sessionMember instanceof MemberVO member)) {
-			return null;
+		if (memNo == null) {
+		    return null;
 		}
 
-		MemberVO current = memberService.getMemNoQuery(member.getMemNo());
+		MemberVO current = memberService.getMemNoQuery(memNo);
 
 		if (current == null) {
-			session.removeAttribute("member");
-			return null;
+		    session.removeAttribute("memberNo");
+		    session.removeAttribute("memberExpireAt");
+		    return null;
 		}
 
 		Map<String, Object> result = new LinkedHashMap<>();
@@ -507,16 +524,16 @@ public class MemberController {
 			returnUrl = "/bistroops";
 		}
 
-		// 取得目前登入會員
-		MemberVO member = (MemberVO) session.getAttribute("member");
+		// 從 Session 取得會員編號
+		Integer memNo = (Integer) session.getAttribute("memberNo");
 
 		// 沒有登入
-		if (member == null) {
-			return "redirect:" + returnUrl;
+		if (memNo == null) {
+		    return "redirect:" + returnUrl;
 		}
 
-		// 從資料庫取得最新會員狀態
-		MemberVO currentMember = memberService.getMemNoQuery(member.getMemNo());
+		// 從資料庫取得最新會員資料
+		MemberVO currentMember = memberService.getMemNoQuery(memNo);
 
 		// 未驗證會員禁止修改個人資料
 		if (currentMember == null || !"已驗證".equals(currentMember.getMemStatus())) {
@@ -526,8 +543,6 @@ public class MemberController {
 			return "redirect:" + returnUrl;
 		}
 
-		// 取得目前登入會員的會員編號
-		Integer memNo = member.getMemNo();
 
 		// 手機條碼載具格式驗證
 		if (memBarcode != null && !memBarcode.isBlank()) {
@@ -553,25 +568,15 @@ public class MemberController {
 		}
 
 		// 標籤目前畫面沒有修改功能，所以保留會員原本的資料
-		String memTag = member.getMemTag();
+		String memTag = currentMember.getMemTag();
 
 		// 呼叫 Service 修改資料
 		boolean result = memberService.updateMember(memNo, name, email, memBarcode, memTag, memBirth);
 
 		if (result) {
 
-			// 修改成功後，同步更新 Session 裡的會員資料
-			member.setMemName(name);
-			member.setMemMail(email);
-			member.setMemBirth(memBirth);
-			member.setMemBarcode(memBarcode);
-//	        member.setMemTag(memTag);
-
-			session.setAttribute("member", member);
-
-			// 修改成功提示
-			redirectAttributes.addFlashAttribute("toastMsg", "修改完成");
-
+		    // 修改成功提示
+		    redirectAttributes.addFlashAttribute("toastMsg", "修改完成");
 		}
 
 		// 修改完回首頁
@@ -590,16 +595,16 @@ public class MemberController {
 			returnUrl = "/bistroops";
 		}
 
-		// 取得目前登入會員
-		MemberVO member = (MemberVO) session.getAttribute("member");
+		// 從 Session 取得會員編號
+		Integer memNo = (Integer) session.getAttribute("memberNo");
 
 		// 沒有登入
-		if (member == null) {
-			return "redirect:" + returnUrl;
+		if (memNo == null) {
+		    return "redirect:" + returnUrl;
 		}
 
 		// 從資料庫取得最新會員狀態
-		MemberVO currentMember = memberService.getMemNoQuery(member.getMemNo());
+		MemberVO currentMember = memberService.getMemNoQuery(memNo);
 
 		// 未驗證會員禁止修改密碼
 		if (currentMember == null || !"已驗證".equals(currentMember.getMemStatus())) {
@@ -631,9 +636,6 @@ public class MemberController {
 
 			return "redirect:" + returnUrl;
 		}
-
-		// 取得會員編號
-		Integer memNo = member.getMemNo();
 
 		// 修改密碼
 		boolean result = memberService.changePassword(memNo, password);

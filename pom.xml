@@ -80,6 +80,12 @@
 		    <artifactId>spring-boot-starter-data-redis</artifactId>
 		</dependency>
 		
+		<!-- 使用 Redis 儲存 HTTP Session -->
+		<dependency>
+		    <groupId>org.springframework.session</groupId>
+		    <artifactId>spring-session-data-redis</artifactId>
+		</dependency>
+		
 		<!-- Spring Security 密碼雜湊（DelegatingPasswordEncoder，預設使用 BCrypt） -->
 		<dependency>
 		    <groupId>org.springframework.security</groupId>

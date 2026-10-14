@@ -66,6 +66,9 @@ public class EmployeeController {
 
 		// 3. 登入成功，記錄員工編號到 Session
 		session.setAttribute("employeeNo", employee.getEmpNo());
+		session.setMaxInactiveInterval(12 * 60 * 60);
+		session.setAttribute("employeeExpireAt",
+		        System.currentTimeMillis() + 12 * 60 * 60 * 1000L);
 
 		// 4. 回傳登入結果
 		return ResponseEntity.ok(Map.of("message", "登入成功", "empNo", employee.getEmpNo(), "empName",
@@ -104,6 +107,8 @@ public class EmployeeController {
 
 		// 只清除員工登入資訊
 		session.removeAttribute("employeeNo");
+		session.removeAttribute("employeeExpireAt");
+		
 
 		return ResponseEntity.ok(Map.of("message", "登出成功"));
 	}

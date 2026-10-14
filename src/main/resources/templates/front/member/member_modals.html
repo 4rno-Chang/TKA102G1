@@ -349,10 +349,10 @@
 
 					<h2 class="member-greeting" id="memberGreeting">
 						<span
-							th:if="${session.member != null and session.member.memName != null and !session.member.memName.isBlank()}"
-							th:text="${session.member.memName}"></span> <span
-							th:if="${session.member != null and (session.member.memName == null or session.member.memName.isBlank())}"
-							th:text="${session.member.memTel}"></span> 會員，你好
+							th:if="${member != null and member.memName != null and !member.memName.isBlank()}"
+							th:text="${member.memName}"></span> <span
+							th:if="${member != null and (member.memName == null or member.memName.isBlank())}"
+							th:text="${member.memTel}"></span> 會員，你好
 					</h2>
 				</div>
 
@@ -363,13 +363,13 @@
 						<button type="button" data-member-tab="profile">個人資料</button>
 
 						<button type="button" data-member-tab="orders"
-							th:disabled="${session.member == null or session.member.memStatus != '已驗證'}">歷史訂單</button>
+							th:disabled="${member == null or member.memStatus != '已驗證'}">歷史訂單</button>
 
 						<button type="button" data-member-tab="reservations"
-							th:disabled="${session.member == null}">預約紀錄</button>
+							th:disabled="${member == null}">預約紀錄</button>
 
 						<button type="button" data-member-tab="coupons"
-							th:disabled="${session.member == null or session.member.memStatus != '已驗證'}">優惠券</button>
+							th:disabled="${member == null or member.memStatus != '已驗證'}">優惠券</button>
 
 						<button type="button" data-logout>登出</button>
 
@@ -398,14 +398,14 @@
             -->
 							<form id="profileForm" th:action="@{/member/update}"
 								method="post"
-								th:attr="data-birthday=${session.member?.memBirth}" novalidate>
+								th:attr="data-birthday=${member?.memBirth}" novalidate>
 								<input type="hidden" id="profileReturnUrl" name="returnUrl">
 
 								<div class="field">
 									<label for="profileName">姓名</label> <input type="text"
 										id="profileName" name="name" maxlength="20"
-										autocomplete="name" th:value="${session.member?.memName}"
-										th:disabled="${session.member == null or session.member.memStatus != '已驗證'}">
+										autocomplete="name" th:value="${member?.memName}"
+										th:disabled="${member == null or member.memStatus != '已驗證'}">
 									<p class="form-msg error" id="profileNameMsg" hidden>
 										※姓名只能輸入中文或英文</p>
 								</div>
@@ -413,8 +413,8 @@
 								<div class="field">
 									<label for="profileEmail">Email</label> <input type="email"
 										id="profileEmail" name="email" placeholder="填寫可獲取最新消息通知"
-										autocomplete="email" th:value="${session.member?.memMail}"
-										th:disabled="${session.member == null or session.member.memStatus != '已驗證'}">
+										autocomplete="email" th:value="${member?.memMail}"
+										th:disabled="${member == null or member.memStatus != '已驗證'}">
 									<p class="form-msg error" id="profileEmailMsg" hidden>
 										※Email 格式不正確</p>
 								</div>
@@ -424,19 +424,19 @@
 
 									<div class="field-row">
 										<input type="tel" id="profilePhone" name="phone"
-											th:value="${session.member?.memTel}" readonly>
+											th:value="${member?.memTel}" readonly>
 
 										<button type="button" class="btn-small"
 											id="verifyPhoneSendCode"
-											th:if="${session.member != null and session.member.memStatus != '已驗證'}">
+											th:if="${member != null and member.memStatus != '已驗證'}">
 											發送驗證碼</button>
 
 										<span class="field-static verified"
-											th:if="${session.member != null and session.member.memStatus == '已驗證'}">已驗證</span>
+											th:if="${member != null and member.memStatus == '已驗證'}">已驗證</span>
 									</div>
 
 									<div
-										th:if="${session.member != null and session.member.memStatus != '已驗證'}">
+										th:if="${member != null and member.memStatus != '已驗證'}">
 										<label for="verifyPhoneCode">輸入驗證碼</label>
 
 										<div class="field-row">
@@ -456,8 +456,8 @@
 									<label for="profileBarcode">手機條碼載具</label> <input type="text"
 										id="profileBarcode" name="memBarcode" maxlength="8"
 										placeholder="/ABC1234"
-										th:value="${session.member?.memBarcode}"
-										th:disabled="${session.member == null or session.member.memStatus != '已驗證'}">
+										th:value="${member?.memBarcode}"
+										th:disabled="${member == null or member.memStatus != '已驗證'}">
 									<p class="form-msg" id="profileBarcodeMsg" hidden></p>
 								</div>
 
@@ -465,13 +465,13 @@
 									<label for="birthYear">生日</label>
 									<div class="birthday-row">
 										<select id="birthYear" name="birthYear" aria-label="年"
-											th:disabled="${session.member == null or session.member.memStatus != '已驗證'}"></select><span>年</span>
+											th:disabled="${member == null or member.memStatus != '已驗證'}"></select><span>年</span>
 
 										<select id="birthMonth" name="birthMonth" aria-label="月"
-											th:disabled="${session.member == null or session.member.memStatus != '已驗證'}"></select><span>月</span>
+											th:disabled="${member== null or member.memStatus != '已驗證'}"></select><span>月</span>
 
 										<select id="birthDay" name="birthDay" aria-label="日"
-											th:disabled="${session.member == null or session.member.memStatus != '已驗證'}"></select><span>日</span>
+											th:disabled="${member == null or member.memStatus != '已驗證'}"></select><span>日</span>
 									</div>
 								</div>
 
@@ -482,10 +482,10 @@
 
 									<button type="button" class="btn-outline"
 										data-member-tab="password"
-										th:disabled="${session.member == null or session.member.memStatus != '已驗證'}">更改密碼</button>
+										th:disabled="${member == null or member.memStatus != '已驗證'}">更改密碼</button>
 
 									<button type="submit" class="btn-solid"
-										th:disabled="${session.member == null or session.member.memStatus != '已驗證'}">送出</button>
+										th:disabled="${member == null or member.memStatus != '已驗證'}">送出</button>
 
 								</div>
 							</form>
@@ -515,7 +515,7 @@
 
 									<div class="field-row">
 										<span class="field-static" id="changePwPhone"
-											th:text="${session.member?.memTel}">09XXXXXXXX</span>
+											th:text="${member?.memTel}">09XXXXXXXX</span>
 										<button type="button" class="btn-small" id="changePwSendCode">發送驗證碼</button>
 									</div>
 
