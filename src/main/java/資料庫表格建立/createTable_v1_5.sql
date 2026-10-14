@@ -133,16 +133,21 @@ CREATE TABLE IF NOT EXISTS seat_type (
 ) COMMENT '桌型';
 
 -- 訂位, reservation
-CREATE TABLE IF NOT EXISTS reservation (
-  rsv_no INT UNSIGNED AUTO_INCREMENT COMMENT '訂位編號',
-  mem_no INT UNSIGNED NOT NULL COMMENT '會員編號',
-  rsv_dt_no INT UNSIGNED NOT NULL COMMENT '訂位時段編號',
-  seat_type_no INT NOT NULL COMMENT '桌型編號',
-  rsv_create_time DATETIME COMMENT '訂位成立時間',
-  rsv_status VARCHAR(2) COMMENT '狀態',
-  rsv_comment VARCHAR(50) COMMENT '備註',
-  PRIMARY KEY (rsv_no)
-) COMMENT '訂位';
+CREATE TABLE IF NOT EXISTS `reservation` (
+    `rsv_no` INT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '訂位編號',
+    `mem_no` INT UNSIGNED NOT NULL COMMENT '會員編號',
+    `rsv_dt_no` INT NOT NULL COMMENT '訂位時段編號',
+    `seat_type_no` INT NOT NULL COMMENT '桌型編號',
+    `rsv_name` VARCHAR(30) DEFAULT NULL COMMENT '訂位聯絡姓名',
+    `rsv_create_time` DATETIME DEFAULT NULL COMMENT '訂位成立時間',
+    `rsv_status` VARCHAR(2) DEFAULT NULL COMMENT '狀態',
+    `rsv_comment` VARCHAR(50) DEFAULT NULL COMMENT '備註',
+
+    PRIMARY KEY (`rsv_no`)
+) ENGINE=InnoDB
+  DEFAULT CHARSET=utf8mb4
+  COLLATE=utf8mb4_0900_ai_ci
+  COMMENT='訂位';
 
 -- 訂位時段, reservation_datetime
 CREATE TABLE IF NOT EXISTS reservation_datetime (
@@ -177,23 +182,28 @@ CREATE TABLE IF NOT EXISTS seat (
 ) COMMENT = '桌位';
 
 -- 會員, member
-CREATE TABLE IF NOT EXISTS member (
-  mem_no INT UNSIGNED AUTO_INCREMENT COMMENT '會員編號',
-  mem_tel CHAR(10) NOT NULL COMMENT '電話',
-  mem_name VARCHAR(30) COMMENT '姓名',
-  mem_account VARCHAR(16) COMMENT '帳號',
-  mem_password VARCHAR(100) COMMENT '密碼',
-  mem_mail VARCHAR(30) COMMENT 'Email',
-  mem_barcode CHAR(8) COMMENT '載具條碼',
-  mem_tag VARCHAR(50) COMMENT '客戶備註',
-  mem_birth DATE COMMENT '生日',
-  mem_fb VARCHAR(32) COMMENT '臉書',
-  mem_line VARCHAR(32) COMMENT 'Line',
-  mem_goo VARCHAR(32) COMMENT 'Google',
-  mem_x VARCHAR(32) COMMENT 'X(推特)',
-  mem_status VARCHAR(3) COMMENT '會員狀態',
-  PRIMARY KEY(mem_no)
-) COMMENT '會員';
+CREATE TABLE IF NOT EXISTS `member` (
+    `mem_no` INT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '會員編號',
+    `mem_tel` CHAR(10) NOT NULL COMMENT '電話',
+    `mem_name` VARCHAR(30) DEFAULT NULL COMMENT '姓名',
+    `mem_account` VARCHAR(16) DEFAULT NULL COMMENT '帳號',
+    `mem_password` VARCHAR(100) DEFAULT NULL COMMENT '密碼',
+    `mem_mail` VARCHAR(30) DEFAULT NULL COMMENT 'Email',
+    `mem_barcode` CHAR(8) DEFAULT NULL COMMENT '載具條碼',
+    `mem_tag` VARCHAR(50) DEFAULT NULL COMMENT '客戶備註',
+    `mem_birth` DATE DEFAULT NULL COMMENT '生日',
+    `mem_fb` VARCHAR(32) DEFAULT NULL COMMENT '臉書',
+    `mem_line` VARCHAR(32) DEFAULT NULL COMMENT 'Line',
+    `mem_goo` VARCHAR(32) DEFAULT NULL COMMENT 'Google',
+    `mem_x` VARCHAR(32) DEFAULT NULL COMMENT 'X（推特）',
+    `mem_status` VARCHAR(3) DEFAULT NULL COMMENT '會員狀態',
+
+    PRIMARY KEY (`mem_no`),
+    UNIQUE KEY `uk_member_tel` (`mem_tel`)
+) ENGINE=InnoDB
+  DEFAULT CHARSET=utf8mb4
+  COLLATE=utf8mb4_0900_ai_ci
+  COMMENT='會員';
 
 -- 回饋, feedback
 CREATE TABLE IF NOT EXISTS feedback(
