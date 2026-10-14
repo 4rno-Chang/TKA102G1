@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import com.bistroops.seattype.model.SeatTypeService;
+import com.bistroops.waiting.model.WaitingUnavailableException;
 
 /*
  * 入座管理 /staff/seating
@@ -77,13 +78,14 @@ public class SeatTypeController {
 	}
 
 	@PostMapping("/waiting")
-	public String waiting(@RequestParam String seatNo, @RequestParam(required = false) Long waitingNo,
+	public String waiting(@RequestParam String seatNo, @RequestParam(required = false) String ticketId,
+			@RequestParam(defaultValue = "") String ticketNumber,
 			@RequestParam(defaultValue = "all") String type, @RequestParam(defaultValue = "floor") String view,
 			@RequestParam(defaultValue = "all") String state,
 			@RequestParam(defaultValue = "all") String focus, RedirectAttributes ra) {
 		return act(ra, seatNo, type, state, focus, view, () -> {
-			seatTypeService.seatWaiting(seatNo, waitingNo);
-			return seatNo + "：候位入座，候位 #" + waitingNo + " 改成「已入座」";
+			seatTypeService.seatWaiting(seatNo, ticketId);
+			return seatNo + "：候位入座，號碼 " + ticketNumber + " 改成「已入座」";
 		});
 	}
 
@@ -138,7 +140,8 @@ public class SeatTypeController {
 			Supplier<String> action) {
 		try {
 			ra.addFlashAttribute("message", action.get());
-		} catch (IllegalArgumentException | IllegalStateException e) {
+		} catch (IllegalArgumentException | IllegalStateException | WaitingUnavailableException e) {
+			// WaitingUnavailableException：Redis 候位連不上，顯示 CJ 寫好的中文訊息
 			ra.addFlashAttribute("error", e.getMessage());
 		} catch (RuntimeException e) {
 			log.error("入座管理操作失敗", e);

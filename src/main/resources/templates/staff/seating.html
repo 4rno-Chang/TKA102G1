@@ -429,36 +429,40 @@
              and !#lists.isEmpty(panel.waiting)}">
 
 					<summary class="staff-btn btn-pay"
-						th:text="|當日候位（${#lists.size(panel.waiting)}）|"> </summary>
+						th:text="|候位入座（${#lists.size(panel.waiting)}）|"> </summary>
 
-					<div class="pick-list">
-						<div class="pick" th:each="wait : ${panel.waiting}">
-							<b th:text="${wait.number}"></b> <span> <th:block
-									th:text="${#strings.isEmpty(wait.name)
+					<!-- 按一組候位就送出：ticketId 是 Redis 號碼牌的識別碼；ticketNumber（例如 2-001）只用來顯示成功訊息 -->
+					<form th:action="@{/staff/seating/waiting}" method="post">
+						<input type="hidden" name="seatNo" th:value="${panel.no}">
+						<input type="hidden" name="type" th:value="${page.filter}">
+						<input type="hidden" name="state" th:value="${page.state}">
+						<input type="hidden" name="focus" th:value="${page.focus}">
+						<input type="hidden" name="view" th:value="${page.view}">
+						<div class="pick-list">
+							<button type="submit" class="pick" name="ticketId"
+								th:each="wait : ${panel.waiting}" th:value="${wait.no}"
+								th:formaction="@{/staff/seating/waiting(ticketNumber=${wait.number})}">
+								<b th:text="${wait.number}"></b> <span> <th:block
+										th:text="${#strings.isEmpty(wait.name)
                     ? '未填姓名' : wait.name}">
-								</th:block> <br> <small
-								th:text="${#strings.isEmpty(wait.note)
+									</th:block> <br> <small
+									th:text="${#strings.isEmpty(wait.note)
                     ? '無備註' : wait.note}">
-							</small>
-							</span> <small th:text="${wait.status}"></small>
+								</small>
+								</span> <small th:text="${wait.status}"></small>
+							</button>
 						</div>
-					</div>
-
-					<p class="form-msg">此處顯示同桌型的 Redis 候位資料，實際分桌尚未串接。</p>
+					</form>
 
 					<a class="staff-btn" th:href="@{/bistroops/waiting/manage}">
 						前往候位管理 </a>
 				</details>
 
-				<button type="button" class="staff-btn btn-pay"
-					th:if="${page.waitingAvailable
-            and #lists.isEmpty(panel.waiting)}"
-					disabled>當日有效候位（0）</button>
-
 				<p class="form-msg error" th:if="${!page.waitingAvailable}">
 					候位資料暫時無法讀取，請勿將其視為沒有候位。</p>
+				<!-- Redis 連不上時不顯示（0）：那時是「不知道有幾組」，不是 0 組 -->
 				<button type="button" class="staff-btn btn-pay"
-					th:if="${#lists.isEmpty(panel.waiting)}" disabled>候位入座（0）</button>
+					th:if="${page.waitingAvailable and #lists.isEmpty(panel.waiting)}" disabled>候位入座（0）</button>
 
 				<form th:action="@{/staff/seating/walk-in}" method="post"
 					th:data-confirm="${panel.walkConfirm}">
