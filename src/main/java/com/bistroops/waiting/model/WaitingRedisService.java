@@ -33,6 +33,9 @@ public class WaitingRedisService {
 	private static final Set<String> ALL_STATUSES = Set.of("WAITING", "NOTIFIED", "SEATED", "MISSED", "CANCELLED");
 
 	private final StringRedisTemplate redisTemplate;
+	private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(WaitingRedisService.class);
+
+	private long lastSweepWarningAt;
 	private final DefaultRedisScript<String> operationScript;
 
 	private final Gson gson = new Gson();
@@ -345,5 +348,23 @@ public class WaitingRedisService {
 
 	private int length(String value) {
 		return value.codePointCount(0, value.length());
+	}
+
+	@org.springframework.scheduling.annotation.Scheduled(fixedDelay = 1000)
+	public void expireNotifiedTickets() {
+
+		try {
+			for (Integer tableType : List.of(2, 4, 6)) {
+				execute("SWEEP", tableType, "", "", "", "", "");
+			}
+
+		} catch (WaitingUnavailableException ex) {
+			long now = System.currentTimeMillis();
+
+			if (now - lastSweepWarningAt >= 60000) {
+				lastSweepWarningAt = now;
+				log.warn("候位自動過號暫停：{}", ex.getMessage());
+			}
+		}
 	}
 }

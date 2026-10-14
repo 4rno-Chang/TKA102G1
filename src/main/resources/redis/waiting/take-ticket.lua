@@ -19,6 +19,7 @@ local ticketId = ARGV[6]
 local token = ARGV[7]
 
 local allowedOperations = {
+	SWEEP = true,
     TAKE = true,
     LIST = true,
     GET = true,
@@ -129,7 +130,34 @@ local function endTicket(ticket, status)
 
     return raw
 end
+-- 所有操作前先處理已超時的叫號。
+local expiredCount = 0
 
+local activeIds = redis.call("ZRANGE", KEYS[4], 0, -1)
+
+for _, id in ipairs(activeIds) do
+    local ticket = readTicket(id)
+
+    if ticket and ticket.status == "NOTIFIED" then
+        local deadline = tonumber(ticket.notifyDeadline) or 0
+        local notifiedAt = tonumber(ticket.notifiedAt) or 0
+
+        -- 相容之前尚未設定期限的叫號資料。
+        if deadline <= 0 and notifiedAt > 0 then
+            deadline = notifiedAt + 60000
+            ticket.notifyDeadline = deadline
+        end
+
+        if deadline > 0 and nowMillis >= deadline then
+            endTicket(ticket, "MISSED")
+            expiredCount = expiredCount + 1
+        end
+    end
+end
+
+if operation == "SWEEP" then
+    return "OK|" .. tostring(expiredCount)
+end
 -- 原子取號。
 if operation == "TAKE" then
     local existingId = redis.call(
@@ -230,8 +258,8 @@ if operation == "NOTIFY" then
     nextTicket.status = "NOTIFIED"
     nextTicket.notifiedAt = nowMillis
 
-    -- 不設定自動過號期限。
-    nextTicket.notifyDeadline = 0
+	-- 人工叫號後60秒自動過號。
+	nextTicket.notifyDeadline = nowMillis + 60000
 
     local raw = saveTicket(nextTicket)
 
