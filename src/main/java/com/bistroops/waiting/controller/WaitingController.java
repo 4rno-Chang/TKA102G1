@@ -1,169 +1,355 @@
 package com.bistroops.waiting.controller;
 
-import java.util.HashSet;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
-import org.springframework.http.HttpStatus;
 
-import com.bistroops.member.model.MemberVO;
-import com.bistroops.waiting.model.WaitingService;
-import com.bistroops.waiting.model.WaitingVO;
+import com.bistroops.employee.model.EmployeeService;
+import com.bistroops.waiting.model.WaitingRedisService;
+import com.bistroops.waiting.model.WaitingTicket;
+import com.bistroops.waiting.model.WaitingUnavailableException;
 
 import jakarta.servlet.http.HttpSession;
-
-import java.time.LocalTime;
-import java.time.format.DateTimeFormatter;
 
 @Controller
 @RequestMapping("/bistroops/waiting")
 public class WaitingController {
 
-	private final WaitingService waitingService;
+	private static final ZoneId BUSINESS_ZONE = ZoneId.of("Asia/Taipei");
+	private static final List<Integer> TABLE_TYPES = List.of(2, 4, 6);
 
-	public WaitingController(WaitingService waitingService) {
-		this.waitingService = waitingService;
+	private final WaitingRedisService waitingRedisService;
+	private final EmployeeService employeeService;
+
+	public WaitingController(WaitingRedisService waitingRedisService, EmployeeService employeeService) {
+
+		this.waitingRedisService = waitingRedisService;
+		this.employeeService = employeeService;
 	}
 
-	@RequestMapping(value = "/join", method = RequestMethod.GET)
+	@GetMapping("/join")
 	public String showJoin(@RequestParam(name = "tableType", defaultValue = "2") Integer tableType, HttpSession session,
 			Model model) {
 
-		if (!Set.of(2, 4, 6).contains(tableType)) {
-			tableType = 2;
+		model.addAttribute("tableType", TABLE_TYPES.contains(tableType) ? tableType : 2);
+
+		model.addAttribute("waitingCsrfToken", csrfToken(session));
+
+		try {
+			model.addAttribute("queues", queues());
+			model.addAttribute("open", true);
+
+		} catch (WaitingUnavailableException ex) {
+			model.addAttribute("queues", List.of());
+			model.addAttribute("open", false);
+			model.addAttribute("error", ex.getMessage());
 		}
 
-		prepareJoin(model, session, tableType);
 		return "front/waiting/waiting_join";
 	}
 
-	@RequestMapping(value = "/join", method = RequestMethod.POST)
-	public String join(@RequestParam(name = "tableType", required = false) Integer tableType,
-
-			@RequestParam(name = "name", defaultValue = "") String name,
-
+	@PostMapping("/join")
+	public String join(@RequestParam(name = "tableType") Integer tableType,
 			@RequestParam(name = "phone", defaultValue = "") String phone,
-
+			@RequestParam(name = "name", defaultValue = "") String name,
 			@RequestParam(name = "note", defaultValue = "") String note,
-
-			@RequestParam(name = "waitingCsrfToken", required = false) String csrfToken,
-
-			HttpSession session, Model model, RedirectAttributes redirectAttributes) {
-
-		String expected = (String) session.getAttribute("waitingCsrfToken");
-
-		if (expected == null || !expected.equals(csrfToken)) {
-			throw new ResponseStatusException(HttpStatus.FORBIDDEN, "表單驗證失敗，請重新開啟取號頁面");
-		}
-
-		MemberVO member = (MemberVO) session.getAttribute("member");
-
-		Integer memNo = member == null ? null : member.getMemNo();
+			@RequestParam(name = "waitingCsrfToken", defaultValue = "") String token, HttpSession session,
+			RedirectAttributes redirect) {
 
 		try {
-			WaitingVO waiting = waitingService.addWaiting(memNo, tableType, phone, name, note);
+			checkToken(session, token);
 
-			allowedTickets(session).add(waiting.getWaitingNo());
+		} catch (ResponseStatusException ex) {
+			if (ex.getStatusCode().value() != 403) {
+				throw ex;
+			}
 
-			redirectAttributes.addAttribute("waitingNo", waiting.getWaitingNo());
+			redirect.addFlashAttribute("error", "頁面已失效，已重新載入，請確認資料後再次送出");
+
+			redirect.addFlashAttribute("phone", phone);
+			redirect.addFlashAttribute("name", name);
+			redirect.addFlashAttribute("note", note);
+			redirect.addAttribute("tableType", tableType);
+
+			return "redirect:/bistroops/waiting/join";
+		}
+
+		try {
+			WaitingTicket ticket = waitingRedisService.takeTicket(tableType, phone, name, note);
+
+			session.setAttribute(ticketSessionKey(ticket.date(), ticket.tableType(), ticket.ticketId()),
+					ticket.accessToken());
+
+			redirect.addAttribute("date", ticket.date());
+			redirect.addAttribute("tableType", ticket.tableType());
+			redirect.addAttribute("ticketId", ticket.ticketId());
 
 			return "redirect:/bistroops/waiting/ticket";
 
-		} catch (IllegalArgumentException ex) {
-			model.addAttribute("error", ex.getMessage());
-			model.addAttribute("name", name);
-			model.addAttribute("phone", phone);
-			model.addAttribute("note", note);
+		} catch (IllegalArgumentException | WaitingUnavailableException ex) {
+			redirect.addFlashAttribute("error", ex.getMessage());
+			redirect.addFlashAttribute("phone", phone);
+			redirect.addFlashAttribute("name", name);
+			redirect.addFlashAttribute("note", note);
+			redirect.addAttribute("tableType", tableType);
 
-			Integer selected = tableType != null && Set.of(2, 4, 6).contains(tableType) ? tableType : 2;
-
-			prepareJoin(model, session, selected);
-			return "front/waiting/waiting_join";
+			return "redirect:/bistroops/waiting/join";
 		}
 	}
 
-	@RequestMapping(value = "/ticket", method = RequestMethod.GET)
-	public String showTicket(@RequestParam("waitingNo") Long waitingNo, HttpSession session, Model model) {
+	@GetMapping("/ticket")
+	public String showTicket(@RequestParam(name = "date") String date,
+			@RequestParam(name = "tableType") Integer tableType, @RequestParam(name = "ticketId") String ticketId,
+			HttpSession session, Model model, RedirectAttributes redirect) {
 
-		// 本階段只允許從同一個瀏覽器查看自己剛取得的號碼牌。
-		if (!allowedTickets(session).contains(waitingNo)) {
-			throw new ResponseStatusException(HttpStatus.FORBIDDEN, "無法查看這張號碼牌");
+		try {
+			WaitingTicket ticket = ownedTicket(session, date, tableType, ticketId);
+
+			model.addAttribute("ticket", ticketView(ticket));
+			model.addAttribute("ahead",
+					waitingRedisService.isActive(ticket) ? waitingRedisService.countAhead(ticket) : 0);
+
+			model.addAttribute("waitingCsrfToken", csrfToken(session));
+
+			return "front/waiting/waiting_ticket";
+
+		} catch (IllegalArgumentException | WaitingUnavailableException ex) {
+			redirect.addFlashAttribute("error", ex.getMessage());
+
+			return "redirect:/bistroops/waiting";
+		}
+	}
+
+	@PostMapping("/cancel")
+	public String cancel(@RequestParam(name = "date") String date, @RequestParam(name = "tableType") Integer tableType,
+			@RequestParam(name = "ticketId") String ticketId, @RequestParam(name = "waitingCsrfToken") String token,
+			HttpSession session, RedirectAttributes redirect) {
+
+		checkToken(session, token);
+
+		try {
+			WaitingTicket ticket = ownedTicket(session, date, tableType, ticketId);
+
+			waitingRedisService.cancelByTicket(date, tableType, ticketId, ticket.accessToken());
+
+			redirect.addFlashAttribute("message", "候位已取消");
+
+		} catch (IllegalArgumentException | WaitingUnavailableException ex) {
+			redirect.addFlashAttribute("error", ex.getMessage());
 		}
 
-		WaitingVO waiting = waitingService.getOneWaiting(waitingNo);
+		redirect.addAttribute("date", date);
+		redirect.addAttribute("tableType", tableType);
+		redirect.addAttribute("ticketId", ticketId);
 
-		boolean active = WaitingService.WAITING.equals(waiting.getWaitingStatus())
-				|| WaitingService.NOTIFIED.equals(waiting.getWaitingStatus());
-
-		model.addAttribute("waiting", waiting);
-		model.addAttribute("active", active);
-		model.addAttribute("ahead", active ? waitingService.countAhead(waitingNo) : 0);
-
-		return "front/waiting/waiting_ticket";
+		return "redirect:/bistroops/waiting/ticket";
 	}
 
-	private void prepareJoin(Model model, HttpSession session, Integer tableType) {
+	@GetMapping
+	public String showStatus(@RequestParam(name = "lookupPhone", required = false) String lookupPhone, Model model) {
 
-		if (session.getAttribute("waitingCsrfToken") == null) {
-			session.setAttribute("waitingCsrfToken", UUID.randomUUID().toString());
+		model.addAttribute("manage", false);
+		prepareStatus(model);
+
+		model.addAttribute("lookupPhone", lookupPhone == null ? "" : lookupPhone.trim());
+
+		model.addAttribute("lookupPerformed", lookupPhone != null);
+		model.addAttribute("lookupTickets", List.of());
+
+		if (lookupPhone != null) {
+			try {
+				String phone = lookupPhone.trim();
+
+				if (!phone.matches("09[0-9]{8}")) {
+					throw new IllegalArgumentException("請輸入09開頭的10碼手機號碼");
+				}
+
+				List<Map<String, Object>> tickets = TABLE_TYPES.stream()
+						.flatMap(type -> waitingRedisService.getTodayTickets(type).stream())
+						.filter(ticket -> phone.equals(ticket.phone()))
+						.sorted(java.util.Comparator.comparingLong(WaitingTicket::takenAt)).map(this::ticketView)
+						.toList();
+
+				model.addAttribute("lookupTickets", tickets);
+
+			} catch (IllegalArgumentException | WaitingUnavailableException ex) {
+				model.addAttribute("error", ex.getMessage());
+			}
 		}
-
-		List<Map<String, Object>> queues = List.of(queue(2), queue(4), queue(6));
-
-		// 目前先開放測試；營業時間與停止取號規則之後集中處理。
-		model.addAttribute("open", true);
-		model.addAttribute("queues", queues);
-		model.addAttribute("tableType", tableType);
-		model.addAttribute("waitingCsrfToken", session.getAttribute("waitingCsrfToken"));
-	}
-
-	private Map<String, Object> queue(Integer tableType) {
-		return Map.of("tableType", tableType, "waitingCount", waitingService.countActiveBySeatType(tableType),
-				"estimate", "請洽現場人員");
-	}
-
-	@SuppressWarnings("unchecked")
-	private Set<Long> allowedTickets(HttpSession session) {
-		Set<Long> tickets = (Set<Long>) session.getAttribute("waitingTickets");
-
-		if (tickets == null) {
-			tickets = new HashSet<>();
-			session.setAttribute("waitingTickets", tickets);
-		}
-
-		return tickets;
-	}
-
-	@RequestMapping(value = "", method = RequestMethod.GET)
-	public String showStatus(Model model) {
-
-		model.addAttribute("open", true);
-
-		model.addAttribute("queues", List.of(statusQueue(2), statusQueue(4), statusQueue(6)));
-
-		model.addAttribute("refreshTime", LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss")));
 
 		return "front/waiting/waiting_status";
 	}
 
-	private Map<String, Object> statusQueue(Integer tableType) {
+	// 組員測試用管理入口，必須登入有效員工帳號。
+	@GetMapping("/manage")
+	public String showManage(HttpSession session, Model model) {
 
-		List<WaitingVO> active = waitingService.getActiveBySeatType(tableType);
+		requireEmployee(session);
 
-		List<Long> notifiedNumbers = active.stream()
-				.filter(waiting -> WaitingService.NOTIFIED.equals(waiting.getWaitingStatus()))
-				.map(WaitingVO::getWaitingNo).toList();
+		model.addAttribute("manage", true);
+		model.addAttribute("waitingCsrfToken", csrfToken(session));
+		model.addAttribute("staffTickets", List.of());
 
-		return Map.of("tableType", tableType, "waitingCount", active.size(), "notifiedNumbers", notifiedNumbers,
-				"estimate", "請洽現場人員");
+		prepareStatus(model);
+
+		try {
+			List<Map<String, Object>> tickets = TABLE_TYPES.stream()
+					.flatMap(type -> waitingRedisService.getTodayTickets(type).stream()).map(this::ticketView).toList();
+
+			model.addAttribute("staffTickets", tickets);
+
+		} catch (WaitingUnavailableException ex) {
+			model.addAttribute("open", false);
+			model.addAttribute("error", ex.getMessage());
+		}
+
+		return "front/waiting/waiting_status";
+	}
+
+	@PostMapping("/manage/action")
+	public String manageAction(@RequestParam(name = "operation") String operation,
+			@RequestParam(name = "tableType") Integer tableType,
+			@RequestParam(name = "ticketId", defaultValue = "") String ticketId,
+			@RequestParam(name = "note", defaultValue = "") String note,
+			@RequestParam(name = "waitingCsrfToken") String token, HttpSession session, RedirectAttributes redirect) {
+
+		requireEmployee(session);
+		checkToken(session, token);
+
+		try {
+			switch (operation) {
+			case "NOTIFY" -> waitingRedisService.notifyNext(tableType);
+			case "MISS" -> waitingRedisService.missWaiting(tableType, ticketId);
+			case "SEAT" -> waitingRedisService.seatWaiting(tableType, ticketId);
+			case "CANCEL" -> waitingRedisService.cancelByStaff(tableType, ticketId);
+			case "COMMENT" -> waitingRedisService.updateCommentByStaff(tableType, ticketId, note);
+			default -> throw new IllegalArgumentException("不支援的候位操作");
+			}
+
+			redirect.addFlashAttribute("message", "候位資料已更新");
+
+		} catch (IllegalArgumentException | WaitingUnavailableException ex) {
+			redirect.addFlashAttribute("error", ex.getMessage());
+		}
+
+		return "redirect:/bistroops/waiting/manage";
+	}
+
+	private void prepareStatus(Model model) {
+
+		model.addAttribute("refreshTime", LocalTime.now(BUSINESS_ZONE).format(DateTimeFormatter.ofPattern("HH:mm:ss")));
+
+		try {
+			model.addAttribute("queues", queues());
+			model.addAttribute("open", true);
+
+		} catch (WaitingUnavailableException ex) {
+			model.addAttribute("queues", List.of());
+			model.addAttribute("open", false);
+			model.addAttribute("error", ex.getMessage());
+		}
+	}
+
+	private List<Map<String, Object>> queues() {
+
+		return TABLE_TYPES.stream().map(type -> {
+			Map<String, Object> queue = new LinkedHashMap<>(waitingRedisService.getPublicSummary(type));
+
+			queue.put("estimate", "請洽現場人員");
+
+			return queue;
+		}).toList();
+	}
+
+	private Map<String, Object> ticketView(WaitingTicket ticket) {
+
+		Map<String, Object> result = new LinkedHashMap<>();
+
+		result.put("date", ticket.date());
+		result.put("tableType", ticket.tableType());
+		result.put("ticketId", ticket.ticketId());
+		result.put("number", ticket.getTicketDisplay());
+		result.put("name", ticket.name());
+		result.put("phone", ticket.phone());
+		result.put("note", ticket.note());
+		result.put("status", ticket.status());
+		result.put("statusText", ticket.getStatusText());
+		result.put("notifyDeadline", ticket.notifyDeadline());
+		result.put("active", waitingRedisService.isActive(ticket));
+
+		// 不放入號碼牌操作憑證。
+		return result;
+	}
+
+	private WaitingTicket ownedTicket(HttpSession session, String date, Integer tableType, String ticketId) {
+
+		Object stored = session.getAttribute(ticketSessionKey(date, tableType, ticketId));
+
+		if (!(stored instanceof String accessToken)) {
+			throw new IllegalArgumentException("無法查看這張號碼牌，請使用電話查詢");
+		}
+
+		return waitingRedisService.getTicket(date, tableType, ticketId, accessToken);
+	}
+
+	private String ticketSessionKey(String date, Integer tableType, String ticketId) {
+
+		return "waitingRedisTicket:" + date + ":" + tableType + ":" + ticketId;
+	}
+
+	private String csrfToken(HttpSession session) {
+
+		synchronized (session) {
+			Object stored = session.getAttribute("waitingCsrfToken");
+
+			if (stored instanceof String token) {
+				return token;
+			}
+
+			String token = UUID.randomUUID().toString();
+			session.setAttribute("waitingCsrfToken", token);
+
+			return token;
+		}
+	}
+
+	private void checkToken(HttpSession session, String token) {
+
+		Object expected = session.getAttribute("waitingCsrfToken");
+
+		if (!(expected instanceof String) || token == null || !token.equals(expected)) {
+
+			throw new ResponseStatusException(HttpStatus.FORBIDDEN, "表單已失效，請重新開啟頁面");
+		}
+	}
+
+	private void requireEmployee(HttpSession session) {
+
+		Object stored = session.getAttribute("employeeNo");
+
+		if (!(stored instanceof Integer employeeNo)) {
+			throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "請先登入員工帳號");
+		}
+
+		var employee = employeeService.getEmployeeById(employeeNo).orElse(null);
+
+		if (employee == null || !"1".equals(employee.getEmpStatus())) {
+			throw new ResponseStatusException(HttpStatus.FORBIDDEN, "員工帳號無法執行操作");
+		}
 	}
 }

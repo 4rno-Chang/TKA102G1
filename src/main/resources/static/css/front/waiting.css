@@ -520,3 +520,7 @@
   .waiting-bar { padding: 18px 20px; }
   .waiting-bar .btn-outline { width: 100%; }
 }
+.waiting-note {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
