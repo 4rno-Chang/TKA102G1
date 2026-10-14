@@ -143,4 +143,16 @@ public interface ReservationRepository extends JpaRepository<ReservationVO, Long
 	List<ReservationAvailabilityRow> findAvailability(@Param("now") LocalDateTime now,
 			@Param("endExclusive") LocalDateTime endExclusive);
 
+	// 依會員電話，查詢今天起的訂位。
+	// 只在後端使用，不能把實體直接回傳給公開查詢頁。
+	@EntityGraph(attributePaths = { "rsvDt", "seatType" })
+	@Query("""
+			SELECT r
+			FROM ReservationVO r
+			WHERE r.member.memTel = :phone
+			  AND r.rsvDt.rsvDtDatetime >= :fromTime
+			ORDER BY r.rsvDt.rsvDtDatetime ASC, r.rsvNo ASC
+			""")
+	List<ReservationVO> findUpcomingByPhone(@Param("phone") String phone, @Param("fromTime") LocalDateTime fromTime);
+
 }

@@ -63,17 +63,27 @@
 
 						<div class="field">
 							<label for="loginPassword">密碼</label>
+
 							<div class="input-wrap">
 								<input type="password" id="loginPassword" name="password"
 									autocomplete="current-password">
+
 								<button type="button" class="pw-toggle" data-pw-toggle
 									aria-label="顯示密碼">
 									<svg viewBox="0 0 24 24" aria-hidden="true">
-										<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" />
-										<circle cx="12" cy="12" r="3" />
-										<line class="slash" x1="4" y1="4" x2="20" y2="20" /></svg>
+                <path
+											d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" />
+                <circle cx="12" cy="12" r="3" />
+                <line class="slash" x1="4" y1="4" x2="20" y2="20" />
+            </svg>
 								</button>
 							</div>
+
+							<p id="loginDefaultPasswordHint"
+								th:attr="data-check-url=@{/member/default-password-hint}"
+								aria-live="polite" hidden
+								style="margin: 10px 0 0; color: #b88636; font-size: 14px; line-height: 1.6;">
+								您的電話有註冊過，密碼為預設"00000000"</p>
 						</div>
 
 						<div class="field">
@@ -421,7 +431,8 @@
 											th:if="${session.member != null and session.member.memStatus != '已驗證'}">
 											發送驗證碼</button>
 
-										<span class="field-static verified" th:if="${session.member != null and session.member.memStatus == '已驗證'}">已驗證</span>
+										<span class="field-static verified"
+											th:if="${session.member != null and session.member.memStatus == '已驗證'}">已驗證</span>
 									</div>
 
 									<div
@@ -599,15 +610,16 @@
                   </div>
                 </div>
 
-            <!--   日期要顯示成「2026年09月20日」的話，可以用 #temporals.format(order.date, 'yyyy年MM月dd日')
+							<!--   日期要顯示成「2026年09月20日」的話，可以用 #temporals.format(order.date, 'yyyy年MM月dd日')
               （欄位是 LocalDate / LocalDateTime 時）或 #dates.format(...)（欄位是 java.util.Date 時）。
               合計 order.total 請在 Java 那邊算好。
 
               注意：這個對話框每個頁面都會放，所以「每個頁面的 Controller」都要把 orders 等清單放進 Model。
               不想每個 Controller 都寫一次的話，可以另外寫一個加了 @ControllerAdvice 的類別，
               裡面用 @ModelAttribute("orders") 的方法回傳清單，所有頁面就都會有。 -->
-            
-						<!-- 假資料 -->	<!-- <div class="record-list" id="ordersList"></div> -->
+
+							<!-- 假資料 -->
+							<!-- <div class="record-list" id="ordersList"></div> -->
 						</section>
 
 						<!-- ---------- 預約紀錄（內容由 member.js 產生） ---------- -->
@@ -741,6 +753,101 @@
 
 		<!-- 操作結果的小提示（例如「修改成功」） -->
 		<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+		<script>
+(() => {
+    function initializeDefaultPasswordHint() {
+        const phoneInput = document.getElementById('loginPhone');
+        const hint = document.getElementById('loginDefaultPasswordHint');
+
+        if (!phoneInput || !hint || phoneInput.dataset.hintInitialized) {
+            return;
+        }
+
+        phoneInput.dataset.hintInitialized = 'true';
+
+        let timer;
+        let requestController;
+        let revision = 0;
+
+        function scheduleCheck() {
+            clearTimeout(timer);
+            requestController?.abort();
+
+            const currentRevision = ++revision;
+            const phone = phoneInput.value.trim();
+
+            hint.hidden = true;
+
+            if (!/^09[0-9]{8}$/.test(phone)) {
+                return;
+            }
+
+            timer = setTimeout(async () => {
+                requestController = new AbortController();
+
+                try {
+                    const url = new URL(
+                        hint.dataset.checkUrl,
+                        window.location.href
+                    );
+
+                    url.searchParams.set('phone', phone);
+
+                    const response = await fetch(url, {
+                        signal: requestController.signal,
+                        credentials: 'same-origin',
+                        cache: 'no-store',
+                        headers: {
+                            'Accept': 'application/json'
+                        }
+                    });
+
+                    if (!response.ok) {
+                        return;
+                    }
+
+                    const result = await response.json();
+
+                    // 避免較早的查詢結果顯示在另一支電話下方
+                    if (revision === currentRevision
+                            && phoneInput.value.trim() === phone) {
+                        hint.hidden = result.showHint !== true;
+                    }
+                } catch (error) {
+                    if (revision === currentRevision) {
+                        hint.hidden = true;
+                    }
+                }
+            }, 600);
+        }
+
+        phoneInput.addEventListener('input', scheduleCheck);
+        phoneInput.addEventListener('change', scheduleCheck);
+        phoneInput.addEventListener('focus', scheduleCheck);
+
+        phoneInput.form?.addEventListener('reset', () => {
+            clearTimeout(timer);
+            requestController?.abort();
+            revision++;
+            hint.hidden = true;
+        });
+
+        scheduleCheck();
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener(
+            'DOMContentLoaded',
+            initializeDefaultPasswordHint,
+            { once: true }
+        );
+    } else {
+        initializeDefaultPasswordHint();
+    }
+})();
+</script>
+
 
 	</div>
 
