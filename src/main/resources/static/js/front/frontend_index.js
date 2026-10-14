@@ -39,7 +39,8 @@ function goTo(index) {
   track.style.transform = `translateX(-${current * 100}%)`;
   dots.forEach((d, i) => d.classList.toggle('active', i === current));
 }
-function start()   { timer = setInterval(() => goTo(current + 1), 4000); }
+// 先 stop()：避免同時有兩個計時器（例如滑鼠在輪播上點了箭頭，移出時又 start 一次），換張的間隔會忽快忽慢
+function start()   { stop(); timer = setInterval(() => goTo(current + 1), 4000); }
 function stop()    { clearInterval(timer); }
 function restart() { stop(); start(); }
 

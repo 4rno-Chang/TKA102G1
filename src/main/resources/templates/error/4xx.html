@@ -1,0 +1,4 @@
+<!DOCTYPE html>
+<!-- 其他 4xx 錯誤的通用頁（沒有專屬頁面的狀態碼，例如將來加 Security 後的 401、403），錯誤碼顯示實際的 status。版型在 error_layout.html -->
+<html xmlns:th="http://www.thymeleaf.org"
+  th:replace="~{error/error_layout :: page(${status}, '無法完成這個請求', '這個請求無法處理，請確認網址或重新操作。', false)}"></html>

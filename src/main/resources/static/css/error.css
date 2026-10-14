@@ -1,0 +1,83 @@
+/* =========================================================
+   錯誤頁（templates/error/*.html，版型 error_layout.html）
+   顏色、字型和前台 front.css 的變數一樣，但這裡自己寫一份，不載入 front.css：
+   錯誤頁本身要盡量不依賴其他檔案，避免出錯時連錯誤頁也顯示不出來。
+   ========================================================= */
+
+:root {
+  --error-bg: #fbf8f2;          /* 象牙白底（front.css 的 --color-bg） */
+  --error-text: #26221d;        /* 深墨色文字 */
+  --error-text-light: #766e62;
+  --error-primary: #9a7a3c;     /* 香檳金 */
+  --error-gold: #c2a165;        /* 亮金：細線 */
+  --error-ink: #23201c;
+  --error-serif: "Cormorant Garamond", "Noto Serif TC", Georgia, serif;
+  --error-sans: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body.error-page {
+  margin: 0;
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 40px 16px;
+  background: var(--error-bg);
+  color: var(--error-text);
+  font-family: var(--error-sans);
+  line-height: 1.7;
+}
+
+.error-box {
+  width: 100%;
+  max-width: 520px;
+  padding: 48px 32px;
+  border: 1px solid var(--error-gold);
+  outline: 1px solid rgba(194, 161, 101, .35);
+  outline-offset: 6px;
+  background: #fff;
+  text-align: center;
+}
+
+.error-logo { display: block; width: 150px; height: auto; margin: 0 auto 28px; }
+
+.error-code {
+  margin: 0;
+  color: var(--error-primary);
+  font-family: var(--error-serif);
+  font-size: 84px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 4px;
+}
+
+.error-title {
+  margin: 18px 0 10px;
+  font-family: var(--error-serif);
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: 2px;
+}
+
+.error-message { margin: 0 0 32px; color: var(--error-text-light); font-size: 15px; }
+
+.error-btn {
+  display: inline-block;
+  min-width: 160px;
+  padding: 12px 28px;
+  border: 1px solid var(--error-primary);
+  color: var(--error-primary);
+  font-size: 15px;
+  letter-spacing: 2px;
+  text-decoration: none;
+  transition: background .3s, color .3s;
+}
+.error-btn:hover,
+.error-btn:focus-visible { background: var(--error-ink); border-color: var(--error-ink); color: #fff; }
+
+@media (max-width: 480px) {
+  .error-box { padding: 36px 20px; }
+  .error-code { font-size: 64px; }
+  .error-title { font-size: 22px; }
+}

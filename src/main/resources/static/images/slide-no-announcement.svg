@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900">
+  <!-- 首頁輪播：目前沒有公告時顯示（墨藍底），連到最新消息 /bistroops/announcement -->
+  <rect width="1600" height="900" fill="#2f3e52"/>
+  <g fill="#fff" fill-opacity=".05">
+    <circle cx="1480" cy="140" r="260"/>
+    <circle cx="140" cy="860" r="220"/>
+  </g>
+
+  <!-- 報紙線稿 -->
+  <g fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M960 280 H1310 V600 Q1310 630 1280 630 H990 Q960 630 960 600 Z"/>
+    <path d="M1310 360 H1350 V600 Q1350 630 1320 630"/>
+  </g>
+  <rect x="1000" y="320" width="270" height="56" rx="4" fill="#c2a165" fill-opacity=".85"/>
+  <g stroke="#fff" stroke-opacity=".55" stroke-width="4" stroke-linecap="round">
+    <path d="M1000 420 H1120 M1000 460 H1120 M1000 500 H1120 M1000 540 H1120 M1000 580 H1090"/>
+    <path d="M1150 420 H1270 M1150 460 H1270 M1150 500 H1270 M1150 540 H1240"/>
+  </g>
+
+  <text x="230" y="300" fill="#c2a165" font-family="Helvetica, Arial, sans-serif" font-size="26" letter-spacing="10">NEWS</text>
+  <text x="230" y="400" fill="#fff" font-family="'Noto Serif CJK TC', 'Noto Serif TC', 'PMingLiU', serif" font-size="84" font-weight="600">最新消息</text>
+  <text x="230" y="500" fill="#fff" font-family="'Noto Serif CJK TC', 'Noto Serif TC', 'PMingLiU', serif" font-size="84" font-weight="600">敬請期待</text>
+  <line x1="232" y1="550" x2="332" y2="550" stroke="#c2a165" stroke-width="4"/>
+  <text x="230" y="610" fill="#fff" fill-opacity=".8" font-family="'Noto Sans CJK TC', 'Microsoft JhengHei', sans-serif" font-size="30" letter-spacing="3">看看本店的最新公告 →</text>
+</svg>

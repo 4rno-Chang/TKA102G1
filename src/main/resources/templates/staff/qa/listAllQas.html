@@ -20,6 +20,8 @@
           <div>
             <p class="ann-meta">
               <span class="ann-no" th:text="|#${qa.qaNo}|"></span>
+              <!-- 前台展開這一題的次數（首頁常見問題顯示點擊最多的 5 題） -->
+              <span th:text="|點擊 ${qa.qaClicks} 次|"></span>
             </p>
             <h2 class="ann-row-title" th:text="|Q：${qa.qaTitle}|"></h2>
             <p class="ann-row-text" th:text="|A：${qa.qaContent}|"></p>

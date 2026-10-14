@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900">
+  <!-- 首頁輪播：目前沒有進行中的活動時顯示（墨綠底）；活動有前台頁面後才會用到（HeroSlideService 的【接活動】） -->
+  <rect width="1600" height="900" fill="#3d4a3a"/>
+  <g fill="#fff" fill-opacity=".05">
+    <circle cx="1480" cy="760" r="260"/>
+    <circle cx="160" cy="120" r="220"/>
+  </g>
+
+  <!-- 禮物盒線稿 -->
+  <g fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="990" y="400" width="300" height="230" rx="10"/>
+    <rect x="970" y="340" width="340" height="70" rx="10"/>
+    <path d="M1140 340 V630"/>
+    <path d="M1140 340 Q1080 260 1040 300 Q1010 335 1140 340"/>
+    <path d="M1140 340 Q1200 260 1240 300 Q1270 335 1140 340"/>
+  </g>
+  <g fill="#c2a165" fill-opacity=".85">
+    <circle cx="1390" cy="300" r="10"/>
+    <circle cx="900" cy="560" r="8"/>
+    <circle cx="1350" cy="640" r="6"/>
+  </g>
+
+  <text x="230" y="300" fill="#c2a165" font-family="Helvetica, Arial, sans-serif" font-size="26" letter-spacing="10">EVENTS</text>
+  <text x="230" y="400" fill="#fff" font-family="'Noto Serif CJK TC', 'Noto Serif TC', 'PMingLiU', serif" font-size="84" font-weight="600">優惠活動</text>
+  <text x="230" y="500" fill="#fff" font-family="'Noto Serif CJK TC', 'Noto Serif TC', 'PMingLiU', serif" font-size="84" font-weight="600">即將登場</text>
+  <line x1="232" y1="550" x2="332" y2="550" stroke="#c2a165" stroke-width="4"/>
+  <text x="230" y="610" fill="#fff" fill-opacity=".8" font-family="'Noto Sans CJK TC', 'Microsoft JhengHei', sans-serif" font-size="30" letter-spacing="3">敬請期待 →</text>
+</svg>
