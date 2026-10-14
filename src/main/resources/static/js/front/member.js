@@ -831,50 +831,50 @@
 
     const verifyPhoneSendCode = $('verifyPhoneSendCode');
     const verifyPhoneMsg = $('verifyPhoneMsg');
-	
-	if (verifyPhoneSendCode) {
 
-    verifyPhoneSendCode.addEventListener('click', async () => {
+    if (verifyPhoneSendCode) {
 
-        verifyPhoneSendCode.disabled = true;
+        verifyPhoneSendCode.addEventListener('click', async () => {
 
-        try {
-            const response = await fetch('/member/sendVerifyPhoneCode', {
-                method: 'POST'
-            });
+            verifyPhoneSendCode.disabled = true;
 
-            if (!response.ok) {
-                setMsg(verifyPhoneMsg, '※伺服器發生錯誤', 'error');
-                return;
+            try {
+                const response = await fetch('/member/sendVerifyPhoneCode', {
+                    method: 'POST'
+                });
+
+                if (!response.ok) {
+                    setMsg(verifyPhoneMsg, '※伺服器發生錯誤', 'error');
+                    return;
+                }
+
+                const result = await response.text();
+
+                if (result === 'OK') {
+                    setMsg(verifyPhoneMsg, '✓ 驗證碼已產生', 'ok');
+
+                } else if (result === 'TOO_FAST') {
+                    setMsg(verifyPhoneMsg, '※發送太頻繁，請稍後再試', 'error');
+
+                } else if (result === 'ALREADY_VERIFIED') {
+                    setMsg(verifyPhoneMsg, '✓ 此手機已完成驗證', 'ok');
+
+                } else if (result === 'NOT_LOGIN') {
+                    setMsg(verifyPhoneMsg, '※請先登入會員', 'error');
+
+                } else {
+                    setMsg(verifyPhoneMsg, '※發送失敗，請稍後再試', 'error');
+                }
+
+            } catch (error) {
+                setMsg(verifyPhoneMsg, '※無法連線至伺服器', 'error');
+
+            } finally {
+                verifyPhoneSendCode.disabled = false;
             }
+        });
 
-            const result = await response.text();
-
-            if (result === 'OK') {
-                setMsg(verifyPhoneMsg, '✓ 驗證碼已產生', 'ok');
-
-            } else if (result === 'TOO_FAST') {
-                setMsg(verifyPhoneMsg, '※發送太頻繁，請稍後再試', 'error');
-
-            } else if (result === 'ALREADY_VERIFIED') {
-                setMsg(verifyPhoneMsg, '✓ 此手機已完成驗證', 'ok');
-
-            } else if (result === 'NOT_LOGIN') {
-                setMsg(verifyPhoneMsg, '※請先登入會員', 'error');
-
-            } else {
-                setMsg(verifyPhoneMsg, '※發送失敗，請稍後再試', 'error');
-            }
-
-        } catch (error) {
-            setMsg(verifyPhoneMsg, '※無法連線至伺服器', 'error');
-
-        } finally {
-            verifyPhoneSendCode.disabled = false;
-        }
-    });
-	
-	}
+    }
 
     // 會員中心：確認手機驗證碼
     const verifyPhoneSubmit = document.getElementById("verifyPhoneSubmit");
@@ -886,10 +886,10 @@
             const msg = document.getElementById("verifyPhoneMsg");
 
             // 檢查是否輸入六位數字
-			if (!/^\d{6}$/.test(code)) {
-			    setMsg(msg, "請輸入六位數驗證碼", "error");
-			    return;
-			}
+            if (!/^\d{6}$/.test(code)) {
+                setMsg(msg, "請輸入六位數驗證碼", "error");
+                return;
+            }
 
             try {
                 const response = await fetch("/member/verifyPhone", {
@@ -902,32 +902,32 @@
 
                 const result = (await response.text()).trim();
 
-				if (result === "OK") {
+                if (result === "OK") {
 
-				    // 立即解除個人資料及側欄的鎖定
-				    memberModal.querySelectorAll(
-				        '#profileForm [disabled], .member-nav [disabled]'
-				    ).forEach(el => {
-				        el.disabled = false;
-				    });
+                    // 立即解除個人資料及側欄的鎖定
+                    memberModal.querySelectorAll(
+                        '#profileForm [disabled], .member-nav [disabled]'
+                    ).forEach(el => {
+                        el.disabled = false;
+                    });
 
-				    // 隱藏手機驗證區塊
-				    const phoneCodeArea = document.getElementById("verifyPhoneCode")
-				        .closest(".field").querySelector("#verifyPhoneCode").parentElement.parentElement;
+                    // 隱藏手機驗證區塊
+                    const phoneCodeArea = document.getElementById("verifyPhoneCode")
+                        .closest(".field").querySelector("#verifyPhoneCode").parentElement.parentElement;
 
-				    phoneCodeArea.hidden = true;
+                    phoneCodeArea.hidden = true;
 
-				    // 將「發送驗證碼」改成「已驗證」
-				    const sendButton = document.getElementById("verifyPhoneSendCode");
-				    if (sendButton) {
-				        const verifiedLabel = document.createElement("span");
-				        verifiedLabel.className = "field-static verified";
-				        verifiedLabel.textContent = "已驗證";
-				        sendButton.replaceWith(verifiedLabel);
-				    }
-					showToast("手機驗證成功！");
-				    return;
-				} else if (result === "ERROR") {
+                    // 將「發送驗證碼」改成「已驗證」
+                    const sendButton = document.getElementById("verifyPhoneSendCode");
+                    if (sendButton) {
+                        const verifiedLabel = document.createElement("span");
+                        verifiedLabel.className = "field-static verified";
+                        verifiedLabel.textContent = "已驗證";
+                        sendButton.replaceWith(verifiedLabel);
+                    }
+                    showToast("手機驗證成功！");
+                    return;
+                } else if (result === "ERROR") {
                     msg.textContent = "驗證碼錯誤";
                 } else if (result === "EXPIRED") {
                     msg.textContent = "驗證碼已過期，請重新發送";
@@ -945,13 +945,13 @@
                     msg.textContent = "驗證失敗，請稍後再試";
                 }
 
-				// 驗證失敗：顯示紅字
-				setMsg(msg, msg.textContent, "error");
+                // 驗證失敗：顯示紅字
+                setMsg(msg, msg.textContent, "error");
 
-				} catch (error) {
-				    // 連線失敗：顯示紅字
-				    setMsg(msg, "連線失敗，請稍後再試", "error");
-				}
+            } catch (error) {
+                // 連線失敗：顯示紅字
+                setMsg(msg, "連線失敗，請稍後再試", "error");
+            }
         });
     }
     const memberContent = memberModal.querySelector('.member-content');
@@ -1267,43 +1267,43 @@
     //   JS 就不用再組畫面了，把整個函式換成空的：
     //     function loadOrders() {}
     //   下面「點 + 展開／收合」的程式不用動，th:each 產生的畫面一樣能用
-/*    async function loadOrders() {
-        const orders = await memberApi.getOrders();
-        if (orders.length === 0) {
-            ordersList.innerHTML = '<p class="empty-text">目前沒有訂單紀錄</p>';
-            return;
+    /*    async function loadOrders() {
+            const orders = await memberApi.getOrders();
+            if (orders.length === 0) {
+                ordersList.innerHTML = '<p class="empty-text">目前沒有訂單紀錄</p>';
+                return;
+            }
+    
+            ordersList.innerHTML = orders.map(order => {
+                const total = order.items.reduce((sum, item) => sum + item.price * item.qty, 0);
+                const rows = order.items.map(item => `
+          <tr>
+            <td>${escapeHtml(item.name)}</td>
+            <td class="num">× ${escapeHtml(item.qty)}</td>
+            <td class="num">$${escapeHtml(item.price * item.qty)}</td>
+          </tr>`).join('');
+    
+                return `
+          <div class="record-item">
+            <button type="button" class="record-head" data-toggle-record aria-expanded="false">
+              <span class="record-info">
+                <span>${escapeHtml(formatDate(order.date))} ${escapeHtml(order.time)}</span>
+                <span>${escapeHtml(order.people)} 人</span>
+                <span>${escapeHtml(order.type)}</span>
+              </span>
+              <span class="record-icon">+</span>
+            </button>
+            <div class="record-body" hidden>
+              <table class="order-table">
+                <thead><tr><th>品項</th><th class="num">數量</th><th class="num">小計</th></tr></thead>
+                <tbody>${rows}</tbody>
+              </table>
+              <p class="order-total">合計　$${escapeHtml(total)}</p>
+            </div>
+          </div>`;
+            }).join('');
         }
-
-        ordersList.innerHTML = orders.map(order => {
-            const total = order.items.reduce((sum, item) => sum + item.price * item.qty, 0);
-            const rows = order.items.map(item => `
-      <tr>
-        <td>${escapeHtml(item.name)}</td>
-        <td class="num">× ${escapeHtml(item.qty)}</td>
-        <td class="num">$${escapeHtml(item.price * item.qty)}</td>
-      </tr>`).join('');
-
-            return `
-      <div class="record-item">
-        <button type="button" class="record-head" data-toggle-record aria-expanded="false">
-          <span class="record-info">
-            <span>${escapeHtml(formatDate(order.date))} ${escapeHtml(order.time)}</span>
-            <span>${escapeHtml(order.people)} 人</span>
-            <span>${escapeHtml(order.type)}</span>
-          </span>
-          <span class="record-icon">+</span>
-        </button>
-        <div class="record-body" hidden>
-          <table class="order-table">
-            <thead><tr><th>品項</th><th class="num">數量</th><th class="num">小計</th></tr></thead>
-            <tbody>${rows}</tbody>
-          </table>
-          <p class="order-total">合計　$${escapeHtml(total)}</p>
-        </div>
-      </div>`;
-        }).join('');
-    }
-*/
+    */
     // 點「+」或「訂位明細」展開／收合下方內容（歷史訂單與預約紀錄共用）
     memberContent.addEventListener('click', e => {
         const toggle = e.target.closest('[data-toggle-record]');
@@ -1317,11 +1317,17 @@
 
     // ---------- 預約紀錄 ----------
     const resvList = $('resvList');
+    const resvMessage = $('resvMessage');
+    const resvNotice = $('resvVerifyNotice');
     const resvTabs = memberModal.querySelectorAll('[data-resv-tab]');
 
     let resvTab = 'current';
+    let reservationRequestVersion = 0;
+    let reservationCanManage = false;
+    let reservationCsrfToken = '';
+    let reservationCancelBusy = false;
 
-    function loadReservations() {
+    function updateReservationTab() {
         resvTabs.forEach(button => {
             const selected = button.dataset.resvTab === resvTab;
 
@@ -1339,44 +1345,254 @@
         if (historyList) {
             historyList.hidden = resvTab !== 'history';
         }
+
+        if (resvNotice) {
+            resvNotice.hidden =
+                reservationCanManage || resvTab !== 'current';
+        }
+    }
+
+    function renderMemberReservations(items, group) {
+        if (items.length === 0) {
+            return `<p class="empty-text">${group === 'current'
+                    ? '目前沒有進行中的訂位'
+                    : '目前沒有歷史訂位'
+                }</p>`;
+        }
+
+        return items.map(reservation => {
+            const name = reservation.bookingName
+                ? `<p>聯絡姓名：${escapeHtml(reservation.bookingName)}</p>`
+                : '';
+
+            let actions = '';
+
+            if (group === 'current' && reservationCanManage) {
+                const editUrl = new URL(
+                    resvList.dataset.editUrl,
+                    window.location.href
+                );
+
+                editUrl.searchParams.set(
+                    'rsvNo', String(reservation.reservationNo)
+                );
+
+                actions = `
+	                <div class="member-reservation-actions">
+	                    <a class="btn-small"
+	                       href="${escapeHtml(editUrl.href)}">
+	                        編輯
+	                    </a>
+
+	                    <button type="button"
+	                            class="btn-small danger"
+	                            data-cancel-reservation="${escapeHtml(
+                    reservation.reservationNo
+                )}">
+	                        取消訂位
+	                    </button>
+	                </div>
+	            `;
+            }
+
+            return `
+	            <div class="record-item">
+	                <div class="record-head">
+	                    <span class="record-info">
+	                        <span>
+	                            ${escapeHtml(reservation.dateText)}
+	                            ${escapeHtml(reservation.timeText)}
+	                        </span>
+
+	                        <span>
+	                            ${escapeHtml(reservation.tableType)} 人桌
+	                        </span>
+
+	                        <span>${escapeHtml(reservation.status)}</span>
+	                    </span>
+
+	                    <div class="record-actions">
+	                        <button type="button"
+	                                class="btn-small"
+	                                data-toggle-record
+	                                aria-expanded="false">
+	                            訂位明細
+	                        </button>
+	                    </div>
+	                </div>
+
+	                <div class="record-body" hidden>
+	                    <p>
+	                        訂位編號：
+	                        ${escapeHtml(reservation.reservationNo)}
+	                    </p>
+
+	                    ${name}
+
+	                    <p>
+	                        用餐時間：
+	                        ${escapeHtml(reservation.dateText)}
+	                        ${escapeHtml(reservation.timeText)}
+	                    </p>
+
+	                    <p>
+	                        桌型：${escapeHtml(reservation.tableType)} 人桌
+	                    </p>
+
+	                    <p>狀態：${escapeHtml(reservation.status)}</p>
+
+	                    <p>
+	                        備註：
+	                        <span class="member-reservation-note">${escapeHtml(
+                reservation.note || '無'
+            )}</span>
+	                    </p>
+
+	                    ${actions}
+	                </div>
+	            </div>
+	        `;
+        }).join('');
+    }
+
+    async function loadReservations() {
+        if (!resvList || !resvMessage) return;
+
+        const currentList = $('resvCurrent');
+        const historyList = $('resvHistory');
+
+        if (!currentList || !historyList) return;
+
+        const requestVersion = ++reservationRequestVersion;
+
+        currentList.innerHTML = '';
+        historyList.innerHTML = '';
+
+        if (resvNotice) resvNotice.hidden = true;
+
+        resvMessage.hidden = false;
+        resvMessage.textContent = '正在載入訂位紀錄…';
+
+        resvList.setAttribute('aria-busy', 'true');
+
+        try {
+            const response = await fetch(resvList.dataset.apiUrl, {
+                credentials: 'same-origin',
+                cache: 'no-store',
+                headers: {
+                    'Accept': 'application/json'
+                }
+            });
+
+            if (requestVersion !== reservationRequestVersion) return;
+
+            if (!response.ok) {
+                throw new Error(
+                    response.status === 401
+                        ? '請先登入會員'
+                        : '無法取得訂位紀錄，請稍後再試'
+                );
+            }
+
+            const data = await response.json();
+
+            if (requestVersion !== reservationRequestVersion) return;
+
+            if (!Array.isArray(data.current)
+                || !Array.isArray(data.history)) {
+                throw new Error('訂位資料格式有誤');
+            }
+
+            reservationCanManage = data.canManage === true;
+            reservationCsrfToken = data.csrfToken || '';
+
+            currentList.innerHTML =
+                renderMemberReservations(data.current, 'current');
+
+            historyList.innerHTML =
+                renderMemberReservations(data.history, 'history');
+
+            resvMessage.hidden = true;
+            updateReservationTab();
+
+        } catch (error) {
+            if (requestVersion !== reservationRequestVersion) return;
+
+            resvMessage.hidden = false;
+            resvMessage.textContent = error instanceof TypeError
+                ? '無法連線，請稍後再試'
+                : error.message;
+
+        } finally {
+            if (requestVersion === reservationRequestVersion) {
+                resvList.removeAttribute('aria-busy');
+            }
+        }
     }
 
     resvTabs.forEach(button => {
         button.addEventListener('click', () => {
             resvTab = button.dataset.resvTab;
-            loadReservations();
+            updateReservationTab();
         });
     });
 
-    let reservationSubmitting = false;
+    resvList?.addEventListener('click', async event => {
+        const button = event.target.closest('[data-cancel-reservation]');
 
-    resvList.addEventListener('submit', event => {
-        const form = event.target;
-
-        if (!(form instanceof HTMLFormElement)) return;
-
-        if (reservationSubmitting) {
-            event.preventDefault();
+        if (!button || !reservationCanManage || reservationCancelBusy) {
             return;
         }
 
-        if (form.hasAttribute('data-reservation-cancel')) {
-            if (!confirm('確定要取消這筆訂位嗎？')) {
-                event.preventDefault();
-                return;
-            }
+        if (!confirm('確定要取消這筆訂位嗎？取消後將釋放原本的桌數。')) {
+            return;
         }
 
-        reservationSubmitting = true;
-        form.setAttribute('aria-busy', 'true');
-    });
+        reservationCancelBusy = true;
+        button.disabled = true;
 
-    window.addEventListener('pageshow', () => {
-        reservationSubmitting = false;
+        try {
+            const response = await fetch(resvList.dataset.cancelUrl, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'Accept': 'application/json'
+                },
+                body: new URLSearchParams({
+                    rsvNo: button.dataset.cancelReservation,
+                    csrfToken: reservationCsrfToken
+                })
+            });
 
-        resvList.querySelectorAll('form').forEach(form => {
-            form.removeAttribute('aria-busy');
-        });
+            let result = {};
+
+            if (response.headers.get('content-type')?.includes('application/json')) {
+                result = await response.json();
+            }
+
+            if (!response.ok) {
+                throw new Error(
+                    response.status === 401
+                        ? '請重新登入'
+                        : response.status === 403
+                            ? '請先完成電話驗證，或重新開啟預約紀錄'
+                            : result.message || '取消失敗，請重新確認訂位狀態'
+                );
+            }
+
+            await loadReservations();
+            alert('訂位已取消，可在歷史訂位查看。');
+
+        } catch (error) {
+            alert(error instanceof TypeError
+                ? '無法連線，請重新查詢確認訂位狀態'
+                : error.message);
+
+        } finally {
+            reservationCancelBusy = false;
+            button.disabled = false;
+        }
     });
 
     // ---------- 優惠券 ----------

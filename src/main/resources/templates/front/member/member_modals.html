@@ -366,7 +366,7 @@
 							th:disabled="${session.member == null or session.member.memStatus != '已驗證'}">歷史訂單</button>
 
 						<button type="button" data-member-tab="reservations"
-							th:disabled="${session.member == null or session.member.memStatus != '已驗證'}">預約紀錄</button>
+							th:disabled="${session.member == null}">預約紀錄</button>
 
 						<button type="button" data-member-tab="coupons"
 							th:disabled="${session.member == null or session.member.memStatus != '已驗證'}">優惠券</button>
@@ -580,35 +580,43 @@
               Controller 把登入會員的訂單清單放進 Model（名稱 orders），沒登入時放空的清單。
               把下面那行 div 換成這一段，th:each 會替每一筆訂單產生一塊畫面：-->
 
-                <div class="record-list" id="ordersList"> 
-                  <p class="empty-text" th:if="${#lists.isEmpty(orders)}">目前沒有訂單紀錄</p>
+							<div class="record-list" id="ordersList">
+								<p class="empty-text" th:if="${#lists.isEmpty(orders)}">目前沒有訂單紀錄</p>
 
-                  <div class="record-item" th:each="order : ${orders}">
-                    <button type="button" class="record-head" data-toggle-record aria-expanded="false">
-                      <span class="record-info">
-                      	<span th:text="'訂單編號：'+${#numbers.formatInteger(order.orders,8)}">訂單編號:00000001</span>
-                        <span th:text="${#temporals.format(order.ordersTime,'yyyy年 MM月 dd日  HH:mm')}">2026年09月20日 11:30</span>
-                        <!-- <span th:text="|${order.people} 人|">3 人</span> -->
-                        <!-- <span th:text="${order.type}">用餐</span> -->
-                        <span class="num" th:text=" '$' + ${order.ordersActualPrice}">$100</span>
-                      </span>
-                      <span class="record-icon">+</span>
-                    </button>
-	                    <div class="record-body" hidden>
-	                      <table class="order-table">
-	                        <thead><tr><th>品項</th><th class="num">數量</th><th class="num">小計</th></tr></thead>
-	                        <tbody>
-	                          <tr th:each="item : ${order.ordersDetails}">
-	                            <td th:text="${item.meal.mealName}">品項名稱</td>
-	                            <td class="num" th:text="|× ${item.odMealNum}|">× 1</td>
-	                            <td class="num" th:text="'$' + ${item.odDiscountPrice * item.odMealNum}">$100</td>
-	                          </tr>
-	                        </tbody>
-	                      </table>
-	                      <!-- <p class="order-total" th:text="'合計　$' + ${order.total}">合計　$100</p> -->
-	                    </div>
-                  </div>
-                </div>
+								<div class="record-item" th:each="order : ${orders}">
+									<button type="button" class="record-head" data-toggle-record
+										aria-expanded="false">
+										<span class="record-info"> <span
+											th:text="'訂單編號：'+${#numbers.formatInteger(order.orders,8)}">訂單編號:00000001</span>
+											<span
+											th:text="${#temporals.format(order.ordersTime,'yyyy年 MM月 dd日  HH:mm')}">2026年09月20日
+												11:30</span> <!-- <span th:text="|${order.people} 人|">3 人</span> -->
+											<!-- <span th:text="${order.type}">用餐</span> --> <span
+											class="num" th:text=" '$' + ${order.ordersActualPrice}">$100</span>
+										</span> <span class="record-icon">+</span>
+									</button>
+									<div class="record-body" hidden>
+										<table class="order-table">
+											<thead>
+												<tr>
+													<th>品項</th>
+													<th class="num">數量</th>
+													<th class="num">小計</th>
+												</tr>
+											</thead>
+											<tbody>
+												<tr th:each="item : ${order.ordersDetails}">
+													<td th:text="${item.meal.mealName}">品項名稱</td>
+													<td class="num" th:text="|× ${item.odMealNum}|">× 1</td>
+													<td class="num"
+														th:text="'$' + ${item.odDiscountPrice * item.odMealNum}">$100</td>
+												</tr>
+											</tbody>
+										</table>
+										<!-- <p class="order-total" th:text="'合計　$' + ${order.total}">合計　$100</p> -->
+									</div>
+								</div>
+							</div>
 
 							<!--   日期要顯示成「2026年09月20日」的話，可以用 #temporals.format(order.date, 'yyyy年MM月dd日')
               （欄位是 LocalDate / LocalDateTime 時）或 #dates.format(...)（欄位是 java.util.Date 時）。
@@ -627,100 +635,32 @@
 
 							<h3 class="panel-title">預約紀錄</h3>
 
-							<p class="form-msg error" role="alert"
-								th:if="${reservationError != null}"
-								th:text="${reservationError}"></p>
-
 							<div class="sub-tabs">
-								<button type="button" class="active" data-resv-tab="current">
-									當前訂位</button>
+								<button type="button" class="active" data-resv-tab="current"
+									aria-pressed="true">當前訂位</button>
 
-								<button type="button" data-resv-tab="history">歷史訂位</button>
+								<button type="button" data-resv-tab="history"
+									aria-pressed="false">歷史訂位</button>
 							</div>
 
-							<div class="record-list" id="resvList">
-								<div
-									th:each="group : ${#strings.arraySplit('current,history', ',')}"
-									th:id="${group == 'current' ? 'resvCurrent' : 'resvHistory'}"
-									th:attr="hidden=${group == 'history' ? 'hidden' : null}"
-									th:with="items=${group == 'current'
-                 ? currentResvs : historyResvs}">
+							<div id="resvVerifyNotice" class="member-reservation-notice"
+								hidden>
+								<span>會員電話驗證後才可編輯當前預約</span>
 
-									<p class="empty-text" th:if="${#lists.isEmpty(items)}"
-										th:text="${group == 'current'
-                   ? '目前沒有進行中的訂位'
-                   : '目前沒有歷史訂位'}"></p>
+								<button type="button" class="btn-small"
+									data-member-tab="profile">前往電話驗證</button>
+							</div>
 
-									<div class="record-item" th:each="r : ${items}">
-										<div class="record-head">
-											<span class="record-info"> <span
-												th:text="${#temporals.format(
-                            r.rsvDt.rsvDtDatetime, 'yyyy年MM月dd日')}">
-											</span> <span
-												th:text="${#temporals.format(
-                            r.rsvDt.rsvDtDatetime, 'HH:mm')}">
-											</span> <span th:text="|${r.seatType.seatTypeNo} 人桌|"> </span>
-											</span>
+							<p id="resvMessage" class="empty-text" role="status"
+								aria-live="polite" hidden></p>
 
-											<div class="record-actions">
-												<button type="button" class="btn-small" data-toggle-record
-													aria-expanded="false">訂位明細</button>
+							<div class="record-list" id="resvList"
+								th:attr="data-api-url=@{/bistroops/reservation/mine},
+                  data-edit-url=@{/bistroops/reservation/edit},
+                  data-cancel-url=@{/bistroops/reservation/cancel}">
 
-												<form th:if="${group == 'current'}"
-													th:action="@{/member/reservation/cancel}" method="post"
-													data-reservation-cancel>
-
-													<input type="hidden" name="rsvNo" th:value="${r.rsvNo}">
-
-													<input type="hidden" name="reservationCsrfToken"
-														th:value="${reservationCsrfToken}">
-
-													<button type="submit" class="btn-small danger">
-														取消訂位</button>
-												</form>
-											</div>
-										</div>
-
-										<div class="record-body" hidden>
-											<p th:text="|訂位編號：${r.rsvNo}|"></p>
-
-											<p>
-												用餐時間： <span
-													th:text="${#temporals.format(
-                            r.rsvDt.rsvDtDatetime, 'yyyy/MM/dd HH:mm')}">
-												</span>
-											</p>
-
-											<p th:text="|桌型：${r.seatType.seatTypeNo} 人桌|"></p>
-
-											<p th:text="|狀態：${r.rsvStatus}|"></p>
-
-											<p>
-												備註： <span style="white-space: pre-wrap;"
-													th:text="${#strings.isEmpty(r.rsvComment)
-                                  ? '無' : r.rsvComment}"></span>
-											</p>
-
-											<form th:if="${group == 'current'}"
-												th:action="@{/member/reservation/comment}" method="post">
-
-												<input type="hidden" name="rsvNo" th:value="${r.rsvNo}">
-
-												<input type="hidden" name="reservationCsrfToken"
-													th:value="${reservationCsrfToken}"> <label
-													th:for="|memberRsvNote-${r.rsvNo}|"> 修改備註（最多 50
-													個字元） </label>
-
-												<textarea th:id="|memberRsvNote-${r.rsvNo}|"
-													name="rsvComment" rows="3" maxlength="50"
-													style="display: block; width: 100%; margin: 8px 0; padding: 10px; font: inherit;"
-													th:text="${r.rsvComment}"></textarea>
-
-												<button type="submit" class="btn-small">儲存備註</button>
-											</form>
-										</div>
-									</div>
-								</div>
+								<div id="resvCurrent"></div>
+								<div id="resvHistory" hidden></div>
 							</div>
 						</section>
 
