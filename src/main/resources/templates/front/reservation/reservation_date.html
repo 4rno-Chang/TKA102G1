@@ -36,8 +36,54 @@
 			<header class="booking-head">
 				<p class="eyebrow">Reservation</p>
 				<h1 class="booking-title">預約訂位</h1>
+
 				<p class="booking-lead">選擇用餐日期、桌型與時段，安排你的下一次聚餐。</p>
+
+
 			</header>
+
+			<section id="reservationLookup" class="reservation-lookup">
+
+				<form th:action="@{/bistroops/reservation}" method="get">
+
+					<label for="reservationLookupPhone"
+						class="reservation-lookup-label"> 訂位電話 </label>
+
+					<div class="reservation-lookup-row">
+						<input type="tel" id="reservationLookupPhone" name="lookupPhone"
+							inputmode="numeric" minlength="10" maxlength="10"
+							pattern="09[0-9]{8}" placeholder="請輸入訂位電話" autocomplete="tel"
+							required th:value="${lookupPhone}">
+
+						<button type="submit" class="btn-outline">查詢訂位</button>
+					</div>
+				</form>
+
+				<p class="form-msg error" th:if="${lookupError != null}"
+					th:text="${lookupError}"></p>
+
+				<div class="reservation-lookup-results"
+					th:if="${lookupPerformed and lookupError == null}">
+
+					<p class="booking-empty" th:if="${#lists.isEmpty(lookupList)}">
+						查無今天起的訂位紀錄。</p>
+
+					<article th:each="r : ${lookupList}"
+						class="reservation-lookup-item">
+
+						<p>
+							訂位編號： <strong th:text="${r.reservationNo}"></strong>
+						</p>
+
+						<p th:text="|${r.dateText} ${r.timeText}｜${r.tableType} 人桌|"></p>
+
+						<p th:text="|狀態：${r.status}|"></p>
+					</article>
+
+					<p class="reservation-lookup-note">如需變更或取消訂位，請聯絡餐廳。</p>
+				</div>
+			</section>
+
 
 			<ol class="booking-steps">
 				<li class="active"><span class="step-no">1</span>選擇日期與桌型</li>
@@ -130,6 +176,8 @@
 					<p class="summary-hint">剩餘桌數以頁面載入時為準，送出時會再次確認。</p>
 				</aside>
 			</div>
+
+
 
 			<section class="booking-rules">
 				<h2 class="booking-rules-title">訂位須知</h2>
