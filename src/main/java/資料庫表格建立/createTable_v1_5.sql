@@ -136,7 +136,7 @@ CREATE TABLE IF NOT EXISTS seat_type (
 CREATE TABLE IF NOT EXISTS `reservation` (
     `rsv_no` INT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '訂位編號',
     `mem_no` INT UNSIGNED NOT NULL COMMENT '會員編號',
-    `rsv_dt_no` INT NOT NULL COMMENT '訂位時段編號',
+    `rsv_dt_no` INT UNSIGNED NOT NULL COMMENT '訂位時段編號',
     `seat_type_no` INT NOT NULL COMMENT '桌型編號',
     `rsv_name` VARCHAR(30) DEFAULT NULL COMMENT '訂位聯絡姓名',
     `rsv_create_time` DATETIME DEFAULT NULL COMMENT '訂位成立時間',
