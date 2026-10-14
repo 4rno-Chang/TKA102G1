@@ -1,14 +1,3 @@
-/* =========================================================
-   示範／測試用的建表 SQL（正式時段 ＋ 現在附近的時段：任何時間 demo 都看得到需保留、桌數不夠）
-   = createTable_v1_4.sql（G1 原版，56c40fe；v1_4 最後修改 1286fd1）＋ 05 新增的欄位 ＋ 測試資料（19～27，壓力測試版）
-   和原版一樣：刪掉整個資料庫 → 建表 → 新增資料 → 測試資料 → 加外鍵，可以重複執行；ALTER TABLE 只用來加外鍵
-   05 新增的欄位直接寫在 CREATE TABLE 裡（旁邊註明「G1 v1_4 沒有，05 新增」）：
-     qa.qa_clicks（常見問題點擊次數）
-     waiting.waiting_date、waiting_take_time、waiting_ticket_seq（CJ 的 WaitingVO 有，v1_4 還沒有）
-   19～27 的時間從「執行的當下」推算：整天任何時間都能執行，執行完馬上測（預期結果寫在 19 段上方）
-   權限、員工照 G1：員工 1（陳小心，密碼 0987878787）有 1～7 全部權限，3 = 入座管理
-   要回到 G1 原版資料：重跑 createTable_v1_4.sql（但 v1_4 沒有 qa_clicks，首頁常見問題會出錯，05 請用這一份）
-   ========================================================= */
 /*SHOW DATABASES;*/
 DROP DATABASE IF EXISTS project;
 CREATE DATABASE IF NOT EXISTS project;
@@ -538,60 +527,6 @@ INSERT INTO qa (qa_title, qa_content, qa_clicks) VALUES
 ('結帳可以使用哪些付款方式？', '目前提供現金及刷卡付款。', 19),
 ('用餐時間有限制嗎？', '每組用餐時間以90分鐘為原則，敬請配合。', 33);
 
-/* =========================================================
-   以下是 05 的測試資料（19～27），放在加外鍵之前，和原版一樣「資料放好再加外鍵」
-   寫法：INSERT … VALUES、INSERT … SELECT … JOIN、UPDATE … JOIN
-   JOIN 只在執行這份 SQL 的時候跑一次（Java 程式不會呼叫），用來模擬「已經發生過的操作」：
-     客人到了沒（訂位狀態）、點了什麼（明細單價）、算好的金額；正式流程是組員的程式在操作當下寫進去的
-   JOIN 要讀前面已經新增的資料，順序不能調換：20 → 21（時段 → 訂位）、25 → 26 → 27（訂單 → 明細 → 金額）
-   ========================================================= */
-
-/* =========================================================
-   入座管理「現在」的測試資料（19～27，壓力測試版：正式時段 ＋ 現在附近的時段）
-   另一份 createTable_demo_real.sql 只用正式時段（11:00、12:30、17:00、18:30），和 CJ 的訂位頁一致
-   時間都從「執行這份 SQL 的當下」推算，整天任何時間都可以執行，執行完馬上測
-   （接近半夜時，算出來落在昨天、明天的訂位和訂單不會出現；入座時間落在昨天的桌子改成可使用，所以數字會比下面少）
-   編號接在上面原始資料的後面：
-     member 4～16、reservation_datetime 5～22、reservation 4～44、waiting 4～12、orders 4～29（16、18 沒用到）
-   新增的會員 7～16 前台登入密碼都是 Test0004（和會員 4 共用同一個雜湊）
-
-   正式時段（今天 11:00、12:30、17:00、18:30）也有訂位：已經過了的是實到、未到、取消；還沒到的是預約。
-   為了讓下面的數字固定，「現在 ～ 現在＋90 分」之間的正式時段訂位不寫入（需保留只算附近時段那幾筆）。
-   ---------- 執行後馬上看，應該是這樣（T＝執行時間取到 5 分鐘；不含正式時段的訂位） ----------
-   桌子：17 桌（2 人桌 10、4 人桌 5、6 人桌 2）
-   一打開就自動清桌（已結帳＝空桌）：A06、B01
-   平面圖
-     可使用  A01 A06 A07、B01 B03、C01
-     使用中  A02 A03 A04 A05 A08 A09、B02 B04 B05、C02（A09 是時間異常：算使用中，但不算用餐中）
-     停用    A10
-     超時    A03 95 分、A04 100 分、B02 95 分（B04 是 89 分，過 1 分鐘後也會變超時）
-     時間異常 A09（入座時間比現在晚 20 分）
-     小字    A02「訂位 N 分」、A05「現場 N 分」、A08 尚未點餐
-   桌位卡
-     A02：共 2 張訂單，1 張未結帳（加點那張已付）；客人王小明
-     A05：客人鄭雅文，客戶備註很長（測試換行）
-     B05：共 2 張訂單，1 張未結帳（1 張已取消）
-     A07（空桌）：2 人桌 空桌 3、需保留 6、現場還能坐 0 → 其它者入座會先跳警告
-       訂位清單：接下來 10 筆（T+15 ×2、T+30 ×2、T+60、T+85、T+95、T+120 ×2、T+150）＋ 還沒到的正式時段訂位；逾時未到 1 筆（T−20 林小美）
-       候位清單：3 組（已通知的張先生排第一）
-   時間軸上方卡片
-     用餐中 9 / 16 桌｜90 分鐘內的預約 11 組（2 人 6、4 人 2、6 人 3）｜須注意 5 項（超時 3、時間異常 1、桌數不夠 1）｜本日訂單 21 張
-   時間軸（現在前後各 4 小時）
-     2 人桌・預約：需保留 6・逾時未到 1
-       T−240 實到 1、T−120 實到 2（另 1 筆取消不顯示）、T−40 實到 1、T−20 林小美・逾時未到（另有未到 1）、
-       T+15 ×2、T+30 ×2、T+60、T+85、T+95（90 分鐘外，不算保留）、T+120 ×2、T+150
-     4 人桌・預約：需保留 2・逾時未到 1
-     6 人桌・預約：需保留 3；T+30 兩筆有紅色 !（桌數不夠），T+75 沒有
-     A01：兩段稍早用過餐，第二段是「2 張單」（加點）
-     A06、B01：剛結帳變空桌，用餐那段變成稍早用過餐；B03：剛離開的那組畫到「現在」
-     A07：100 分鐘前那組有畫；7 小時前的訂單在時間軸起點之前，不畫；全部取消的訂單也不畫
-     昨天、明天的訂位和昨天的訂單：都不會出現
-   卡片篩選
-     用餐中 → 9 桌；90 分鐘內的預約 → 只剩 T+15～T+85 的預約；
-     須注意 → A03 A04 A09 B02 ＋ 6 人桌 T+30 兩筆紅色 !
-   平面圖說明列篩選：可使用 6、使用中 10、停用 1、超時 3、時間異常 1（可以和桌型疊加；「超時」＋「4 人桌」→ 只剩 B02）
-   ========================================================= */
-
 -- 以 Java 時鐘為主：NOW() 一律用台灣時間，跟入座管理（Java）的「現在」一致
 SET time_zone = '+08:00';
 
@@ -616,84 +551,58 @@ INSERT INTO member (mem_no, mem_tel, mem_name, mem_account, mem_password, mem_ma
 (15, '0911000015', '許芳瑜', 'xufy15', @pwd, 'xufy15@example.com', '/MN99999', NULL, '1999-09-09', NULL, NULL, NULL, NULL, '未驗證'),
 (16, '0911000016', '歐陽靜', 'ouyj16', @pwd, 'ouyj16@example.com', '/MN00000', NULL, '1991-01-01', NULL, NULL, NULL, NULL, '已驗證');
 
--- 20. 訂位時段 (reservation_datetime 5～18)：今天在「現在」前後，另外各一個昨天、明天的時段（不應出現）
+-- 20. 訂位時段 (reservation_datetime 5～10)：今天的正式時段（和 CJ 的 ReservationService 一樣）＋ 昨天、明天各一個（不應出現）
 INSERT INTO reservation_datetime (rsv_dt_no, rsv_dt_datetime) VALUES
-(5,  @t0 - INTERVAL 240 MINUTE),
-(6,  @t0 - INTERVAL 120 MINUTE),
-(7,  @t0 - INTERVAL 40 MINUTE),   -- 已經來了（A02、B01）
-(8,  @t0 - INTERVAL 20 MINUTE),   -- 過了還沒來 → 逾時未到
-(9,  @t0 + INTERVAL 15 MINUTE),   -- 9～13：90 分鐘內 → 需保留
-(10, @t0 + INTERVAL 30 MINUTE),
-(11, @t0 + INTERVAL 60 MINUTE),
-(12, @t0 + INTERVAL 75 MINUTE),
-(13, @t0 + INTERVAL 85 MINUTE),
-(14, @t0 + INTERVAL 95 MINUTE),   -- 剛好超過 90 分鐘 → 不算保留
-(15, @t0 + INTERVAL 120 MINUTE),
-(16, @t0 + INTERVAL 150 MINUTE),
-(17, TIMESTAMP(CURDATE() - INTERVAL 1 DAY, '18:30:00')),   -- 昨天
-(18, TIMESTAMP(CURDATE() + INTERVAL 1 DAY, '18:30:00')),   -- 明天
-(19, TIMESTAMP(CURDATE(), '11:00:00')),                   -- 19～22：今天的正式時段
-(20, TIMESTAMP(CURDATE(), '12:30:00')),
-(21, TIMESTAMP(CURDATE(), '17:00:00')),
-(22, TIMESTAMP(CURDATE(), '18:30:00'));
+(5,  TIMESTAMP(CURDATE(), '11:00:00')),
+(6,  TIMESTAMP(CURDATE(), '12:30:00')),
+(7,  TIMESTAMP(CURDATE(), '17:00:00')),
+(8,  TIMESTAMP(CURDATE(), '18:30:00')),
+(9,  TIMESTAMP(CURDATE() - INTERVAL 1 DAY, '18:30:00')),   -- 昨天
+(10, TIMESTAMP(CURDATE() + INTERVAL 1 DAY, '18:30:00'));   -- 明天
 
--- 21. 訂位 (reservation 4～32)
-INSERT INTO reservation (rsv_no, mem_no, rsv_dt_no, seat_type_no, rsv_create_time, rsv_status, rsv_comment) VALUES
--- 2 人桌
-(4,  7,  5,  2, @now - INTERVAL 3 DAY, '實到', '2人用餐'),
-(5,  8,  6,  2, @now - INTERVAL 2 DAY, '實到', '2人用餐'),
-(6,  9,  6,  2, @now - INTERVAL 2 DAY, '實到', '2人約會'),
-(7,  10, 6,  2, @now - INTERVAL 1 DAY, '取消', '臨時有事'),
-(8,  1,  7,  2, @now - INTERVAL 1 DAY, '實到', '2人用餐'),          -- 坐在 A02
-(9,  3,  8,  2, @now - INTERVAL 1 DAY, '預約', '2人用餐'),          -- 逾時未到
-(10, 11, 8,  2, @now - INTERVAL 1 DAY, '未到', '2人用餐'),          -- 訂位管理已標成未到
-(11, 5,  9,  2, @now - INTERVAL 1 DAY, '預約', '2人用餐'),
-(12, 12, 9,  2, @now,                  '預約', '2人，靠窗'),
-(13, 6,  10, 2, @now,                  '預約', '2人用餐'),
-(14, 13, 10, 2, @now - INTERVAL 5 DAY, '預約', '2人，慶祝生日'),
-(15, 1,  10, 2, @now - INTERVAL 1 DAY, '取消', '改期'),
-(16, 2,  11, 2, @now - INTERVAL 2 DAY, '預約', '2人約會'),
-(17, 14, 13, 2, @now - INTERVAL 1 DAY, '預約', '2人用餐'),
-(18, 15, 14, 2, @now - INTERVAL 1 DAY, '預約', '2人用餐'),          -- 剛好超過 90 分鐘
-(19, 16, 15, 2, @now - INTERVAL 1 DAY, '預約', '2人用餐'),
-(20, 7,  15, 2, @now - INTERVAL 1 DAY, '預約', '2人用餐'),
-(21, 8,  16, 2, @now - INTERVAL 1 DAY, '預約', '2人用餐'),
-(22, 13, 17, 2, @now - INTERVAL 3 DAY, '預約', '昨天的訂位'),        -- 不應出現
--- 4 人桌
-(23, 2,  7,  4, @now - INTERVAL 2 DAY, '實到', '4人聚餐'),          -- 坐在 B01（已結帳）
-(24, 4,  8,  4, @now - INTERVAL 3 DAY, '預約', '4人用餐'),          -- 逾時未到
-(25, 9,  10, 4, @now - INTERVAL 1 DAY, '預約', '3人用餐'),
-(26, 10, 11, 4, @now - INTERVAL 1 DAY, '預約', '4人，有嬰兒車'),
-(27, 6,  15, 4, @now - INTERVAL 1 DAY, '預約', '4人用餐'),
-(28, 14, 18, 4, @now,                  '預約', '明天的訂位'),        -- 不應出現
--- 6 人桌
-(29, 11, 6,  6, @now - INTERVAL 4 DAY, '實到', '6人聚餐'),
-(30, 4,  10, 6, @now - INTERVAL 4 DAY, '預約', '6人慶生'),
-(31, 5,  10, 6, @now - INTERVAL 2 DAY, '預約', '5人家庭聚餐'),      -- 和 30 同一個時段：6 人桌不夠 → 紅色 !
-(32, 12, 12, 6, @now - INTERVAL 1 DAY, '預約', '6人公司聚餐');
-
--- 21-1. 正式時段的訂位 (reservation 33～44)：時段過了用 past_status、還沒到用 future_status
---       「現在 ～ 現在＋90 分」之間的不寫入，讓需保留的數字固定（只有附近時段那幾筆）
+-- 21. 訂位 (reservation 4～34)：時段已經過了用 past_status、還沒到用 future_status
+--     past_status 是「預約」＝時間過了還沒來 → 入座管理顯示「逾時未到」
+--     每個時段的筆數照 CJ 的上限：2 人桌 5、4 人桌 3、6 人桌 1；同一位會員同一個時段只有一筆
 INSERT INTO reservation (rsv_no, mem_no, rsv_dt_no, seat_type_no, rsv_create_time, rsv_status, rsv_comment)
-SELECT r.rsv_no, r.mem_no, r.rsv_dt_no, r.seat_type_no, @now - INTERVAL 2 DAY,
+SELECT r.rsv_no, r.mem_no, r.rsv_dt_no, r.seat_type_no, @now - INTERVAL r.days DAY,
        IF(d.rsv_dt_datetime <= @now, r.past_status, r.future_status), r.rsv_comment
 FROM (
-            SELECT 33 AS rsv_no, 9 AS mem_no, 19 AS rsv_dt_no, 2 AS seat_type_no, '實到' AS past_status, '預約' AS future_status, '2人用餐' AS rsv_comment
-  UNION ALL SELECT 34, 10, 19, 2, '未到', '預約', '2人用餐'
-  UNION ALL SELECT 35, 2,  19, 4, '實到', '預約', '4人聚餐'
-  UNION ALL SELECT 36, 11, 20, 2, '實到', '預約', '2人午餐'
-  UNION ALL SELECT 37, 12, 20, 2, '取消', '取消', '臨時有事'
-  UNION ALL SELECT 38, 6,  20, 6, '實到', '預約', '6人聚餐'
-  UNION ALL SELECT 39, 13, 21, 2, '實到', '預約', '2人晚餐'
-  UNION ALL SELECT 40, 14, 21, 2, '實到', '預約', '2人晚餐'
-  UNION ALL SELECT 41, 3,  21, 4, '未到', '預約', '4人用餐'
-  UNION ALL SELECT 42, 15, 22, 2, '實到', '預約', '2人晚餐'
-  UNION ALL SELECT 43, 16, 22, 2, '未到', '預約', '2人晚餐'
-  UNION ALL SELECT 44, 4,  22, 4, '實到', '預約', '4人晚餐'
+  -- 11:00
+            SELECT 4 AS rsv_no, 7 AS mem_no, 5 AS rsv_dt_no, 2 AS seat_type_no, 3 AS days, '實到' AS past_status, '預約' AS future_status, '2人用餐' AS rsv_comment
+  UNION ALL SELECT 5,  8,  5, 2, 2, '實到', '預約', '2人用餐'
+  UNION ALL SELECT 6,  9,  5, 2, 2, '未到', '預約', '2人約會'
+  UNION ALL SELECT 7,  10, 5, 2, 1, '取消', '取消', '臨時有事'
+  UNION ALL SELECT 8,  2,  5, 4, 2, '實到', '預約', '4人聚餐'
+  UNION ALL SELECT 9,  11, 5, 6, 4, '實到', '預約', '6人聚餐'
+  -- 12:30
+  UNION ALL SELECT 10, 12, 6, 2, 1, '實到', '預約', '2人，靠窗'
+  UNION ALL SELECT 11, 13, 6, 2, 5, '預約', '預約', '2人，慶祝生日'
+  UNION ALL SELECT 12, 14, 6, 2, 1, '實到', '預約', '2人用餐'
+  UNION ALL SELECT 13, 4,  6, 4, 3, '實到', '預約', '4人用餐'
+  UNION ALL SELECT 14, 6,  6, 4, 1, '取消', '取消', '改期'
+  -- 17:00
+  UNION ALL SELECT 15, 1,  7, 2, 1, '實到', '預約', '2人用餐'
+  UNION ALL SELECT 16, 3,  7, 2, 1, '預約', '預約', '2人用餐'
+  UNION ALL SELECT 17, 5,  7, 2, 1, '實到', '預約', '2人用餐'
+  UNION ALL SELECT 18, 15, 7, 2, 1, '未到', '預約', '2人用餐'
+  UNION ALL SELECT 19, 9,  7, 4, 1, '實到', '預約', '3人用餐'
+  UNION ALL SELECT 20, 10, 7, 4, 1, '預約', '預約', '4人，有嬰兒車'
+  UNION ALL SELECT 21, 4,  7, 6, 4, '實到', '預約', '6人慶生'
+  -- 18:30
+  UNION ALL SELECT 22, 16, 8, 2, 1, '預約', '預約', '2人用餐'
+  UNION ALL SELECT 23, 2,  8, 2, 2, '實到', '預約', '2人約會'
+  UNION ALL SELECT 24, 6,  8, 2, 0, '預約', '預約', '2人用餐'
+  UNION ALL SELECT 25, 7,  8, 2, 1, '取消', '取消', '臨時有事'
+  UNION ALL SELECT 26, 8,  8, 2, 1, '預約', '預約', '2人用餐'
+  UNION ALL SELECT 27, 12, 8, 4, 1, '預約', '預約', '4人用餐'
+  UNION ALL SELECT 28, 14, 8, 4, 2, '實到', '預約', '4人用餐'
+  UNION ALL SELECT 29, 5,  8, 4, 2, '預約', '預約', '3人用餐'
+  UNION ALL SELECT 30, 13, 8, 6, 3, '預約', '預約', '6人公司聚餐'
+  -- 昨天、明天（不應出現）
+  UNION ALL SELECT 31, 13, 9,  2, 3, '預約', '預約', '昨天的訂位'
+  UNION ALL SELECT 32, 14, 10, 4, 0, '預約', '預約', '明天的訂位'
 ) AS r
-JOIN reservation_datetime d ON d.rsv_dt_no = r.rsv_dt_no   -- JOIN：查時段時間，過了用 past_status、還沒到用 future_status
--- 正式時段在「現在～現在＋90 分」之內的不寫，讓上面的預期數字固定
-WHERE NOT (d.rsv_dt_datetime > @now AND d.rsv_dt_datetime < @now + INTERVAL 90 MINUTE);
+JOIN reservation_datetime d ON d.rsv_dt_no = r.rsv_dt_no;   -- JOIN：查時段時間，過了用 past_status、還沒到用 future_status
 
 -- 22. 今天的候位 (waiting 4～12)：候位中、已通知會出現；已入座、過號、取消不會
 INSERT INTO waiting (waiting_no, seat_type_no, mem_no, waiting_tel, waiting_name, waiting_comment, waiting_status, waiting_notify_time, waiting_date, waiting_take_time, waiting_ticket_seq) VALUES
