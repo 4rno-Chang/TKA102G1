@@ -242,7 +242,7 @@ document.querySelectorAll('[data-date-picker]').forEach(refreshDatePicker);
       （最後一行的 })(); 要留著）
      B-1. 假資料 BookingDemo，以及兩個分頁都會用到的小工具
      B-2. 訂位：查詢（日期、午餐／晚餐、搜尋）、列表、新增／修改的對話框、取消訂位、刷新頁面
-     B-3. 候位：左邊今天的候位列表（搜尋、過號、編輯）、右邊每種桌型的叫號（叫下一號）、新增／修改的對話框、刷新頁面
+     B-3. 候位：左邊今天的候位列表（依桌型篩選、過號、編輯）、右邊每種桌型的叫號（叫下一號）、新增／修改的對話框、刷新頁面
    訂位和候位在同一個頁面的不同分頁，一次只會顯示一個，所以用「頁面上有沒有那個元素」決定要執行哪一段。
 
    兩個分頁共同的規定（資料庫的版本也一樣，寫在 booking.html 開頭和 StaffBookingController.java）：
@@ -271,7 +271,8 @@ if (!demoRsvList && !demoWaitingList) return;
 
    一筆候位：
      waitingNo        候位編號（新增時自動往下編）
-     waitingNum       ★ 候位號碼：每種桌型各自從 1 開始編（2 人桌 12 號、4 人桌 5 號…）。資料庫預計新增這個欄位
+     waitingTicketSeq ★ 候位號碼的數字：今天這個桌型的第幾號，每種桌型各自從 1 開始（對應候位表的 waiting_ticket_seq）。
+                      畫面上顯示的號碼是「字母＋兩位數」：2 人桌 A01、4 人桌 B01、6 人桌 C01（組法在 B-3 的 ticketLabel）
      seatTypeNo       桌型
      waitingName      姓名            waitingTel  電話（列表上不顯示，編輯的對話框裡才看得到）
      waitingComment   備註
@@ -314,7 +315,7 @@ function timeText(date) {
 
 const BookingDemo = (() => {
   // 示範資料的內容有修改時，把最後的數字加 1，瀏覽器就會改用新的示範資料（舊的暫存不再使用）
-  const STORAGE_KEY = 'bistroopsStaffDemoBooking2';
+  const STORAGE_KEY = 'bistroopsStaffDemoBooking3';
 
   // 一開始的示範資料（訂位的時段只用 RSV_TIMES 裡的那四個）
   function defaultData() {
@@ -338,16 +339,16 @@ const BookingDemo = (() => {
         { rsvNo: 12, memName: '許文雄', memTel: '0910101010', rsvDate: dayText(3), rsvTime: '12:30', seatTypeNo: 6, rsvStatus: '預約', rsvComment: '公司聚餐' }
       ],
       waitings: [
-        { waitingNo: 1, waitingNum: 9, seatTypeNo: 2, waitingName: '蔡依婷', waitingTel: '0921000111', waitingComment: '', waitingStatus: '已入座', waitingNotifyTime: clock(minutesAgo(40)), notifiedAt: minutesAgo(40) },
-        { waitingNo: 2, waitingNum: 10, seatTypeNo: 2, waitingName: '劉建宏', waitingTel: '0921000222', waitingComment: '', waitingStatus: '過號', waitingNotifyTime: clock(minutesAgo(30)), notifiedAt: minutesAgo(30) },
-        { waitingNo: 3, waitingNum: 11, seatTypeNo: 2, waitingName: '鄭雅文', waitingTel: '0921000333', waitingComment: '靠窗', waitingStatus: '已通知', waitingNotifyTime: clock(minutesAgo(12)), notifiedAt: minutesAgo(12) },
-        { waitingNo: 4, waitingNum: 12, seatTypeNo: 2, waitingName: '謝明哲', waitingTel: '0921000444', waitingComment: '', waitingStatus: '已通知', waitingNotifyTime: clock(minutesAgo(3)), notifiedAt: minutesAgo(3) },
-        { waitingNo: 5, waitingNum: 13, seatTypeNo: 2, waitingName: '洪淑惠', waitingTel: '0921000555', waitingComment: '', waitingStatus: '候位中', waitingNotifyTime: '', notifiedAt: null },
-        { waitingNo: 6, waitingNum: 14, seatTypeNo: 2, waitingName: '郭志明', waitingTel: '0921000666', waitingComment: '', waitingStatus: '候位中', waitingNotifyTime: '', notifiedAt: null },
-        { waitingNo: 7, waitingNum: 5, seatTypeNo: 4, waitingName: '曾美玉', waitingTel: '0921000777', waitingComment: '兒童椅', waitingStatus: '已通知', waitingNotifyTime: clock(minutesAgo(5)), notifiedAt: minutesAgo(5) },
-        { waitingNo: 8, waitingNum: 6, seatTypeNo: 4, waitingName: '廖俊傑', waitingTel: '0921000888', waitingComment: '', waitingStatus: '候位中', waitingNotifyTime: '', notifiedAt: null },
-        { waitingNo: 9, waitingNum: 7, seatTypeNo: 4, waitingName: '賴怡君', waitingTel: '0921000999', waitingComment: '', waitingStatus: '取消', waitingNotifyTime: '', notifiedAt: null },
-        { waitingNo: 10, waitingNum: 3, seatTypeNo: 6, waitingName: '徐家豪', waitingTel: '0921001000', waitingComment: '慶生', waitingStatus: '候位中', waitingNotifyTime: '', notifiedAt: null }
+        { waitingNo: 1, waitingTicketSeq: 9, seatTypeNo: 2, waitingName: '蔡依婷', waitingTel: '0921000111', waitingComment: '', waitingStatus: '已入座', waitingNotifyTime: clock(minutesAgo(40)), notifiedAt: minutesAgo(40) },
+        { waitingNo: 2, waitingTicketSeq: 10, seatTypeNo: 2, waitingName: '劉建宏', waitingTel: '0921000222', waitingComment: '', waitingStatus: '過號', waitingNotifyTime: clock(minutesAgo(30)), notifiedAt: minutesAgo(30) },
+        { waitingNo: 3, waitingTicketSeq: 11, seatTypeNo: 2, waitingName: '鄭雅文', waitingTel: '0921000333', waitingComment: '靠窗', waitingStatus: '已通知', waitingNotifyTime: clock(minutesAgo(12)), notifiedAt: minutesAgo(12) },
+        { waitingNo: 4, waitingTicketSeq: 12, seatTypeNo: 2, waitingName: '謝明哲', waitingTel: '0921000444', waitingComment: '', waitingStatus: '已通知', waitingNotifyTime: clock(minutesAgo(3)), notifiedAt: minutesAgo(3) },
+        { waitingNo: 5, waitingTicketSeq: 13, seatTypeNo: 2, waitingName: '洪淑惠', waitingTel: '0921000555', waitingComment: '', waitingStatus: '候位中', waitingNotifyTime: '', notifiedAt: null },
+        { waitingNo: 6, waitingTicketSeq: 14, seatTypeNo: 2, waitingName: '郭志明', waitingTel: '0921000666', waitingComment: '', waitingStatus: '候位中', waitingNotifyTime: '', notifiedAt: null },
+        { waitingNo: 7, waitingTicketSeq: 5, seatTypeNo: 4, waitingName: '曾美玉', waitingTel: '0921000777', waitingComment: '兒童椅', waitingStatus: '已通知', waitingNotifyTime: clock(minutesAgo(5)), notifiedAt: minutesAgo(5) },
+        { waitingNo: 8, waitingTicketSeq: 6, seatTypeNo: 4, waitingName: '廖俊傑', waitingTel: '0921000888', waitingComment: '', waitingStatus: '候位中', waitingNotifyTime: '', notifiedAt: null },
+        { waitingNo: 9, waitingTicketSeq: 7, seatTypeNo: 4, waitingName: '賴怡君', waitingTel: '0921000999', waitingComment: '', waitingStatus: '取消', waitingNotifyTime: '', notifiedAt: null },
+        { waitingNo: 10, waitingTicketSeq: 3, seatTypeNo: 6, waitingName: '徐家豪', waitingTel: '0921001000', waitingComment: '慶生', waitingStatus: '候位中', waitingNotifyTime: '', notifiedAt: null }
       ],
       pending: { 2: 2, 4: 1, 6: 0 }
     };
@@ -679,17 +680,18 @@ function startDemoRsv() {
 function startDemoWaiting() {
   const boards = document.getElementById('demoBoards');
   const summary = document.getElementById('demoWaitingSummary');
-  const keywordInput = document.getElementById('demoWaitingKeyword');
-  const showAllBtn = document.getElementById('demoWaitingAll');   // 「顯示全部」，正在看搜尋結果的時候才出現
+  const filterBox = document.getElementById('demoWaitingFilter');   // 放桌型篩選按鈕的地方
 
-  // 目前搜尋的文字（資料庫的版本，這是放在網址上的 keyword）。空字串代表沒有在搜尋
-  let currentKeyword = '';
+  // 目前篩選的桌型（資料庫的版本，這是放在網址上的 seatType）。null 代表看全部
+  let currentSeatType = null;
 
-  // 一筆候位符不符合搜尋的文字：姓名裡有這些字、電話裡有這些數字、或號碼剛好等於它。
-  // 電話雖然不顯示在列表上，還是可以用電話找。資料庫的版本由 Controller／Service 做同樣的判斷
-  function matchesKeyword(w, word) {
-    if (!word) return true;   // 沒有在搜尋：全部都符合
-    return w.waitingName.toLowerCase().includes(word) || w.waitingTel.includes(word) || String(w.waitingNum) === word;
+  /* ★ 候位號碼：畫面上顯示的號碼 ＝ 字母 ＋ 兩位數
+       字母   由桌型決定：2 人桌 A、4 人桌 B、6 人桌 C
+       數字   waitingTicketSeq（今天這個桌型的第幾號），不足兩位前面補 0 → A01、B12；超過 99 會照實顯示三位（A100）
+     資料庫的版本：頁面用 Thymeleaf 組（booking.html 候位那一塊的說明），Java 的訊息裡也要用同樣的規則。 */
+  const TICKET_LETTERS = { 2: 'A', 4: 'B', 6: 'C' };
+  function ticketLabel(w) {
+    return (TICKET_LETTERS[w.seatTypeNo] || '') + String(w.waitingTicketSeq).padStart(2, '0');
   }
 
   // 傳給客人的簡訊內容。假資料不會真的傳，只會在畫面下方顯示「已通知」
@@ -714,7 +716,7 @@ function startDemoWaiting() {
   function waitingsOf(seatTypeNo, status) {
     return demo.waitings
       .filter(w => w.seatTypeNo === seatTypeNo && w.waitingStatus === status)
-      .sort((a, b) => a.waitingNum - b.waitingNum);
+      .sort((a, b) => a.waitingTicketSeq - b.waitingTicketSeq);
   }
 
   function render() {
@@ -724,7 +726,7 @@ function startDemoWaiting() {
       const waiting = waitingsOf(type, '候位中');
       // 叫號中的號碼：紅底是已叫號；超過 10 分鐘的加上 is-late，變成綠底（逾時）
       const callingHtml = calling.length
-        ? calling.map(w => `<span class="booking-call${minutesLeft(w) < 0 ? ' is-late' : ''}">${escapeHtml(w.waitingNum)}</span>`).join('')
+        ? calling.map(w => `<span class="booking-call${minutesLeft(w) < 0 ? ' is-late' : ''}">${escapeHtml(ticketLabel(w))}</span>`).join('')
         : '<span class="booking-call-none">尚無叫號</span>';
       return `
         <article class="booking-board">
@@ -740,20 +742,21 @@ function startDemoWaiting() {
 
     // 左邊：今天的候位。取消的不顯示；還在處理中的（已通知、候位中）排前面，再依桌型、號碼排
     const ORDER = { '已通知': 0, '候位中': 1, '已入座': 2, '過號': 3 };
-    // 有搜尋文字的話只留符合的（右邊的叫號不受搜尋影響，上面已經產生好了）
-    const word = currentKeyword.trim().toLowerCase();
-    const list = demo.waitings
-      .filter(w => w.waitingStatus !== '取消' && matchesKeyword(w, word))
-      .sort((a, b) => ORDER[a.waitingStatus] - ORDER[b.waitingStatus] || a.seatTypeNo - b.seatTypeNo || a.waitingNum - b.waitingNum);
+    // 依桌型篩選的按鈕：「全部」加上每一種桌型，選取中的那一顆是深色（右邊的叫號不受篩選影響，上面已經產生好了）
+    filterBox.innerHTML =
+      `<button type="button" class="chip${currentSeatType === null ? ' active' : ''}" data-seat-filter="">全部</button>` +
+      SEAT_TYPES.map(type => `<button type="button" class="chip${currentSeatType === type ? ' active' : ''}" data-seat-filter="${type}">${type} 人桌</button>`).join('');
 
-    keywordInput.value = currentKeyword;
-    showAllBtn.hidden = !word;
-    summary.innerHTML = word
-      ? `搜尋「<b>${escapeHtml(currentKeyword.trim())}</b>」的結果，共 <b>${list.length}</b> 組`
-      : `今天的候位，共 <b>${list.length}</b> 組`;
+    // 有選桌型的話只留那個桌型的
+    const list = demo.waitings
+      .filter(w => w.waitingStatus !== '取消' && (currentSeatType === null || w.seatTypeNo === currentSeatType))
+      .sort((a, b) => ORDER[a.waitingStatus] - ORDER[b.waitingStatus] || a.seatTypeNo - b.seatTypeNo || a.waitingTicketSeq - b.waitingTicketSeq);
+
+    // 按鈕後面的說明：看全部是「今日候位，全部共 9 組」；選了桌型是「今日候位，2人桌共 6 組」
+    summary.innerHTML = `今日候位，${currentSeatType === null ? '全部' : `${currentSeatType}人桌`}共 <b>${list.length}</b> 組`;
 
     if (list.length === 0) {
-      demoWaitingList.innerHTML = `<tr><td colspan="7" class="staff-empty">${word ? '沒有符合條件的候位' : '目前沒有候位'}</td></tr>`;
+      demoWaitingList.innerHTML = `<tr><td colspan="7" class="staff-empty">${currentSeatType === null ? '目前沒有候位' : '這個桌型目前沒有候位'}</td></tr>`;
       return;
     }
     demoWaitingList.innerHTML = list.map(w => {
@@ -771,7 +774,7 @@ function startDemoWaiting() {
         ? `<button type="button" class="staff-btn btn-danger-outline booking-btn-sm" data-act="miss" data-no="${no}">過號</button>` : '';
       return `
         <tr>
-          <td class="booking-no">${escapeHtml(w.waitingNum)}</td>
+          <td class="booking-no">${escapeHtml(ticketLabel(w))}</td>
           <td>${escapeHtml(w.waitingName)}</td>
           <td>${escapeHtml(w.seatTypeNo)} 人桌</td>
           <td><span class="tag ${waitingStatusClass(w.waitingStatus)}">${escapeHtml(w.waitingStatus)}</span></td>
@@ -802,22 +805,20 @@ function startDemoWaiting() {
     next.waitingNotifyTime = timeText(new Date());
     saveDemo();
     render();
-    staffToast(`已傳簡訊通知 ${next.seatTypeNo} 人桌 ${next.waitingNum} 號（${next.waitingName}）`);
+    staffToast(`已傳簡訊通知 ${ticketLabel(next)}（${next.waitingName}）`);
     console.log('（假資料）傳給 ' + next.waitingTel + ' 的簡訊內容：' + SMS_TEXT);   // 按 F12 的 Console 可以看到簡訊的內容
   });
 
-  // 搜尋：按「查詢」（或在輸入框按 Enter）才會查；「顯示全部」把搜尋的文字清掉
-  document.getElementById('demoWaitingTools').addEventListener('submit', e => {
-    e.preventDefault();   // 假資料不用把表單送到後端
-    currentKeyword = keywordInput.value;
-    render();
-  });
-  showAllBtn.addEventListener('click', () => {
-    currentKeyword = '';
+  // 依桌型篩選：按「全部」或某一種桌型，馬上換成那個桌型的候位
+  // 資料庫的版本：那幾顆是連結（/staff/booking?tab=waiting&seatType=2），由 Controller 查出那個桌型的候位
+  filterBox.addEventListener('click', e => {
+    const btn = e.target.closest('[data-seat-filter]');
+    if (!btn) return;
+    currentSeatType = btn.dataset.seatFilter === '' ? null : Number(btn.dataset.seatFilter);   // 空字串是「全部」
     render();
   });
 
-  // 「刷新頁面」：重新讀一次資料，並重新算「剩幾分鐘」（搜尋的文字不變）
+  // 「刷新頁面」：重新讀一次資料，並重新算「剩幾分鐘」（篩選的桌型不變）
   document.getElementById('demoWaitingRefresh').addEventListener('click', () => {
     reloadDemo();
     render();
@@ -884,7 +885,7 @@ function startDemoWaiting() {
     // 過號：已通知的客人沒有回來。資料庫的版本：表單送到 POST /staff/booking/waiting/miss
     if (btn.dataset.act === 'miss') {
       if (waiting.waitingStatus !== '已通知') return;
-      const label = `${waiting.seatTypeNo} 人桌 ${waiting.waitingNum} 號（${waiting.waitingName}）`;
+      const label = `${ticketLabel(waiting)}（${waiting.waitingName}）`;
       if (!confirm(`確定要把 ${label} 設為過號嗎？`)) return;
       waiting.waitingStatus = '過號';
       saveDemo();
@@ -916,12 +917,12 @@ function startDemoWaiting() {
     if (error) return;
 
     // ★ 候位號碼：這個桌型目前最大的號碼加 1
-    const takeNumber = () => nextNumber(demo.waitings.filter(w => w.seatTypeNo === seatTypeNo).map(w => w.waitingNum));
+    const takeNumber = () => nextNumber(demo.waitings.filter(w => w.seatTypeNo === seatTypeNo).map(w => w.waitingTicketSeq));
     let waiting;
     if (isNew) {
       waiting = {
         waitingNo: nextNumber(demo.waitings.map(w => w.waitingNo)),
-        waitingNum: takeNumber(),
+        waitingTicketSeq: takeNumber(),
         seatTypeNo,
         waitingName: name,
         waitingTel: tel,
@@ -935,7 +936,7 @@ function startDemoWaiting() {
       waiting = demo.waitings.find(w => w.waitingNo === editingNo);
       // 換了桌型：號碼是每種桌型各自編的，所以在新的桌型重新取一個號碼（★ 資料庫的版本要怎麼做請和組員討論）
       if (waiting.seatTypeNo !== seatTypeNo) {
-        waiting.waitingNum = takeNumber();
+        waiting.waitingTicketSeq = takeNumber();
         waiting.seatTypeNo = seatTypeNo;
       }
       waiting.waitingName = name;
@@ -955,7 +956,7 @@ function startDemoWaiting() {
     saveDemo();
     closeForm();
     render();
-    const label = `${waiting.seatTypeNo} 人桌 ${waiting.waitingNum} 號（${waiting.waitingName}）`;
+    const label = `${ticketLabel(waiting)}（${waiting.waitingName}）`;
     staffToast(isNew ? `已新增候位：${label}` : `已修改候位：${label}`);
   });
 
