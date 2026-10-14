@@ -37,93 +37,142 @@ public class EmployeeController {
 	public EmployeeController(EmployeeService employeeService) {
 		this.employeeService = employeeService;
 	}
-	
+
 	// 員工登入
 	@PostMapping("/login")
-	public ResponseEntity<Map<String, Object>> login(
-	        @RequestBody Map<String, String> data,
-	        HttpSession session) {
+	public ResponseEntity<Map<String, Object>> login(@RequestBody Map<String, String> data, HttpSession session) {
 
-	    // 1. 取得員工編號與密碼
-	    String empNoText = data.get("empNo");
-	    String password = data.get("password");
+		// 1. 取得員工編號與密碼
+		String empNoText = data.get("empNo");
+		String password = data.get("password");
 
-	    if (empNoText == null || !empNoText.matches("\\d+")
-	            || password == null || password.isBlank()) {
-	        return ResponseEntity.badRequest()
-	                .body(Map.of("message", "請輸入正確的員工編號及密碼"));
-	    }
+		if (empNoText == null || !empNoText.matches("\\d+") || password == null || password.isBlank()) {
+			return ResponseEntity.badRequest().body(Map.of("message", "請輸入正確的員工編號及密碼"));
+		}
 
-	    Integer empNo;
-	    try {
-	        empNo = Integer.valueOf(empNoText);
-	    } catch (NumberFormatException e) {
-	        return ResponseEntity.badRequest()
-	                .body(Map.of("message", "員工編號格式錯誤"));
-	    }
+		Integer empNo;
+		try {
+			empNo = Integer.valueOf(empNoText);
+		} catch (NumberFormatException e) {
+			return ResponseEntity.badRequest().body(Map.of("message", "員工編號格式錯誤"));
+		}
 
-	    // 2. 呼叫 Service 驗證帳號密碼
-	    EmployeeVO employee = employeeService.login(empNo, password);
+		// 2. 呼叫 Service 驗證帳號密碼
+		EmployeeVO employee = employeeService.login(empNo, password);
 
-	    if (employee == null) {
-	        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-	                .body(Map.of("message", "員工編號或密碼錯誤，或帳號已停用"));
-	    }
+		if (employee == null) {
+			return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "員工編號或密碼錯誤，或帳號已停用"));
+		}
 
-	    // 3. 登入成功，記錄員工編號到 Session
-	    session.setAttribute("employeeNo", employee.getEmpNo());
+		// 3. 登入成功，記錄員工編號到 Session
+		session.setAttribute("employeeNo", employee.getEmpNo());
 
-	    // 4. 回傳登入結果
-	    return ResponseEntity.ok(Map.of(
-	            "message", "登入成功",
-	            "empNo", employee.getEmpNo(),
-	            "empName", employee.getEmpName(),
-	            "mustChangePassword", !Boolean.TRUE.equals(employee.getEmpPwdChanged())
-	    ));
+		// 4. 回傳登入結果
+		return ResponseEntity.ok(Map.of("message", "登入成功", "empNo", employee.getEmpNo(), "empName",
+				employee.getEmpName(), "mustChangePassword", !Boolean.TRUE.equals(employee.getEmpPwdChanged())));
 	}
-	
+
 	// 員工修改密碼
 	@PostMapping("/change-password")
-	public ResponseEntity<Map<String, String>> changePassword(
-	        @RequestBody Map<String, String> data,
-	        HttpSession session) {
+	public ResponseEntity<Map<String, String>> changePassword(@RequestBody Map<String, String> data,
+			HttpSession session) {
 
-	    // 1. 確認員工已登入
-	    Integer empNo = (Integer) session.getAttribute("employeeNo");
+		// 1. 確認員工已登入
+		Integer empNo = (Integer) session.getAttribute("employeeNo");
 
-	    if (empNo == null) {
-	        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-	                .body(Map.of("message", "請先登入"));
-	    }
+		if (empNo == null) {
+			return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "請先登入"));
+		}
 
-	    // 2. 取得舊密碼與新密碼
-	    String oldPassword = data.get("oldPassword");
-	    String newPassword = data.get("newPassword");
+		// 2. 只取得新密碼
+		String newPassword = data.get("newPassword");
 
-	    // 3. 呼叫 Service 修改密碼
-	    try {
-	        employeeService.changePassword(empNo, oldPassword, newPassword);
+		// 3. 呼叫 Service 修改密碼
+		try {
+		    employeeService.changePassword(empNo, newPassword);
 
-	        return ResponseEntity.ok(
-	                Map.of("message", "密碼修改成功")
-	        );
+			return ResponseEntity.ok(Map.of("message", "密碼修改成功"));
 
-	    } catch (IllegalArgumentException e) {
-	        return ResponseEntity.badRequest()
-	                .body(Map.of("message", e.getMessage()));
-	    }
+		} catch (IllegalArgumentException e) {
+			return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+		}
 	}
-	
+
 	// 員工登出
 	@PostMapping("/logout")
 	public ResponseEntity<Map<String, String>> logout(HttpSession session) {
 
-	    // 只清除員工登入資訊
-	    session.removeAttribute("employeeNo");
+		// 只清除員工登入資訊
+		session.removeAttribute("employeeNo");
 
-	    return ResponseEntity.ok(
-	            Map.of("message", "登出成功")
-	    );
+		return ResponseEntity.ok(Map.of("message", "登出成功"));
+	}
+
+	// 員工自行修改個人資料
+	@PutMapping("/me")
+	public ResponseEntity<Map<String, String>> updateMyProfile(@RequestBody Map<String, String> data,
+			HttpSession session) {
+
+		// 1. 從 Session 取得目前登入員工編號
+		Integer empNo = (Integer) session.getAttribute("employeeNo");
+
+		if (empNo == null) {
+			return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "請先登入"));
+		}
+
+		// 2. 只接收允許修改的三個欄位
+		String empIce = data.get("empIce");
+		String empIcetel = data.get("empIcetel");
+		String empAdd = data.get("empAdd");
+
+		// 3. 驗證資料長度
+		if ((empIce != null && empIce.length() > 30) || (empIcetel != null && empIcetel.length() > 10)
+				|| (empAdd != null && empAdd.length() > 100)) {
+			return ResponseEntity.badRequest().body(Map.of("message", "個人資料超過允許長度"));
+		}
+
+		// 4. 更新資料庫
+		try {
+			employeeService.updateMyProfile(empNo, empIce, empIcetel, empAdd);
+
+			return ResponseEntity.ok(Map.of("message", "個人資料修改成功"));
+
+		} catch (IllegalArgumentException e) {
+			return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+		}
+	}
+
+	// 查詢目前登入員工的個人資料
+	@GetMapping("/me")
+	public ResponseEntity<Map<String, Object>> getMyProfile(HttpSession session) {
+
+		// 1. 從 Session 取得目前登入的員工編號
+		Integer empNo = (Integer) session.getAttribute("employeeNo");
+
+		if (empNo == null) {
+			return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+		}
+
+		// 2. 查詢目前登入的員工
+		EmployeeVO employee = employeeService.getEmployeeById(empNo).orElse(null);
+
+		if (employee == null || !"1".equals(employee.getEmpStatus())) {
+			session.removeAttribute("employeeNo");
+			return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+		}
+
+		// 3. 只回傳個人資料視窗需要的欄位
+		Map<String, Object> profile = new java.util.HashMap<>();
+
+		profile.put("empNo", employee.getEmpNo());
+		profile.put("empName", employee.getEmpName());
+		profile.put("empTel", employee.getEmpTel());
+		profile.put("empIce", employee.getEmpIce());
+		profile.put("empIcetel", employee.getEmpIcetel());
+		profile.put("empAdd", employee.getEmpAdd());
+		profile.put("hasPhoto", employee.getEmpPhoto() != null && employee.getEmpPhoto().length > 0);
+
+		return ResponseEntity.ok(profile);
 	}
 
 	// 查詢全部員工
@@ -281,28 +330,26 @@ public class EmployeeController {
 			return ResponseEntity.badRequest().body(e.getMessage());
 		}
 	}
-	
+
 	// 刪除員工照片
 	@DeleteMapping("/{empNo}/photo")
 	public ResponseEntity<Void> deleteEmployeePhoto(@PathVariable Integer empNo) {
 
-	    // 確認員工是否存在
-	    if (employeeService.getEmployeeById(empNo).isEmpty()) {
-	        return ResponseEntity.notFound().build();
-	    }
+		// 確認員工是否存在
+		if (employeeService.getEmployeeById(empNo).isEmpty()) {
+			return ResponseEntity.notFound().build();
+		}
 
-	    try {
-	        // 呼叫 Service 刪除照片
-	        employeeService.deleteEmployeePhoto(empNo);
+		try {
+			// 呼叫 Service 刪除照片
+			employeeService.deleteEmployeePhoto(empNo);
 
-	        // 刪除成功，回傳 HTTP 204
-	        return ResponseEntity.noContent().build();
+			// 刪除成功，回傳 HTTP 204
+			return ResponseEntity.noContent().build();
 
-	    } catch (IllegalArgumentException e) {
-	        throw new ResponseStatusException(
-	                HttpStatus.BAD_REQUEST, e.getMessage()
-	        );
-	    }
+		} catch (IllegalArgumentException e) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
+		}
 	}
 
 	// 讀取員工照片

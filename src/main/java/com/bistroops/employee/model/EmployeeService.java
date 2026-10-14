@@ -97,45 +97,39 @@ public class EmployeeService {
 
 	// 員工修改密碼
 	@Transactional
-	public void changePassword(Integer empNo, String oldPassword, String newPassword) {
+	public void changePassword(Integer empNo, String newPassword) {
 
-		// 1. 查詢員工
-		EmployeeVO employee = employeeRepository.findById(empNo)
-				.orElseThrow(() -> new IllegalArgumentException("找不到員工"));
+	    // 1. 查詢員工
+	    EmployeeVO employee = employeeRepository.findById(empNo)
+	            .orElseThrow(() -> new IllegalArgumentException("找不到員工"));
 
-		// 2. 確認員工仍在職
-		if (!"1".equals(employee.getEmpStatus())) {
-			throw new IllegalArgumentException("此員工已停用");
-		}
+	    // 2. 確認員工仍在職
+	    if (!"1".equals(employee.getEmpStatus())) {
+	        throw new IllegalArgumentException("此員工已停用");
+	    }
 
-		// 3. 驗證舊密碼
-		String storedPassword = employee.getEmpPassword();
+	    // 3. 檢查新密碼：至少 8 碼，必須包含英文與數字
+	    if (newPassword == null ||
+	            !newPassword.matches("^(?=.*[A-Za-z])(?=.*\\d)[A-Za-z\\d]{8,}$")) {
+	        throw new IllegalArgumentException("新密碼至少8碼，且必須包含英文及數字");
+	    }
 
-		if (storedPassword == null ||
-		        oldPassword == null ||
-		        !passwordEncoder.matches(oldPassword, storedPassword)) {
-		    throw new IllegalArgumentException("原密碼錯誤");
-		}
+	    // 4. 新密碼不可與目前密碼相同
+	    String storedPassword = employee.getEmpPassword();
 
-		// 4. 檢查新密碼：至少8碼，必須包含英文與數字
-		if (newPassword == null ||
-		        !newPassword.matches("^(?=.*[A-Za-z])(?=.*\\d)[A-Za-z\\d]{8,}$")) {
-		    throw new IllegalArgumentException("新密碼至少8碼，且必須包含英文及數字");
-		}
+	    if (storedPassword != null &&
+	            passwordEncoder.matches(newPassword, storedPassword)) {
+	        throw new IllegalArgumentException("新密碼不可與目前密碼相同");
+	    }
 
-		// 5. 新密碼不可與舊密碼相同
-		if (passwordEncoder.matches(newPassword, storedPassword)) {
-		    throw new IllegalArgumentException("新密碼不可與原密碼相同");
-		}
+	    // 5. BCrypt 加密後儲存
+	    employee.setEmpPassword(passwordEncoder.encode(newPassword));
 
-		// 6. 將新密碼加密後儲存
-		employee.setEmpPassword(passwordEncoder.encode(newPassword));
+	    // 6. 標記已完成首次密碼修改
+	    employee.setEmpPwdChanged(true);
 
-		// 7. 標記已完成首次密碼修改
-		employee.setEmpPwdChanged(true);
-
-		// 8. 更新資料庫
-		employeeRepository.save(employee);
+	    // 7. 更新資料庫
+	    employeeRepository.save(employee);
 	}
 
 	// 查詢所有員工
@@ -208,6 +202,28 @@ public class EmployeeService {
 
 		// 7. 儲存員工權限
 		employeeRepository.save(employee);
+	}
+	
+	// 員工自行修改個人資料
+	@Transactional
+	public void updateMyProfile(Integer empNo, String empIce,
+	                            String empIcetel, String empAdd) {
+
+	    // 依登入員工編號取得資料
+	    EmployeeVO employee = employeeRepository.findById(empNo)
+	            .orElseThrow(() -> new IllegalArgumentException("找不到員工"));
+
+	    // 停用員工不可修改資料
+	    if (!"1".equals(employee.getEmpStatus())) {
+	        throw new IllegalArgumentException("此員工已停用");
+	    }
+
+	    // 只允許修改緊急聯絡人、緊急聯絡電話、地址
+	    employee.setEmpIce(empIce);
+	    employee.setEmpIcetel(empIcetel);
+	    employee.setEmpAdd(empAdd);
+
+	    employeeRepository.save(employee);
 	}
 
 	// 修改員工資料

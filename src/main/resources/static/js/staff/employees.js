@@ -575,7 +575,28 @@ document.addEventListener("DOMContentLoaded", () => {
 			    }
 			}
 
-            alert(isEditing ? "員工修改成功！" : "員工新增成功！");
+			// 顯示 Bistroops 後台成功提示
+			const toast = document.createElement("div");
+			toast.className = "staff-toast";
+			toast.textContent = isEditing ? "✓ 員工修改成功" : "✓ 員工新增成功";
+
+			document.body.appendChild(toast);
+
+			// 淡入動畫
+			requestAnimationFrame(() => {
+			    requestAnimationFrame(() => {
+			        toast.classList.add("show");
+			    });
+			});
+
+			// 3 秒後淡出並移除
+			setTimeout(() => {
+			    toast.classList.remove("show");
+
+			    setTimeout(() => {
+			        toast.remove();
+			    }, 300);
+			}, 3000);
             closeModal();
             await loadEmployees();
 
