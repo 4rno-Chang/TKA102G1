@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<!--
+  錯誤頁的共用版型（400、404、405、413、500、4xx、5xx 都用這一份）
+  Spring Boot 發生錯誤時，內建的 BasicErrorController 會自己找 templates/error/{狀態碼}.html 顯示，
+  找不到再找 error/4xx.html 或 error/5xx.html，所以不用寫 Controller、不用改設定檔。
+  只有「瀏覽器開頁面」會看到這些頁；JS 呼叫的 API（例如 /api/employees/...）出錯時，Spring 回的是 JSON，不受影響。
+
+  使用方式：<html th:replace="~{error/error_layout :: page('404', '找不到頁面', '說明文字', false)}"></html>
+    code     錯誤碼（顯示用的大字）
+    title    標題
+    message  一句說明
+    goBack   true：按鈕是「回上一頁」（例如 413 上傳檔案太大，回到表單重選）
+             false：網址是 /staff 開頭 → 「回後台首頁」，其他 → 「回首頁」
+  Spring 放進 Model 的 path（出錯的網址）用來判斷是前台還是後台；不顯示技術細節（error、stacktrace）。
+  不套前台的 header／footer，也不載入 front.css：錯誤頁本身要盡量不會再出錯。
+-->
+<html lang="zh-Hant" xmlns:th="http://www.thymeleaf.org" th:fragment="page(code, title, message, goBack)">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title th:text="|Bistroops｜${code} ${title}|"></title>
+  <link rel="icon" th:href="@{/images/logo-mark.svg}" type="image/svg+xml">
+  <link rel="stylesheet" th:href="@{/css/error.css}" />
+</head>
+<body class="error-page">
+  <main class="error-box" th:with="isStaff=${path != null and #strings.startsWith(path, '/staff')}">
+    <img class="error-logo" th:src="@{/images/logo-dark.svg}" alt="Bistroops">
+    <p class="error-code" th:text="${code}"></p>
+    <h1 class="error-title" th:text="${title}"></h1>
+    <p class="error-message" th:text="${message}"></p>
+    <a class="error-btn" th:if="${goBack}" href="javascript:history.back()">回上一頁</a>
+    <a class="error-btn" th:unless="${goBack}" th:href="${isStaff} ? @{/staff} : @{/bistroops}"
+      th:text="${isStaff} ? '回後台首頁' : '回首頁'"></a>
+  </main>
+</body>
+</html>

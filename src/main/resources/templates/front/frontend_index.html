@@ -14,6 +14,7 @@
 <!-- front.css：前台共用（變數、頁首頁尾）；frontend_index.css：首頁自己的樣式（要寫在 front.css 後面） -->
 <link rel="stylesheet" th:href="@{/css/front/front.css}" />
 <link rel="stylesheet" th:href="@{/css/front/frontend_index.css}" />
+<link rel="stylesheet" th:href="@{/css/front/hero-announcement.css}" />
 <script th:src="@{/js/front/frontend_index.js}" defer></script>
 <link rel="stylesheet" th:href="@{/css/front/member.css}" />
 <script th:src="@{/js/front/member.js}" defer></script>
@@ -32,38 +33,31 @@
 				<p>副標題</p>
 				<a th:href="@{/bistroops/reservation}" class="btn-outline">立即訂位</a>
 			</div>
-	<!-- 輪播：目前是三張固定的示範圖片。
+	<!-- 輪播：最新的公告（之後加上活動），最多 5 張，點了到那一則公告。
+	資料由 IndexController_inSpringBoot 的 frontIndex 先查好放進 Model（heroSlides ＝ HeroSlideService.getHeroSlides()），
+	在 Controller 查：資料庫出錯時會顯示 500 錯誤頁，不會只出現半頁。
+	規則都寫在 HeroSlideService：公告＋活動依日期新到舊取 5 張；某一種一則都沒有時放它的空位圖
+	（slide-no-announcement.svg、slide-no-promote.svg）；不足 5 張時最後補一張訂位圖（promo-reservation.svg）。
+	每一張的 slide.title／href／imgSrc／kind 說明在 HeroSlideService 開頭。
+
 	圖片固定用 16:9 顯示，並拉開填滿整個框（frontend_index.css 的 .slide img { object-fit: fill }）：
      其他比例的圖片會被拉成 16:9（會變形），不留白、不裁切。後台活動管理的預覽用的是同樣的設定。
+     標題條、沒有圖片時的 logo 樣式在 hero-announcement.css。
 
-     【Thymeleaf 串接】之後要改成顯示資料庫的活動圖片時：
-     1. 首頁的 Controller（IndexController_inSpringBoot 的 frontIndex）把要輪播的活動放進 Model，例如名稱 promotes。
-        要放哪些活動請自己決定，建議只放「進行中、而且有圖片」的：
-          開始時間 不晚於 現在，而且 結束時間 不早於 現在，而且 promoteImg 不是 null。
-        （活動狀態不存在資料庫，是用時間判斷的，說明在 StaffPageController.java）
-     2. 前台要有自己的輸出圖片的方法，網址放在 /bistroops 底下，例如 GET /bistroops/promote/img?promoteNo=1，
-        寫法和後台的 /staff/promote/img 一樣。不要直接連 /staff 的網址。
-     3. 把下面 carousel-track 裡的三個 <div class="slide"> 換成：
-          <div class="slide" th:each="p : ${promotes}">
-            <img th:src="@{/bistroops/promote/img(promoteNo=${p.promoteNo})}" th:alt="${p.promoteName}">
-          </div>
-        輪播的圓點是 frontend_index.js 依照 slide 的數量自動產生的，不用改。
-     4. 沒有任何活動時輪播會是空的。可以保留一張固定的圖片當預設：
-          <div class="slide" th:if="${#lists.isEmpty(promotes)}">
-            <img th:src="@{/images/promo-reservation.svg}" alt="線上預約訂位現正開放">
-          </div> -->
-		
+     【接活動】前台活動頁和前台的活動圖片網址（例如 GET /bistroops/promote/img?promoteNo=1，不要直接連 /staff）做好之後，
+     打開 HeroSlideService 裡標示【接活動】的幾行就會一起輪播，這個檔案不用改。
+     輪播的圓點是 frontend_index.js 依照 slide 的數量自動產生的；清單至少有一張（訂位圖或空位圖），不會是空的。 -->
+
 			<div class="carousel" id="carousel">
 				<div class="carousel-track">
-					<div class="slide">
-						<img th:src="@{/images/promo-lunch.svg}" alt="平日午間套餐 85 折">
-					</div>
-					<div class="slide">
-						<img th:src="@{/images/promo-birthday.svg}" alt="壽星當月招待甜點">
-					</div>
-					<div class="slide">
-						<img th:src="@{/images/promo-reservation.svg}" alt="線上預約訂位現正開放">
-					</div>
+					<a class="slide" th:each="slide : ${heroSlides}" th:href="@{${slide.href}}">
+						<img th:if="${slide.imgSrc != null}" th:src="@{${slide.imgSrc}}" th:alt="${slide.title}">
+						<div class="slide-empty" th:if="${slide.imgSrc == null}">
+							<img th:src="@{/images/logo-mark.svg}" alt="">
+						</div>
+						<span class="slide-caption" th:if="${slide.kind == 'announcement' or slide.kind == 'promote'}"
+							th:text="${slide.title}"></span>
+					</a>
 				</div>
 				<button class="carousel-arrow prev" aria-label="上一張">‹</button>
 				<button class="carousel-arrow next" aria-label="下一張">›</button>
@@ -98,11 +92,11 @@
 			<div class="container">
 				<p class="eyebrow">FAQ</p>
 				<h2 class="section-title">常見問題</h2>
-				<!-- 內容來自資料庫的 qa 表：${@qaService.getPopular(5)} 直接呼叫 Spring 的 QaService（不經過 Controller），
+				<!-- 內容來自資料庫的 qa 表：由 IndexController_inSpringBoot 的 frontIndex 放進 Model（popularQaList ＝ QaService.getPopular(5)），
 				     只顯示點擊最多的 5 題；全部的問答在「more→」連到的 /bistroops/qa（FrontQaController）。
 				     點問題展開答案的效果在 frontend_index.js「3. 常見問題」；
 				     展開時 qa-click.js 送出點擊次數（網址在 data-click-url） -->
-				<div class="faq-list" id="faqList" th:with="qaList=${@qaService.getPopular(5)}">
+				<div class="faq-list" id="faqList" th:with="qaList=${popularQaList}">
 					<p th:if="${#lists.isEmpty(qaList)}">目前沒有常見問題</p>
 					<div class="faq-item" th:each="qa : ${qaList}"
 						th:attr="data-click-url=@{/bistroops/qa/{no}/click(no=${qa.qaNo})}">
