@@ -30,7 +30,7 @@ import jakarta.persistence.EntityNotFoundException;
  *
  * 直接注入組員的 Service 讀資料，只有兩個地方會寫組員的資料（都在入座的同一個交易裡）：
  *   · 訂位者入座：訂位改成「實到」（呼叫 CJ 的 ReservationService.markArrivedByStaff）
- *   · 候位入座：呼叫 WaitingService.seatWaiting，候位改成「已入座」
+ *   · 候位入座：呼叫 CJ 的 WaitingRedisService.seatWaiting，Redis 號碼牌改成「已入座」
  * 不記錄「哪桌坐誰」；有訂單的桌子才從訂單的會員（OrdersVO.getMember()）取客人資料，只是顯示用。
  *
  * 時間一律用「當天的第幾分鐘」計算（例如 17:30 = 1050），seat.seat_time 只有時間、沒有日期。
@@ -612,11 +612,16 @@ public class SeatTypeService {
 		reservationService.markArrivedByStaff(rsvNo);
 	}
 
-	// 候位入座：桌子 → 其它者使用；候位 → 已入座（WaitingService.seatWaiting 會自己鎖住候位）
-	// 舊的 MySQL 候位入座入口停止使用。
-	// 實際分桌待與 Redis 候位完成一致性串接後啟用。
-	public void seatWaiting(String seatNo, Long waitingNo) {
-		throw new IllegalStateException("候位已改用Redis，實際分桌尚未串接，請勿使用舊候位入座功能");
+	// 候位入座：桌子 → 其它者使用；Redis 號碼牌 → 已入座
+	// 先改桌子再改號碼牌：號碼牌已入座／過號／取消，或不是這個桌型（Redis 依桌型分開存，會找不到）都會丟錯誤，
+	// 交易還原，桌子不會變成使用中；兩個人同時按同一組，Redis 的 Lua 只會讓一個人成功
+	@Transactional
+	public void seatWaiting(String seatNo, String ticketId) {
+		if (ticketId == null || ticketId.isBlank()) {
+			throw new IllegalArgumentException("請選擇一組候位");
+		}
+		SeatVO seat = seatService.seatIn(seatNo, SeatingSeatService.WALK_IN);
+		waitingRedisService.seatWaiting(seat.getSeatTypeNo(), ticketId);
 	}
 
 	@Transactional
