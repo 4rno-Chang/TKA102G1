@@ -42,6 +42,9 @@ body.error-page {
 
 .error-logo { display: block; width: 150px; height: auto; margin: 0 auto 28px; }
 
+/* 500 頁的插圖：最寬撐滿卡片、等比例縮放，不會變形或超出畫面 */
+.error-image { display: block; width: 100%; max-width: 360px; height: auto; margin: 0 auto 24px; }
+
 .error-code {
   margin: 0;
   color: var(--error-primary);
