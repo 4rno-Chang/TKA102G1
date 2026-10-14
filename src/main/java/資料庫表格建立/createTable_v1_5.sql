@@ -69,6 +69,7 @@ CREATE TABLE IF NOT EXISTS meal(
 CREATE TABLE IF NOT EXISTS meal_type(
   meal_type_no INT UNSIGNED AUTO_INCREMENT COMMENT '類別編號',
   meal_type_name VARCHAR(30) COMMENT '類別名稱',
+  meal_type_hashtag VARCHAR(10) COMMENT '標籤代號',
   PRIMARY KEY(meal_type_no)
 ) COMMENT '菜品類別';
 
@@ -240,14 +241,13 @@ CREATE TABLE IF NOT EXISTS announcement(
 
 /*假資料, 測試資料*/
 -- 1. 插入義式料理類別 (meal_type)
-INSERT INTO meal_type (meal_type_name) VALUES 
-('主打推薦'),
-('開胃菜'),
-('義大利麵'),
-('燉飯'),
-('經典排餐'),
-('甜點'),
-('飲料');
+INSERT INTO meal_type (meal_type_name,meal_type_hashtag) VALUES 
+('開胃菜','前菜'),
+('義大利麵','主餐'),
+('燉飯','主餐'),
+('經典排餐','主餐'),
+('甜點','甜點'),
+('飲料','飲料');
 
 
 -- 2. 插入義式菜品資料 (meal)

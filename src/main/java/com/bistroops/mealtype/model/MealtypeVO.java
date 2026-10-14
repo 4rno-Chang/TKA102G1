@@ -25,11 +25,13 @@ public class MealtypeVO {
 
 	@Column(name = "meal_type_name")
 	private String mealtypeName;
+
+	@Column(name = "meal_type_hashtag")
+	private String mealtypeHashtag;
 	
 	@OneToMany(mappedBy="mealType",cascade = CascadeType.ALL)
 	@OrderBy("mealNo asc")
 	private Set<MealVO> meals;
-
 
 	public MealtypeVO() {
 	}
@@ -38,41 +40,34 @@ public class MealtypeVO {
 		return mealtypeNo;
 	}
 
-
-
 	public void setMealtypeNo(Integer mealtypeNo) {
 		this.mealtypeNo = mealtypeNo;
 	}
-
-
 
 	public String getMealtypeName() {
 		return mealtypeName;
 	}
 
-
-
 	public void setMealtypeName(String mealtypeName) {
 		this.mealtypeName = mealtypeName;
 	}
 
+	public String getMealtypeHashtag() {
+		return mealtypeHashtag;
+	}
+	
+	public void setMealtypeHashtag(String mealtypeHashtag) {
+		this.mealtypeHashtag = mealtypeHashtag;
+	}
 
 
 	public Set<MealVO> getMeals() {
 		return meals;
 	}
 
-
-
 	public void setMeals(Set<MealVO> meals) {
 		this.meals = meals;
 	}
 
-
-
-	@Override
-	public String toString() {
-		return "MealtypeVO [mealTypeNo=" + mealtypeNo + ", mealTypeName=" + mealtypeName + ", meals=" + meals + "]";
-	}
 
 }
