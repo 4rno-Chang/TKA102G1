@@ -143,6 +143,8 @@ receiptBody.addEventListener('click', e => {
   staffToast(`${order.table} 桌結帳完成（${method} ${amount}）`);
 });
 
+
+
 // 另一個分頁改了資料時，這裡跟著更新
 StaffStore.onChange(render);
 

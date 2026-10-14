@@ -102,10 +102,19 @@ if (staffClock) {
    表單寫了 data-confirm="要顯示的問句" 的話，送出前會先跳出確認視窗，按「取消」就不送出。
    用在資料庫版本的表單，例如結帳（checkout.html）、把餐點退回製作中（workboard.html）：
      <form th:action="..." method="post" data-confirm="確定結帳嗎？"> */
-document.addEventListener('submit', e => {
+/*document.addEventListener('submit', e => {
   const question = e.target.dataset.confirm;
   if (question && !confirm(question)) e.preventDefault();
+});*/
+
+document.addEventListener('submit', e => {
+  const question = e.target.dataset.confirm;
+  if (question && !confirm(question)) { e.preventDefault(); return; }  // 按「取消」就不送出
+  // 按的是刷卡按鈕（formtarget="ecpayWin"）：確認後才開小視窗，表單結果會顯示在這個視窗裡
+  if (e.submitter && e.submitter.formTarget === 'ecpayWin')
+    window.open('', 'ecpayWin', 'width=500,height=700');
 });
+
 
 
 // ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼

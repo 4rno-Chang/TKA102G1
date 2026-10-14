@@ -68,7 +68,7 @@
               <span class="badge badge-table" th:text="${order.seatNo.seatNo}">A1</span>
               <h2 class="receipt-title">餐點明細<span class="source-tag source-db">資料庫</span></h2>
             </div>
-            <p class="receipt-meta">訂單編號：<span th:text="${order.orders}"></span></p>
+            <p class="receipt-meta">訂單編號：<span th:text="${#numbers.formatInteger(order.orders,8)}"></span></p>
             <p class="receipt-meta">下單時間：<span th:text="${order.ordersTime}"></span></p>
 
             <table class="receipt-table">
@@ -102,7 +102,7 @@
               <!-- 會員：還沒做，先留按鈕。之後要做會員折扣時，把 data-coming-soon 拿掉，
                    改成輸入會員手機的小表單送到 Controller，由 Controller 算好折扣後回到這一頁 -->
               <button type="button" class="staff-btn" data-coming-soon="會員">會員</button>
-              <button type="submit" class="staff-btn btn-card" name="method" value="刷卡">刷卡</button>
+              <button type="submit" class="staff-btn btn-card" th:formaction="@{/staff/checkout/card}" formtarget="ecpayWin">刷卡</button> 
               <button type="submit" class="staff-btn btn-cash" name="method" value="現金">現金</button>
             </form>
           </div>
