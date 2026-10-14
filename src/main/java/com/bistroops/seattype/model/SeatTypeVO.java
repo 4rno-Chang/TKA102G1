@@ -4,7 +4,7 @@ import java.util.Set;
 import com.bistroops.reservation.model.ReservationVO;
 import com.bistroops.waiting.model.WaitingVO;
 
-//import com.bistroops.seat.model.SeatVO;
+import com.bistroops.seat.model.SeatVO;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -39,9 +39,9 @@ public class SeatTypeVO {
 	@OneToMany(mappedBy = "seatType")
 	private Set<WaitingVO> waiting;
 	
-	//桌位
-//	@OneToMany(mappedBy="seat")
-//	private Set<SeatVO> seat;
+	//桌位（mappedBy 是 SeatVO 裡的欄位名稱 seatType）
+	@OneToMany(mappedBy = "seatType")
+	private Set<SeatVO> seat;
 	
 	
 	//預約明細
@@ -125,14 +125,14 @@ public class SeatTypeVO {
 	}
 
 
-//	public Set<SeatVO> getSeat() {
-//		return seat;
-//	}
+	public Set<SeatVO> getSeat() {
+		return seat;
+	}
 
 
-//	public void setSeat(Set<SeatVO> seat) {
-//		this.seat = seat;
-//	}
+	public void setSeat(Set<SeatVO> seat) {
+		this.seat = seat;
+	}
 
 
 	public Set<ReservationVO> getReservation() {
