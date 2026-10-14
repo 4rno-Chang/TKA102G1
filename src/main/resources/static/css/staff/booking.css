@@ -46,31 +46,12 @@
 /* 搜尋框：佔掉剩下的寬度 */
 .booking-tool-grow { flex: 1; min-width: 220px; max-width: 420px; }
 
-/* 候位列表上面那一行：左邊「今天的候位，共 N 組」，後面接著小小的搜尋。放不下的時候搜尋會掉到下一行 */
+/* 候位列表上面那一行：左邊是依桌型篩選的按鈕，後面接著「今日候位，全部共 9 組」的說明。放不下的時候說明會掉到下一行 */
 .booking-waiting-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; margin-bottom: 10px; }
 .booking-waiting-head .booking-summary { margin-bottom: 0; }
-/* 小的搜尋：輸入框和按鈕的字和旁邊那行字一樣大（15px），高度 38px，比後台一般的輸入框（48px）小一號 */
-.booking-mini-search { display: flex; align-items: center; gap: 6px; }
-.booking-mini-search input[type="search"] {
-  width: 230px; height: 38px;
-  padding: 0 12px;
-  background: var(--st-card);
-  border: 1px solid var(--st-border);
-  border-radius: 10px;
-  font-size: 15px;
-}
-.booking-mini-search input[type="search"]:focus { outline: 2px solid var(--st-yellow); outline-offset: 1px; }
-.booking-mini-search button,
-.booking-mini-search a {
-  display: inline-flex; align-items: center;
-  height: 38px; padding: 0 14px;
-  background: var(--st-card);
-  border: 1px solid var(--st-border);
-  border-radius: 10px;
-  font-size: 15px; white-space: nowrap;
-}
-.booking-mini-search button:hover,
-.booking-mini-search a:hover { background: var(--st-soft); }
+/* 依桌型篩選的按鈕（全部、2 人桌、4 人桌、6 人桌）：用 staff.css 的 .chip，縮小一點才能和旁邊那行字排在同一行 */
+.booking-seat-filter { gap: 6px; }
+.booking-seat-filter .chip { min-height: 38px; padding: 0 14px; font-size: 15px; white-space: nowrap; }
 /* 目前顯示的是什麼（某一天某個餐期的訂位、搜尋的結果、候位共幾組） */
 .booking-summary { margin-bottom: 10px; color: var(--st-muted); font-size: 15px; }
 .booking-summary b { color: var(--st-text); }

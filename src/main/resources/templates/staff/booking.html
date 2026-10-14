@@ -27,7 +27,8 @@
   對應的資料表（createTable_v1_4.sql）和 VO：
     訂位      reservation            ReservationVO          rsvNo、member（會員）、rsvDt（訂位時段）、seatType（桌型）、rsvCreateTime、rsvStatus、rsvComment
     訂位時段  reservation_datetime   ReservationDatetimeVO  rsvDtNo、rsvDtDatetime
-    候位      waiting                WaitingVO              waitingNo、seatType、member、waitingTel、waitingName、waitingComment、waitingStatus、waitingNotifyTime
+    候位      waiting                WaitingVO              waitingNo、seatType、member、waitingTel、waitingName、waitingComment、waitingStatus、waitingNotifyTime、
+                                                    waitingDate（候位日期）、waitingTakeTime（抽號時間）、waitingTicketSeq（當天這個桌型的第幾號）
     桌型      seat_type              SeatTypeVO             seatTypeNo（2、4、6 人桌）、seatTypeNum、seatTypeRsvNum、seatTypeTakeNum（取號）、seatTypeCallNum（入座號）、seatTypePending（目前可使用）
     會員      member                 MemberVO               memNo、memTel、memName …
 
@@ -66,13 +67,14 @@
     4. 取消訂位：POST /staff/booking/rsv/cancel。不是真的刪除，是把狀態改成「取消」，資料留著（列表上不再顯示）。
     ── 候位 ──
     5. 查詢：GET /staff/booking?tab=waiting 把 waitingList（今天的候位）和 seatBoards（每種桌型的可用桌數、叫號）放進 Model。
-       有帶 keyword 的話，waitingList 只放姓名、電話或號碼符合的候位，並把 keyword 也放進 Model（右邊的叫號不受搜尋影響）。
+       有帶 seatType（2、4、6）的話，waitingList 只放那個桌型的候位，並把 seatType 也放進 Model（右邊的叫號不受影響）。
     6. 新增／修改的對話框：GET /staff/booking/waiting/add、GET /staff/booking/waiting/edit?waitingNo=1 把 waitingForm 等資料放進 Model。
     7. 儲存：POST /staff/booking/waiting/save（新增是替不會用網路的客人取號；修改可以改資料和狀態）。
     8. 過號：POST /staff/booking/waiting/miss（已通知的客人沒有回來）。
     9. 叫下一號：POST /staff/booking/waiting/call?seatTypeNo=2，替那個桌型通知下一位候位中的客人，並傳簡訊。
-    ★ 候位的取號、入座號、目前可用桌數之後預計改接 Redis，並在候位表加一個「候位號碼」的欄位。
-      和這些有關的地方都標了「★ Redis」「★ 候位號碼」，改的時候找這兩個記號。
+    ★ 候位號碼：畫面上顯示的號碼是「英文字母＋兩位數」── 2 人桌 A01 開始、4 人桌 B01 開始、6 人桌 C01 開始。
+      數字是候位表的 waiting_ticket_seq（每一天、每種桌型各自從 1 開始），字母由桌型決定。組法寫在候位那一塊的說明（找「★ 候位號碼」）。
+    ★ 候位的入座號、目前可用桌數之後預計改接 Redis，和這些有關的地方都標了「★ Redis」。
     ── 最後 ──
     10. 確認資料庫的版本沒問題後，刪除假資料：
          a. 這個檔案裡用 ▼▼▼【假資料・刪除範圍 開始】到 ▲▲▲【假資料・刪除範圍 結束】框起來的每一段（共 5 段）
@@ -112,7 +114,7 @@
         <a class="staff-btn" th:if="${tab != 'waiting' and rsvList != null}"
            th:href="@{/staff/booking(date=${date}, meal=${meal}, keyword=${keyword})}">刷新頁面<span class="source-tag source-db">資料庫</span></a>
         <a class="staff-btn" th:if="${tab == 'waiting' and waitingList != null}"
-           th:href="@{/staff/booking(tab='waiting', keyword=${keyword})}">刷新頁面<span class="source-tag source-db">資料庫</span></a>
+           th:href="@{/staff/booking(tab='waiting', seatType=${seatType})}">刷新頁面<span class="source-tag source-db">資料庫</span></a>
 
         <!-- 【資料庫資料】新增訂位：連到 /staff/booking/rsv/add，Controller 放 rsvForm 之後「新增訂位」的對話框就會出現。
              網址帶著目前看的日期和餐期，對話框的日期會先選好那一天，關掉對話框時也回得到同一個列表 -->
@@ -344,24 +346,39 @@
       <!-- ================================================================
            【資料庫資料】Thymeleaf 串接：候位（左邊：今天的候位列表；右邊：每種桌型的叫號）
            Controller（GET /staff/booking?tab=waiting）放進 Model：
-             waitingList  今天的候位（List<WaitingVO>），依候位號碼排序。★ 不要包含狀態是「取消」的。
-                          有搜尋文字（keyword）的時候，只放符合的那幾筆。
-             keyword      搜尋的文字（可以是 null）。找的是：姓名裡有這些字、電話裡有這些數字、或號碼剛好等於它。
-                          電話雖然不顯示在列表上，還是可以用電話找（客人報電話比報號碼常見）。
-                          ★ 候位表目前沒有日期的欄位，「今天」怎麼判斷要和組員確認
-                            （之前討論過：每天固定時間重設，或另外記錄日期）。
+             waitingList  今天的候位（List<WaitingVO>）。★ 不要包含狀態是「取消」的。
+                          「今天」＝ 候位日期（waitingDate）是今天的。有選桌型（seatType）的時候，只放那個桌型的。
+             seatType     目前篩選的桌型（Integer：2、4、6）。看全部的時候不要放（或放 null）。
              seatBoards   每種桌型一格（List）。每一格需要這些屬性（名稱是範例）：
                             seatTypeNo     桌型編號，也就是幾人桌（2、4、6）
                             pending        目前可以使用的桌數          ★ Redis（現在是 seat_type.seat_type_pending）
                             waitingCount   還在等的組數（狀態是「候位中」的筆數）
-                            callingNos     叫號中的號碼（List，可以不只一個） ★ Redis、★ 候位號碼
-                                           ＝ 狀態是「已通知」的候位號碼。客人入座、過號或取消之後就不在裡面了
-                            lateNos        callingNos 裡「通知後已經超過 10 分鐘」的號碼（List）。畫面上會從紅底變成綠底，
-                                           提醒工作人員可以按「過號」了。★ 沒有逾時的也要放「空的清單」，不能不放這個屬性
+                            callingList    叫號中的候位（List<WaitingVO>，可以不只一筆，依號碼排序）
+                                           ＝ 這個桌型今天狀態是「已通知」的候位。客人入座、過號或取消之後就不在裡面了。
+                                           沒有的時候放「空的清單」。
+                            lateNos        callingList 裡「通知後已經超過 10 分鐘」的那幾筆的候位編號（List<Long>，放的是 waitingNo）。
+                                           畫面上會從紅底變成綠底，提醒工作人員可以按「過號」了。
+                                           ★ 沒有逾時的也要放「空的清單」，不能不放這個屬性
                           可以用 Map，也可以另外寫一個小類別來裝；這裡用 b.seatTypeNo 這種寫法兩種都讀得到。
+                          ★ 不管左邊有沒有選桌型，seatBoards 都要放「全部的桌型」：右邊的叫號不受篩選影響，
+                            上面那排桌型的按鈕也是用 seatBoards 產生的（有幾種桌型就有幾顆，沒有寫死）。
+
+           ★ 候位號碼（畫面上顯示的 A01、B12 …）怎麼組出來：
+               字母   由桌型決定：2 人桌是 A、4 人桌是 B、6 人桌是 C
+               數字   w.waitingTicketSeq（候位表的 waiting_ticket_seq：當天這個桌型的第幾號），不足兩位前面補 0
+             下面 th:with 的 ticketLetters 就是「桌型 → 字母」的對照表（{2:'A', 4:'B', 6:'C'} 是直接在頁面上寫一個小的 Map）。
+             用到號碼的地方（列表的號碼欄、過號的確認訊息、右邊叫號的號碼）都是同一個寫法：
+               ticketLetters[桌型編號]                         查出字母
+               #numbers.formatInteger(w.waitingTicketSeq, 2)   把數字補成兩位（1 → 01；超過 99 會照實顯示三位）
+               兩個接起來就是 A01。
+             w.waitingTicketSeq 是 null（加這個欄位之前的舊資料）時，改顯示「#候位編號」，頁面才不會出錯。
+             ★ 之後新增桌型（例如 8 人桌）：在 ticketLetters 裡加一組（8:'D'），並請負責候位的組員一起確認字母。
+             ★ 這個組法在 Java 也會用到（訊息裡要告訴工作人員號碼），寫法在 StaffBookingController.java 的步驟 5。兩邊的規則要一樣。
+
            下面 th:with 的 shownWaiting：把 waitingList 裡狀態是「取消」的再濾掉一次（和訂位的 shownRsv 相同的做法）。
            ================================================================ -->
-      <div class="source-block" th:if="${waitingList != null}" th:with="shownWaiting=${waitingList.?[waitingStatus != '取消']}">
+      <div class="source-block" th:if="${waitingList != null}"
+           th:with="shownWaiting=${waitingList.?[waitingStatus != '取消']}, ticketLetters=${ {2:'A', 4:'B', 6:'C'} }">
         <p class="source-line"><span class="source-tag source-db">資料庫資料</span></p>
 
         <!-- .booking-split：左右兩欄。左邊（.booking-split-main）是候位的列表，右邊（.booking-split-side）是叫號。
@@ -370,7 +387,7 @@
 
           <!-- ═══ 左邊：今天的候位 ═══
                每一列：號碼、姓名、桌型、狀態、通知時間、備註、操作。（電話不顯示在列表上，要看、要改請按「編輯」）
-               號碼    ：★ 候位號碼。目前先顯示 w.waitingNo（候位編號）；候位表加了「候位號碼」的欄位之後，換成那個屬性。
+               號碼    ：★ 候位號碼，例如 A01（組法見上面的說明）。每一列先用 th:with 算好放在 ticketNo，下面的號碼欄和確認訊息都用它。
                狀態    ：w.waitingStatus。組員的 WaitingService 已經定義了五種：候位中、已通知、已入座、取消、過號。
                          這一頁只會把狀態改成 已通知（叫號）、過號、取消、候位中；「已入座」由入座管理設定。
                通知時間：w.waitingNotifyTime（LocalTime），還沒通知是空的。
@@ -380,22 +397,22 @@
                                要取消候位、改回候位中，都是在編輯的對話框裡改「狀態」。
                ★ 這一頁沒有「入座」和「通知」的按鈕：入座由入座管理負責；通知改成按右邊的「叫下一號」（照號碼順序叫）。 -->
           <div class="booking-split-main">
-            <!-- 搜尋：用 GET 送到 /staff/booking，網址會變成 /staff/booking?tab=waiting&keyword=王。
-                 藏著的 tab 欄位是告訴 Controller「這是候位的分頁」，少了它會跑到訂位的分頁。
-                 「顯示全部」是連回沒有搜尋文字的候位分頁，正在看搜尋結果的時候才出現。
-                 ★ 搜尋只影響左邊的列表；右邊的叫號永遠是全部的狀況。
-                 ★ 按「過號」、儲存編輯之後會回到沒有搜尋的完整列表（那些表單和連結沒有帶 keyword）。 -->
-            <!-- 版面：.booking-waiting-head 把「今天的候位，共 N 組」和搜尋排在同一行，搜尋接在文字後面，
-                 大小縮到和那行字差不多（.booking-mini-search，不用後台一般的大輸入框和大按鈕）。 -->
+            <!-- 依桌型篩選：「全部」和每一種桌型各一顆，都是連結，按了就重新向 Controller 要那個桌型的候位：
+                   全部     /staff/booking?tab=waiting
+                   2 人桌   /staff/booking?tab=waiting&seatType=2
+                 桌型的按鈕是用 seatBoards 產生的（th:each），資料庫有幾種桌型就有幾顆，沒有寫死。
+                 選取中（深色）的那一顆：seatType 是 null → 全部；seatType 和那一顆的桌型編號相同 → 那一顆。
+                 ★ 篩選只影響左邊的列表；右邊的叫號永遠是全部桌型的狀況。
+                 ★ 按「過號」、儲存編輯、叫下一號之後會回到「全部」（那些表單和連結沒有帶 seatType）。
+                 版面：.booking-waiting-head 把這排按鈕和後面的說明排在同一行。
+                 說明的文字：看全部是「今日候位，全部共 9 組」；選了桌型是「今日候位，2人桌共 6 組」（seatType 是 null 就顯示「全部」，不然顯示幾人桌）。 -->
             <div class="booking-waiting-head">
-              <p class="booking-summary" th:if="${#strings.isEmpty(keyword)}">今天的候位，共 <b th:text="${#lists.size(shownWaiting)}">8</b> 組</p>
-              <p class="booking-summary" th:unless="${#strings.isEmpty(keyword)}">搜尋「<b th:text="${keyword}">王</b>」的結果，共 <b th:text="${#lists.size(shownWaiting)}">1</b> 組</p>
-              <form class="booking-mini-search" th:action="@{/staff/booking}" method="get">
-                <input type="hidden" name="tab" value="waiting">
-                <input type="search" name="keyword" th:value="${keyword}" placeholder="搜尋姓名、電話或號碼" aria-label="搜尋候位">
-                <button type="submit">查詢</button>
-                <a th:unless="${#strings.isEmpty(keyword)}" th:href="@{/staff/booking(tab='waiting')}">顯示全部</a>
-              </form>
+              <div class="chips booking-seat-filter" th:if="${seatBoards != null}">
+                <a class="chip" th:href="@{/staff/booking(tab='waiting')}" th:classappend="${seatType == null} ? 'active'">全部</a>
+                <a class="chip" th:each="b : ${seatBoards}" th:href="@{/staff/booking(tab='waiting', seatType=${b.seatTypeNo})}"
+                   th:classappend="${seatType == b.seatTypeNo} ? 'active'" th:text="|${b.seatTypeNo} 人桌|">2 人桌</a>
+              </div>
+              <p class="booking-summary">今日候位，<span th:text="${seatType == null} ? '全部' : |${seatType}人桌|">全部</span>共 <b th:text="${#lists.size(shownWaiting)}">9</b> 組</p>
             </div>
             <div class="booking-table-wrap">
               <table class="booking-table booking-table-narrow">
@@ -403,9 +420,10 @@
                   <tr><th>號碼</th><th>姓名</th><th>桌型</th><th>狀態</th><th>通知時間</th><th>備註</th><th class="booking-col-act">操作</th></tr>
                 </thead>
                 <tbody>
-                  <tr th:if="${#lists.isEmpty(shownWaiting)}"><td colspan="7" class="staff-empty" th:text="${#strings.isEmpty(keyword)} ? '目前沒有候位' : '沒有符合條件的候位'">目前沒有候位</td></tr>
-                  <tr th:each="w : ${shownWaiting}">
-                    <td class="booking-no" th:text="${w.waitingNo}">12</td>
+                  <tr th:if="${#lists.isEmpty(shownWaiting)}"><td colspan="7" class="staff-empty" th:text="${seatType == null} ? '目前沒有候位' : '這個桌型目前沒有候位'">目前沒有候位</td></tr>
+                  <tr th:each="w : ${shownWaiting}"
+                      th:with="ticketNo=${w.waitingTicketSeq != null ? (ticketLetters[w.seatType.seatTypeNo] ?: '') + #numbers.formatInteger(w.waitingTicketSeq, 2) : '#' + w.waitingNo}">
+                    <td class="booking-no" th:text="${ticketNo}">A12</td>
                     <td th:text="${w.waitingName}">王小明</td>
                     <td th:text="|${w.seatType.seatTypeNo} 人桌|">2 人桌</td>
                     <td>
@@ -418,7 +436,7 @@
                     <td class="booking-col-act">
                       <div class="booking-actions">
                         <form th:action="@{/staff/booking/waiting/miss}" method="post" th:if="${w.waitingStatus == '已通知'}"
-                              th:attr="data-confirm=|確定要把 ${w.waitingNo} 號（${w.waitingName}）設為過號嗎？|">
+                              th:attr="data-confirm=|確定要把 ${ticketNo}（${w.waitingName}）設為過號嗎？|">
                           <input type="hidden" name="waitingNo" th:value="${w.waitingNo}">
                           <button type="submit" class="staff-btn btn-danger-outline booking-btn-sm">過號</button>
                         </form>
@@ -440,8 +458,9 @@
                叫下一號：POST /staff/booking/waiting/call，帶著 seatTypeNo。
                          Controller 找出這個桌型「候位中」裡號碼最小的那一位，把他改成「已通知」、記下通知時間、傳簡訊，
                          然後 redirect 回 /staff/booking?tab=waiting。沒有候位中的客人時，帶訊息回來就好。
-               叫號中的號碼可以有好幾個（th:each），沒有的時候顯示「尚無叫號」。
-               逾時的號碼：號碼在 b.lateNos 裡的話加上 is-late 這個 class（變成綠底白字）。
+               叫號中的號碼可以有好幾個（th:each 把 b.callingList 裡的每一筆候位變成一顆），沒有的時候顯示「尚無叫號」。
+               號碼的文字和左邊列表的組法相同（字母＋兩位數）。
+               逾時的號碼：這一筆的候位編號（c.waitingNo）在 b.lateNos 裡的話加上 is-late 這個 class（變成綠底白字）。
                          #lists.contains(清單, 值) 是「清單裡有沒有這個值」。 -->
           <aside class="booking-split-side" th:if="${seatBoards != null}">
             <h2 class="booking-side-title">叫號<small><i class="booking-dot is-late"></i>已為逾時，<i class="booking-dot"></i>為已叫號</small></h2>
@@ -457,9 +476,9 @@
                 <p class="booking-board-meta">可用 <b th:text="${b.pending}">3</b> 桌<i>・</i>等候 <b th:text="${b.waitingCount}">4</b> 組</p>
                 <p class="booking-calls-label">目前叫號</p>
                 <p class="booking-calls">
-                  <span class="booking-call" th:each="no : ${b.callingNos}" th:classappend="${#lists.contains(b.lateNos, no)} ? 'is-late'"
-                        th:text="${no}">12</span>
-                  <span class="booking-call-none" th:if="${#lists.isEmpty(b.callingNos)}">尚無叫號</span>
+                  <span class="booking-call" th:each="c : ${b.callingList}" th:classappend="${#lists.contains(b.lateNos, c.waitingNo)} ? 'is-late'"
+                        th:text="${c.waitingTicketSeq != null ? (ticketLetters[c.seatType.seatTypeNo] ?: '') + #numbers.formatInteger(c.waitingTicketSeq, 2) : '#' + c.waitingNo}">A12</span>
+                  <span class="booking-call-none" th:if="${#lists.isEmpty(b.callingList)}">尚無叫號</span>
                 </p>
               </article>
             </div>
@@ -482,13 +501,10 @@
           <div class="booking-split-main">
             <!-- 搜尋，結構和上面【資料庫資料】的相同；按「查詢」之後由 booking.js 的 B 區重新產生列表 -->
             <div class="booking-waiting-head">
-              <!-- 共幾組，由 booking.js 填入 -->
+              <!-- 依桌型篩選的按鈕（全部、2 人桌、4 人桌、6 人桌），由 booking.js 產生；結構和上面【資料庫資料】的相同，只是按了不用連到後端 -->
+              <div class="chips booking-seat-filter" id="demoWaitingFilter"></div>
+              <!-- 「今日候位，全部共 9 組」這行說明，由 booking.js 填入 -->
               <p class="booking-summary" id="demoWaitingSummary"></p>
-              <form class="booking-mini-search" id="demoWaitingTools">
-                <input type="search" id="demoWaitingKeyword" placeholder="搜尋姓名、電話或號碼" aria-label="搜尋候位">
-                <button type="submit">查詢</button>
-                <button type="button" id="demoWaitingAll" hidden>顯示全部</button>
-              </form>
             </div>
             <div class="booking-table-wrap">
               <table class="booking-table booking-table-narrow">
@@ -676,13 +692,13 @@
              seatTypes     所有桌型（List<SeatTypeVO>），給「桌型」的選單用。
              waitingError  （儲存不通過時才放）錯誤訊息。
        儲存：表單送到 POST /staff/booking/waiting/save，欄位：
-               waitingNo       候位編號。新增時是空的，修改時有值
+               waitingNo       候位編號（資料庫自己編的流水號，不是畫面上的 A01）。新增時是空的，修改時有值
                waitingName     姓名（必填，最多 30 個字）
                waitingTel      電話（必填，10 個數字；叫號的簡訊會傳到這支電話）。列表上不顯示電話，要看、要改都在這裡
                seatTypeNo      桌型編號（必填）
                waitingStatus   狀態（修改時才有這個欄位；新增固定是「候位中」，組員的 WaitingService.addWaiting 會設定）
                waitingComment  備註（最多 20 個字）
-             ★ 候位號碼：新增時要替這個桌型取下一個號碼（現在是 seat_type.seat_type_take_num 加 1，之後改用 Redis）。
+             ★ 候位號碼：新增時要替這個桌型取今天的下一個號碼（waiting_ticket_seq），做法寫在 StaffBookingController.java 的步驟 7。
                修改時如果換了桌型，號碼要怎麼辦（重新取號，或不准換桌型）請和組員討論，寫在 StaffBookingController.java 的步驟 7。
              成功   → 帶 message（例如「已新增候位：2 人桌 13 號」）redirect 回 /staff/booking?tab=waiting
              不通過 → 放 waitingError，連同 waitingForm（裝著使用者填的內容）、seatTypes 和後面的列表，回傳這一頁

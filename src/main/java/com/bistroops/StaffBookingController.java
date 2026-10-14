@@ -93,7 +93,7 @@ public class StaffBookingController {
 	//    2    GET  /staff/booking/rsv/edit            "staff/booking"               同上（rsvForm 是查出來的那一筆）
 	//    3    POST /staff/booking/rsv/save            成功 redirect；不通過回傳頁面  不通過時：步驟 2 的全部，再加 errorMsg
 	//    4    POST /staff/booking/rsv/cancel          redirect                      用 RedirectAttributes 帶 message
-	//    5    GET  /staff/booking?tab=waiting         "staff/booking"               tab、waitingList、seatBoards、keyword
+	//    5    GET  /staff/booking?tab=waiting         "staff/booking"               tab、waitingList、seatBoards、seatType
 	//    6    GET  /staff/booking/waiting/add         "staff/booking"               步驟 5 的全部，再加 waitingForm、seatTypes
 	//    6    GET  /staff/booking/waiting/edit        "staff/booking"               同上（waitingForm 是查出來的那一筆）
 	//    7    POST /staff/booking/waiting/save        成功 redirect；不通過回傳頁面  不通過時：步驟 6 的全部，再加 waitingError
@@ -256,41 +256,67 @@ public class StaffBookingController {
 	//
 	//
 	// ══ 步驟 5：候位的查詢（下面 booking 方法裡 tab 是 "waiting" 的那一支）══
-	//   參數：步驟 1 已經有的 keyword（@RequestParam(required = false) String keyword）在這裡也會用到。
-	//   候位的搜尋：頁面的搜尋表單會送 /staff/booking?tab=waiting&keyword=王。
-	//     keyword 有內容（去掉空白之後不是空的）→ waitingList 只留符合的候位：
-	//         姓名裡有這些字（waitingName）、或電話裡有這些數字（waitingTel）、或候位號碼剛好等於它
-	//       電話不顯示在列表上，但客人通常是報電話或姓名，所以電話也要能找。
-	//       候位一天不會太多筆，可以先照原本的方式查出今天全部的候位，再用迴圈挑出符合的；不一定要另外寫查詢。
-	//     沒有 keyword → 今天全部的候位
-	//     ★ seatBoards（右邊的叫號）不受搜尋影響，永遠用全部的候位去算，不要拿搜尋之後的清單算。
-	//     ★ 過號、儲存編輯之後 redirect 回 /staff/booking?tab=waiting（不帶 keyword），會回到完整的列表。
-	//       想要做完之後留在搜尋結果的話，頁面上那些表單要多藏一個 keyword，這裡再用 redirectAttributes.addAttribute 放回網址。
-	//   放進 Model：
+	//   參數：多收一個 @RequestParam(required = false) Integer seatType（要看哪一種桌型：2、4、6；沒有帶就是全部）
+	//
+	//   ── 5-A. 今天的候位 ──
+	//   候位表現在有「候位日期」（waiting_date，WaitingVO 的 waitingDate），所以「今天的候位」＝ waitingDate 是 LocalDate.now() 的。
+	//   （之前擔心的「候位表沒有日期，不知道怎麼分今天」已經解決了。）
+	//   先查出今天全部的候位、排除狀態是「取消」的（規定 C）── 下面的列表和叫號都從這一份算。
+	//   WaitingRepository 已經有幾個用 waitingDate 查的方法（例如 findByWaitingDateAndSeatType_SeatTypeNoAndWaitingStatusIn…），
+	//   可以直接用，或請負責候位的組員加一個「查某一天全部」的方法。
+	//
+	//   ── 5-B. 依桌型篩選（取代原本的搜尋）──
+	//   頁面上有一排按鈕：全部、2 人桌、4 人桌、6 人桌。它們是連結：
+	//       全部     /staff/booking?tab=waiting
+	//       2 人桌   /staff/booking?tab=waiting&seatType=2
+	//   seatType 有值 → waitingList 只留那個桌型的（w.getSeatType().getSeatTypeNo() 和 seatType 相同的）
+	//                    候位一天不會太多筆，從 5-A 的清單用迴圈挑出來就可以，不一定要另外寫查詢。
+	//   seatType 沒有值、或不是任何一種桌型 → 全部
+	//   ★ seatBoards（右邊的叫號）不受篩選影響，永遠用「全部桌型」去算，不要拿篩選之後的清單算。
+	//     那排桌型的按鈕也是頁面用 seatBoards 產生的，所以 seatBoards 少放一種桌型，那一顆按鈕就不見了。
+	//   ★ 過號、儲存編輯、叫下一號之後 redirect 回 /staff/booking?tab=waiting（不帶 seatType），會回到「全部」。
+	//     想要做完之後留在同一個桌型的話，頁面上那些表單要多藏一個 seatType，這裡再用 redirectAttributes.addAttribute 放回網址。
+	//
+	//   ── 5-C. ★ 候位號碼（A01、B01、C01）──
+	//   畫面上的號碼不是候位編號（waitingNo，資料庫的流水號），而是「英文字母＋兩位數」：
+	//       字母   由桌型決定：2 人桌 A、4 人桌 B、6 人桌 C
+	//       數字   waiting_ticket_seq（WaitingVO 的 waitingTicketSeq）：今天這個桌型的第幾號，每天、每種桌型各自從 1 開始
+	//     所以 2 人桌今天第一位抽到的是 A01，4 人桌第一位是 B01，6 人桌第一位是 C01。
+	//   頁面（booking.html）已經照這個規則用 Thymeleaf 組好了，這裡「不用」另外把號碼放進 Model。
+	//   但是 Java 的訊息裡也會用到號碼（例如「已新增候位：A13」「已通知 B05」），建議寫一個自己用的小方法，規則要和頁面一樣：
+	//       private String ticketLabel(WaitingVO w) {
+	//           if (w.getWaitingTicketSeq() == null) return "#" + w.getWaitingNo();     // 加欄位之前的舊資料
+	//           Integer seatTypeNo = w.getSeatType().getSeatTypeNo();
+	//           String letter = seatTypeNo == 2 ? "A" : seatTypeNo == 4 ? "B" : seatTypeNo == 6 ? "C" : "";
+	//           return letter + String.format("%02d", w.getWaitingTicketSeq());      // %02d：不足兩位前面補 0
+	//       }
+	//   ★ WaitingVO 已經有一個 getTicketDisplay()，但它回傳的是「2-001」這種舊的格式。
+	//     比較好的做法是請負責候位的組員把它改成新的格式（A01）：這樣前台、後台、Java 的訊息都用同一個方法，
+	//     規則只寫在一個地方。改好之後，booking.html 裡組號碼的地方可以換成 ${w.ticketDisplay}，上面的小方法也不用寫了。
+	//     （那是組員的檔案，請和他討論，不要自己改。）
+	//   ★ 之後新增桌型（例如 8 人桌）：要一起決定它的字母，頁面的 ticketLetters 和 Java 兩邊都要加。
+	//
+	//   ── 5-D. 放進 Model ──
 	//     tab          "waiting"
-	//     keyword      搜尋的文字（沒有就不用放；頁面會把它填回搜尋框，並顯示「搜尋『王』的結果」）
-	//     waitingList  今天的候位（List<WaitingVO>），排除狀態是「取消」的（規定 C）。有 keyword 時只放符合的。
-	//                  建議的順序：還在處理中的（已通知、候位中）排前面，再依桌型、候位號碼排
-	//     seatBoards   每種桌型一格（List）。每一格要有這五個屬性（用 Map 或另外寫一個小類別都可以）：
+	//     seatType     目前篩選的桌型（Integer）。看全部的時候不要放（或放 null）；頁面用它決定哪一顆按鈕是選取中、標題要不要顯示桌型
+	//     waitingList  今天的候位（List<WaitingVO>），排除狀態是「取消」的。有 seatType 時只放那個桌型的。
+	//                  建議的順序：還在處理中的（已通知、候位中）排前面，再依桌型、號碼（waitingTicketSeq）排
+	//     seatBoards   每種桌型一格（List），★ 永遠是全部的桌型。每一格要有這五個屬性（用 Map 或另外寫一個小類別都可以）：
 	//                    seatTypeNo     桌型編號（幾人桌）
 	//                    pending        目前可以使用的桌數（這一頁只顯示；數字由入座管理更新，規定 D）
-	//                    waitingCount   還在等的組數 ＝ 狀態是「候位中」的筆數（WaitingService.countActiveBySeatType 可以參考）
-	//                    callingNos     叫號中的號碼（List<Long>；可以不只一個，沒有的話放空的清單）
-	//                                   ＝ 這個桌型裡狀態是「已通知」的候位號碼
-	//                    lateNos        callingNos 裡已經逾時的號碼（List<Long>；沒有的話也要放空的清單，不能不放）
+	//                    waitingCount   還在等的組數 ＝ 這個桌型今天狀態是「候位中」的筆數（WaitingService.countActiveBySeatType 可以參考）
+	//                    callingList    叫號中的候位（List<WaitingVO>；可以不只一筆，沒有的話放空的清單）
+	//                                   ＝ 這個桌型今天狀態是「已通知」的候位，依號碼（waitingTicketSeq）排序。
+	//                                   ★ 放的是整筆候位（WaitingVO），不是號碼：頁面會自己把它組成 A01 這種文字
+	//                    lateNos        callingList 裡已經逾時的那幾筆的「候位編號」（List<Long>，放 getWaitingNo()；
+	//                                   沒有的話也要放空的清單，不能不放）
 	//                                   ＝ 已通知、而且通知時間加 10 分鐘已經比現在早：
 	//                                      w.getWaitingNotifyTime().plusMinutes(10).isBefore(LocalTime.now())
 	//                                   畫面上已叫號的號碼是紅底，逾時的會變成綠底，提醒工作人員可以按「過號」了
-	//   ★ callingNos 和 lateNos 裡的號碼型別要一樣（都是 Long，或都是 Integer）。
-	//     頁面是用「lateNos 裡有沒有這個號碼」來判斷逾時，型別不一樣的話會永遠比不到。
-	//   ★ 候位表沒有日期的欄位，「今天的候位」怎麼判斷要先和組員確認
-	//     （之前討論過的做法：每天固定時間把候位重設，這樣表裡的就都是今天的）。
-	//   ★ Redis：取號、入座號、目前可用桌數之後預計改接 Redis。到時候 pending、callingNos 從 Redis 拿，
+	//   ★ lateNos 的型別要是 Long（和 waitingNo 相同）。頁面是用「lateNos 裡有沒有這一筆的候位編號」來判斷逾時，
+	//     型別不一樣（例如放成 Integer）的話會永遠比不到。
+	//   ★ Redis：入座號、目前可用桌數之後預計改接 Redis。到時候 pending 從 Redis 拿，
 	//     這個方法放進 Model 的名稱不用變，頁面就不用改。現在可以先用 seat_type 表的 seat_type_pending 頂著。
-	//   ★ 候位號碼：候位表預計加一個「候位號碼」的欄位（每種桌型各自編號）。加了之後：
-	//       ・callingNos、lateNos 放的是那個欄位的值
-	//       ・booking.html 列表的「號碼」那一欄，把 w.waitingNo 換成新的屬性（那裡有 ★ 標記）
-	//     還沒加之前，可以先用候位編號（waitingNo）當號碼。
 	//   ★ 列表上不顯示電話（waitingTel），但查詢不用特別處理：頁面沒有用到那個屬性就不會顯示。
 	//
 	//
@@ -324,7 +350,14 @@ public class StaffBookingController {
 	//   新增（waitingNo 是 null）：
 	//     WaitingService.addWaiting 已經有新增的方法（會把狀態設成「候位中」，也會擋同一支電話重複候位）。
 	//     它的第一個參數是會員編號：現場的客人不一定是會員，可以傳 null（候位表的會員編號可以是空的）。
-	//     ★ 候位號碼：新增時要替這個桌型取下一個號碼（現在是 seat_type.seat_type_take_num 加 1，之後改用 Redis）。
+	//     ★ 候位號碼：新增時要替這個桌型取「今天的下一個號碼」，存進 waitingTicketSeq，並把 waitingDate 設成今天、
+	//       waitingTakeTime 設成現在。號碼 ＝ 今天這個桌型目前最大的號碼加 1：
+	//           WaitingRepository.findMaxTicketSeq(今天, 桌型編號) + 1      ← 這個方法組員已經寫好了，今天還沒有人抽就會回傳 0
+	//       所以每天、每種桌型都是從 1 開始，畫面上就是 A01、B01、C01。
+	//       ★ 先確認 WaitingService.addWaiting 裡面是不是已經做了這件事（有的話這裡就不用再做，不然號碼會跳號）。
+	//       ★ 兩個人同時替同一種桌型取號，可能拿到一樣的號碼。組員的前台取號如果已經有處理（例如用 Redis 或鎖定），
+	//         後台新增請走同一個方法，不要自己另外取號。
+	//     成功的訊息建議帶著號碼，方便工作人員告訴客人：「已新增候位：A13（王小明）」── 用步驟 5-C 的 ticketLabel。
 	//
 	//   修改（waitingNo 有值）：先用 waitingNo 查出原本那一筆，改它的欄位再存，不要 new 一個新的來存。
 	//     ・★ 狀態（規定 D）：這一頁可以設成 候位中、已通知、過號、取消 四種。
@@ -336,8 +369,8 @@ public class StaffBookingController {
 	//     ・組員的 WaitingService 改狀態的方法（notifyWaiting、missWaiting、cancelByStaff）各自會檢查「原本的狀態對不對」，
 	//       例如 missWaiting 只接受已通知的。編輯是讓工作人員「更正」用的，可能會遇到那些方法不允許的改法
 	//       （例如把過號的改回候位中）。要直接用 Repository 存，還是請組員加一個「後台更正狀態」的方法，請和負責候位的組員討論。
-	//     ・★ 換了桌型：候位號碼是每種桌型各自編的，換桌型之後原本的號碼就不對了。請和組員討論要怎麼做：
-	//         (甲) 在新的桌型重新取一個號碼（假資料是這樣做的；客人等於重新排隊）
+	//     ・★ 換了桌型：候位號碼是每種桌型各自編的（字母也不一樣），換桌型之後原本的號碼就不對了。請和組員討論要怎麼做：
+	//         (甲) 在新的桌型重新取一個號碼（假資料是這樣做的；客人等於重新排隊，例如 A14 變成 C04）
 	//         (乙) 修改時不准換桌型（要換就取消再重新取號）。選這個的話，booking.html 修改時把桌型的選單鎖起來
 	//     ・同一支電話在同一種桌型不能重複候位：修改的時候檢查要排除自己這一筆，不然會被自己擋住。
 	//
