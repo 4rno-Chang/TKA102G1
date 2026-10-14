@@ -43,6 +43,11 @@
 						<dt>桌型</dt>
 						<dd th:text="|${tableType} 人桌|"></dd>
 					</div>
+					<div
+						th:if="${bookingName != null and !#strings.isEmpty(bookingName)}">
+						<dt>聯絡姓名</dt>
+						<dd th:text="${bookingName}"></dd>
+					</div>
 					<div>
 						<dt>電話</dt>
 						<dd th:text="${phone}"></dd>

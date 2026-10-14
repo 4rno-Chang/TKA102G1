@@ -46,6 +46,12 @@
 							th:value="${reservationFormToken}">
 
 						<div class="field">
+							<label for="bookingName">聯絡姓名（選填）</label> <input type="text"
+								id="bookingName" name="bookingName" autocomplete="name"
+								maxlength="30" placeholder="請輸入聯絡姓名" th:value="${bookingName}">
+						</div>
+
+						<div class="field">
 							<label for="bookingPhone">聯絡電話 *</label> <input type="tel"
 								id="bookingPhone" name="phone" inputmode="numeric"
 								autocomplete="tel" minlength="10" maxlength="10"

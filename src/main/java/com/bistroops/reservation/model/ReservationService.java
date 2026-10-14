@@ -613,11 +613,32 @@ public class ReservationService {
 
 				"tableType", reservation.getSeatType().getSeatTypeNo(),
 
+				"bookingName", reservation.getRsvName() == null ? "" : reservation.getRsvName(),
+
 				"phone", reservation.getMember().getMemTel(),
 
 				"note", reservation.getRsvComment() == null ? "" : reservation.getRsvComment(),
 
 				"status", reservation.getRsvStatus() == null ? "未記錄" : reservation.getRsvStatus());
+	}
+
+	@Transactional(isolation = Isolation.READ_COMMITTED)
+	public ReservationVO addByPhone(String phone, String bookingName, LocalDate date, Long rsvDtNo, Integer seatTypeNo,
+			String comment) {
+
+		String normalizedName = bookingName == null ? "" : bookingName.trim();
+
+		if (normalizedName.codePointCount(0, normalizedName.length()) > 30) {
+			throw new IllegalArgumentException("聯絡姓名最多30個字元");
+		}
+
+		// 沿用原本的電話、日期、桌數及重複訂位檢查。
+		ReservationVO reservation = addByPhone(phone, date, rsvDtNo, seatTypeNo, comment);
+
+		// 此處只修改訂位資料，不修改會員資料。
+		reservation.setRsvName(normalizedName.isEmpty() ? null : normalizedName);
+
+		return repository.save(reservation);
 	}
 
 }

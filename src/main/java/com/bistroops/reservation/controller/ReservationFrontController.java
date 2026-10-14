@@ -141,6 +141,10 @@ public class ReservationFrontController {
 			model.addAttribute("phone", phone);
 		}
 
+		if (!model.containsAttribute("bookingName")) {
+			model.addAttribute("bookingName", "");
+		}
+
 		if (!model.containsAttribute("note")) {
 			model.addAttribute("note", "");
 		}
@@ -164,6 +168,8 @@ public class ReservationFrontController {
 
 			@RequestParam(name = "phone", defaultValue = "") String phone,
 
+			@RequestParam(name = "bookingName", defaultValue = "") String bookingName,
+
 			@RequestParam(name = "note", defaultValue = "") String note,
 
 			@RequestParam(name = "agree", defaultValue = "") String agree,
@@ -185,7 +191,8 @@ public class ReservationFrontController {
 				throw new IllegalArgumentException("請先同意訂位須知與個人資料使用說明");
 			}
 
-			ReservationVO reservation = reservationService.addByPhone(phone, date, rsvDtNo, tableType, note);
+			ReservationVO reservation = reservationService.addByPhone(phone, bookingName, date, rsvDtNo, tableType,
+					note);
 
 			rememberBooking(session, reservation.getRsvNo());
 
@@ -196,6 +203,7 @@ public class ReservationFrontController {
 		} catch (IllegalArgumentException ex) {
 			redirectAttributes.addFlashAttribute("error", ex.getMessage());
 			redirectAttributes.addFlashAttribute("phone", phone);
+			redirectAttributes.addFlashAttribute("bookingName", bookingName);
 			redirectAttributes.addFlashAttribute("note", note);
 
 			redirectAttributes.addAttribute("date", date.toString());

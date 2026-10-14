@@ -45,6 +45,9 @@ public class ReservationVO {
 
 	@Column(name = "rsv_comment", length = 50)
 	private String rsvComment;
+	
+	@Column(name = "rsv_name", length = 30)
+	private String rsvName;
 
 	public ReservationVO() {
 	}
@@ -103,5 +106,13 @@ public class ReservationVO {
 
 	public void setRsvComment(String rsvComment) {
 		this.rsvComment = rsvComment;
+	}
+	
+	public String getRsvName() {
+	    return rsvName;
+	}
+
+	public void setRsvName(String rsvName) {
+	    this.rsvName = rsvName;
 	}
 }
