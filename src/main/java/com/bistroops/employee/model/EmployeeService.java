@@ -9,23 +9,29 @@ import com.bistroops.permission.model.PermissionVO;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import com.bistroops.permission.model.PermissionRepository;
 
 @Service
 public class EmployeeService {
 
-	private final EmployeeRepository employeeRepository;
+    private final PasswordEncoder passwordEncoder;
+
+    private final EmployeeRepository employeeRepository;
 	private final EmployeePermissionRepository employeePermissionRepository;
 	private final PermissionRepository permissionRepository;
 
 	// 建構子注入 Repository
 	public EmployeeService(EmployeeRepository employeeRepository,
-			EmployeePermissionRepository employeePermissionRepository, PermissionRepository permissionRepository) {
-		this.employeeRepository = employeeRepository;
-		this.employeePermissionRepository = employeePermissionRepository;
-		this.permissionRepository = permissionRepository;
+	        EmployeePermissionRepository employeePermissionRepository,
+	        PermissionRepository permissionRepository,
+	        PasswordEncoder passwordEncoder) {
+
+	    this.employeeRepository = employeeRepository;
+	    this.employeePermissionRepository = employeePermissionRepository;
+	    this.permissionRepository = permissionRepository;
+	    this.passwordEncoder = passwordEncoder;
 	}
 
 	// 新增員工
@@ -43,8 +49,7 @@ public class EmployeeService {
 		employee.setEmpNo(null);
 
 		// 3. 設定預設密碼為手機號碼（BCrypt 雜湊）
-		BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
-		employee.setEmpPassword(encoder.encode(phone));
+		employee.setEmpPassword(passwordEncoder.encode(phone));
 
 		// 4. 新增員工預設為在職
 		employee.setEmpStatus("1");
@@ -73,25 +78,18 @@ public class EmployeeService {
 			return null;
 		}
 
-		// 4. 驗證員工密碼（BCrypt），並相容資料庫中帶有 {bcrypt} 前綴的密碼
-		BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
-
+		// 4. 驗證員工密碼
 		String storedPassword = employee.getEmpPassword();
 
-		// 資料庫沒有密碼，登入失敗
-		if (storedPassword == null) {
-			return null;
+		if (password == null || storedPassword == null) {
+		    return null;
 		}
 
-		// 移除 {bcrypt} 前綴，讓 BCryptPasswordEncoder 可以正常驗證
-		if (storedPassword.startsWith("{bcrypt}")) {
-			storedPassword = storedPassword.substring("{bcrypt}".length());
+		if (!passwordEncoder.matches(password, storedPassword)) {
+		    return null;
 		}
 
-		// 比對使用者輸入的密碼與資料庫中的密碼
-		if (password == null || !encoder.matches(password, storedPassword)) {
-			return null;
-		}
+		
 
 		// 5. 驗證成功，回傳員工資料
 		return employee;
@@ -110,35 +108,28 @@ public class EmployeeService {
 			throw new IllegalArgumentException("此員工已停用");
 		}
 
-		BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
-
-		// 3. 驗證舊密碼，並相容 {bcrypt} 前綴
+		// 3. 驗證舊密碼
 		String storedPassword = employee.getEmpPassword();
 
-		if (storedPassword == null) {
-			throw new IllegalArgumentException("原密碼錯誤");
-		}
-
-		if (storedPassword.startsWith("{bcrypt}")) {
-			storedPassword = storedPassword.substring("{bcrypt}".length());
-		}
-
-		if (oldPassword == null || !encoder.matches(oldPassword, storedPassword)) {
-			throw new IllegalArgumentException("原密碼錯誤");
+		if (storedPassword == null ||
+		        oldPassword == null ||
+		        !passwordEncoder.matches(oldPassword, storedPassword)) {
+		    throw new IllegalArgumentException("原密碼錯誤");
 		}
 
 		// 4. 檢查新密碼：至少8碼，必須包含英文與數字
-		if (newPassword == null || !newPassword.matches("^(?=.*[A-Za-z])(?=.*\\d)[A-Za-z\\d]{8,}$")) {
-			throw new IllegalArgumentException("新密碼至少8碼，且必須包含英文及數字");
+		if (newPassword == null ||
+		        !newPassword.matches("^(?=.*[A-Za-z])(?=.*\\d)[A-Za-z\\d]{8,}$")) {
+		    throw new IllegalArgumentException("新密碼至少8碼，且必須包含英文及數字");
 		}
 
 		// 5. 新密碼不可與舊密碼相同
-		if (encoder.matches(newPassword, storedPassword)) {
-			throw new IllegalArgumentException("新密碼不可與原密碼相同");
+		if (passwordEncoder.matches(newPassword, storedPassword)) {
+		    throw new IllegalArgumentException("新密碼不可與原密碼相同");
 		}
 
 		// 6. 將新密碼加密後儲存
-		employee.setEmpPassword(encoder.encode(newPassword));
+		employee.setEmpPassword(passwordEncoder.encode(newPassword));
 
 		// 7. 標記已完成首次密碼修改
 		employee.setEmpPwdChanged(true);
