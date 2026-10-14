@@ -59,47 +59,48 @@ public class OrdersController {
 		return "staff/orders";
 	}
 	
-	//===========結帳===============
-		@GetMapping("/checkout") //staff/checkout(order=${o.orders})
-		public String checkout(@RequestParam(required = false) Integer order, Model model) {
-			if(order != null)ordersService.recalculateUnpaid(order);//一進頁面就重新計算總金額
-		    model.addAttribute("checkoutListout", ordersService.getUnpaid());
-		    if (order != null) model.addAttribute("order", ordersService.getOne(order));
-		    return "staff/checkout";
-		}
-		@PostMapping("/checkout/pay")
-		public String pay(@RequestParam Integer order,
-						  @RequestParam String method) {
-			ordersService.pay(order,method);
-			return "redirect:/staff/checkout";
-		}
-		
-		
-		//==============workboard給畫面==================
-		@GetMapping("/workboard") //@{/staff/workboard(view='kitchen')}
-		public String workboard(@RequestParam(defaultValue="kitchen")String view,Model model) {//view=kitchen、floor、done
-			model.addAttribute("view",view); 
-			model.addAttribute("workboardlistAll", "done".equals(view)?ordersService.getDone():ordersService.getActive());
-			
-			return "staff/workboard" ;
-		}
-		
-		//============workboard訂單修改=============
-		@GetMapping("/workboard/edit")
-		public String workboardEdit(@RequestParam Integer orderId,Model model) {
-			OrdersVO editOrder=ordersService.getOne(orderId);
-			if (editOrder == null) return "redirect:/staff/workboard";
-			
-			model.addAttribute("view","kitchen");
-			model.addAttribute("workboardlistAll",ordersService.getActive());
-			
-			model.addAttribute("editOrder",editOrder); //取得明細
-			model.addAttribute("canCancel", editOrder.getOrdersDetails().stream()
-			            .allMatch(d -> "製作中".equals(d.getOdStatus()) || "已取消".equals(d.getOdStatus())));
-			
-			return "/staff/workboard";
-		}
+//===========結帳===============
+	@GetMapping("/checkout") //staff/checkout(order=${o.orders})
+	public String checkout(@RequestParam(required = false) Integer order, Model model) {
+		if(order != null)ordersService.recalculateUnpaid(order);//一進頁面就重新計算總金額
+	    model.addAttribute("checkoutListout", ordersService.getUnpaid());
+	    if (order != null) model.addAttribute("order", ordersService.getOne(order));
+	    return "staff/checkout";
+	}
+	@PostMapping("/checkout/pay")
+	public String pay(@RequestParam Integer order,
+					  @RequestParam String method) {
+		ordersService.pay(order,method);
+		return "redirect:/staff/checkout";
+	}
 	
+	
+	//==============workboard給畫面==================
+	@GetMapping("/workboard") //@{/staff/workboard(view='kitchen')}
+	public String workboard(@RequestParam(defaultValue="kitchen")String view,Model model) {//view=kitchen、floor、done
+		model.addAttribute("view",view); 
+		model.addAttribute("workboardlistAll", "done".equals(view)?ordersService.getDone():ordersService.getActive());
+		
+		return "staff/workboard" ;
+	}
+	
+	//============workboard訂單修改=============
+	@GetMapping("/workboard/edit")
+	public String workboardEdit(@RequestParam Integer orderId,Model model) {
+		OrdersVO editOrder=ordersService.getOne(orderId);
+		if (editOrder == null) return "redirect:/staff/workboard";
+		
+		model.addAttribute("view","kitchen");
+		model.addAttribute("workboardlistAll",ordersService.getActive());
+		
+		model.addAttribute("editOrder",editOrder); //取得明細
+		model.addAttribute("canCancel", editOrder.getOrdersDetails().stream()
+		            .allMatch(d -> "製作中".equals(d.getOdStatus()) || "已取消".equals(d.getOdStatus())));
+		
+		return "/staff/workboard";
+	}
+	
+		
 	
 	
 }
