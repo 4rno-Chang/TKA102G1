@@ -81,8 +81,10 @@ public class SeatTypeService {
 
 	// 一次讀進今天需要的資料，後面的計算都用這一份
 	private class Snapshot {
-		final LocalDate today = LocalDate.now();
-		final int now = minuteOf(LocalTime.now());
+		final LocalDateTime businessNow = LocalDateTime.now(java.time.ZoneId.of("Asia/Taipei"));
+
+		final LocalDate today = businessNow.toLocalDate();
+		final int now = minuteOf(businessNow.toLocalTime());
 		final List<SeatVO> seats = seatService.getAll();
 		final List<OrdersVO> orders = ordersService.search(null, null, today);
 		final List<ReservationVO> reservations = reservationService.search(today, null);
@@ -740,5 +742,18 @@ public class SeatTypeService {
 			map.put((String) kv[i], kv[i + 1]);
 		}
 		return map;
+	}
+
+	// 沿用入座管理的計算，不另外維護另一份桌數。
+	public Map<Integer, Integer> getWaitingAvailableTables() {
+		Snapshot snapshot = new Snapshot();
+
+		Map<Integer, Integer> result = new LinkedHashMap<>();
+
+		for (Integer type : TYPES) {
+			result.put(type, snapshot.quota(type).walkLeft());
+		}
+
+		return result;
 	}
 }

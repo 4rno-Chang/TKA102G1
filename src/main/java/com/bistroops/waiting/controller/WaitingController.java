@@ -1,6 +1,22 @@
 package com.bistroops.waiting.controller;
 
 import java.time.LocalTime;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+
+import javax.imageio.ImageIO;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+
+import com.google.zxing.BarcodeFormat;
+import com.google.zxing.EncodeHintType;
+import com.google.zxing.WriterException;
+import com.google.zxing.common.BitMatrix;
+import com.google.zxing.qrcode.QRCodeWriter;
+import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
@@ -35,6 +51,9 @@ public class WaitingController {
 
 	private final WaitingRedisService waitingRedisService;
 	private final EmployeeService employeeService;
+
+	@Value("${app.waiting.join-url}")
+	private String waitingJoinUrl;
 
 	public WaitingController(WaitingRedisService waitingRedisService, EmployeeService employeeService) {
 
@@ -350,6 +369,49 @@ public class WaitingController {
 
 		if (employee == null || !"1".equals(employee.getEmpStatus())) {
 			throw new ResponseStatusException(HttpStatus.FORBIDDEN, "員工帳號無法執行操作");
+		}
+	}
+
+	// 產生可下載、列印的候位 QR Code。
+	@GetMapping(value = "/qrcode.png", produces = MediaType.IMAGE_PNG_VALUE)
+	public ResponseEntity<byte[]> waitingQrCode() {
+
+		String targetUrl = waitingJoinUrl.trim();
+
+		if (targetUrl.isEmpty()) {
+			throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "尚未設定候位取號網址");
+		}
+
+		Map<EncodeHintType, Object> hints = Map.of(EncodeHintType.CHARACTER_SET, "UTF-8",
+				EncodeHintType.ERROR_CORRECTION, ErrorCorrectionLevel.M, EncodeHintType.MARGIN, 4);
+
+		try {
+			BitMatrix matrix = new QRCodeWriter().encode(targetUrl, BarcodeFormat.QR_CODE, 600, 600, hints);
+
+			BufferedImage image = new BufferedImage(matrix.getWidth(), matrix.getHeight(), BufferedImage.TYPE_INT_RGB);
+
+			for (int y = 0; y < matrix.getHeight(); y++) {
+				for (int x = 0; x < matrix.getWidth(); x++) {
+					image.setRGB(x, y, matrix.get(x, y) ? 0xFF000000 : 0xFFFFFFFF);
+				}
+			}
+
+			byte[] png;
+
+			try (ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+
+				if (!ImageIO.write(image, "png", output)) {
+					throw new IOException("無法產生 PNG 圖片");
+				}
+
+				png = output.toByteArray();
+			}
+
+			return ResponseEntity.ok().contentType(MediaType.IMAGE_PNG).header("Cache-Control", "no-store")
+					.header("Content-Disposition", "inline; filename=\"bistroops-waiting-qrcode.png\"").body(png);
+
+		} catch (WriterException | IOException ex) {
+			throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "候位 QR Code 產生失敗", ex);
 		}
 	}
 }

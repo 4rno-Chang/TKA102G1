@@ -1,6 +1,7 @@
 package com.bistroops;
 
 import java.time.Instant;
+import com.bistroops.seattype.model.SeatTypeService;
 import java.util.UUID;
 
 import org.springframework.web.bind.annotation.PostMapping;
@@ -42,13 +43,15 @@ public class StaffBookingController {
 	private final ReservationService reservationService;
 	private final WaitingRedisService waitingRedisService;
 	private final EmployeeService employeeService;
+	private final SeatTypeService seatTypeService;
 
 	public StaffBookingController(ReservationService reservationService, WaitingRedisService waitingRedisService,
-			EmployeeService employeeService) {
+			EmployeeService employeeService, SeatTypeService seatTypeService) {
 
 		this.reservationService = reservationService;
 		this.waitingRedisService = waitingRedisService;
 		this.employeeService = employeeService;
+		this.seatTypeService = seatTypeService;
 	}
 
 	@GetMapping("/booking")
@@ -143,11 +146,15 @@ public class StaffBookingController {
 
 	private void loadWaiting(Integer selectedSeatType, Model model) {
 
-		model.addAttribute("waitingAvailable", true);
+		model.addAttribute("waitingAvailable", false);
 		model.addAttribute("waitingList", List.of());
 		model.addAttribute("seatBoards", List.of());
 
+		model.addAttribute("waitingBusinessDate", LocalDate.now(BUSINESS_ZONE).toString());
+
 		try {
+			Map<Integer, Integer> availableTables = seatTypeService.getWaitingAvailableTables();
+
 			List<Map<String, Object>> rows = new ArrayList<>();
 			List<Map<String, Object>> boards = new ArrayList<>();
 
@@ -157,19 +164,18 @@ public class StaffBookingController {
 				List<Map<String, Object>> callingList = tickets.stream()
 						.filter(ticket -> "NOTIFIED".equals(ticket.status())).map(this::waitingRow).toList();
 
+				String nextTicketId = tickets.stream().filter(ticket -> "WAITING".equals(ticket.status()))
+						.min(java.util.Comparator.comparingLong(WaitingTicket::sequence)).map(WaitingTicket::ticketId)
+						.orElse("");
+
 				Map<String, Object> board = new LinkedHashMap<>();
 
 				board.put("seatTypeNo", tableType);
-
-				// 實際可用桌數尚待入座管理整合，不填入假數字。
-				board.put("pending", "—");
-
-				board.put("waitingCount", tickets.stream().filter(waitingRedisService::isActive).count());
-
+				board.put("pending", availableTables.getOrDefault(tableType, 0));
+				board.put("nextTicketId", nextTicketId);
 				board.put("callingList", callingList);
 
-				// 逾時會直接轉為過號，不再留在叫號清單。
-				board.put("lateNos", List.of());
+				board.put("waitingCount", tickets.stream().filter(waitingRedisService::isActive).count());
 
 				boards.add(board);
 
@@ -182,11 +188,12 @@ public class StaffBookingController {
 
 			model.addAttribute("waitingList", rows);
 			model.addAttribute("seatBoards", boards);
+			model.addAttribute("waitingAvailable", true);
 
 		} catch (WaitingUnavailableException ex) {
-			model.addAttribute("waitingAvailable", false);
 			model.addAttribute("error", ex.getMessage());
 		}
+
 	}
 
 	// 欄位名稱配合目前 booking.html，資料來源仍是 Redis。
@@ -407,6 +414,104 @@ public class StaffBookingController {
 		redirect.addAttribute("date", date);
 		redirect.addAttribute("meal", normalizeMeal(meal));
 		redirect.addAttribute("keyword", keyword);
+
+		return "redirect:/staff/booking";
+	}
+
+	private void checkWaitingBusinessDate(String submittedDate) {
+		String today = LocalDate.now(BUSINESS_ZONE).toString();
+
+		if (!today.equals(submittedDate)) {
+			throw new IllegalArgumentException("候位日期已切換，請重新整理頁面後操作");
+		}
+	}
+
+	@PostMapping("/booking/waiting/join")
+	public String createStaffWaiting(@RequestParam(name = "tableType") Integer tableType,
+			@RequestParam(name = "phone", defaultValue = "") String phone,
+			@RequestParam(name = "name", defaultValue = "") String name,
+			@RequestParam(name = "note", defaultValue = "") String note,
+			@RequestParam(name = "businessDate") String businessDate, @RequestParam(name = "bookingToken") String token,
+			HttpSession session, RedirectAttributes redirect) {
+
+		requireBookingEmployee(session);
+		checkBookingActionToken(session, token);
+
+		try {
+			checkWaitingBusinessDate(businessDate);
+
+			WaitingTicket ticket = waitingRedisService.takeTicket(tableType, phone, name, note);
+
+			redirect.addFlashAttribute("message", "候位取號完成：" + ticket.getTicketDisplay());
+
+		} catch (IllegalArgumentException | WaitingUnavailableException ex) {
+			redirect.addFlashAttribute("error", ex.getMessage());
+
+			redirect.addFlashAttribute("waitingCreate",
+					Map.of("tableType", tableType, "phone", phone, "name", name, "note", note));
+		}
+
+		redirect.addAttribute("tab", "waiting");
+
+		return "redirect:/staff/booking";
+	}
+
+	@PostMapping("/booking/waiting/action")
+	public String staffWaitingAction(@RequestParam(name = "operation") String operation,
+			@RequestParam(name = "tableType") Integer tableType,
+			@RequestParam(name = "ticketId", defaultValue = "") String ticketId,
+			@RequestParam(name = "note", defaultValue = "") String note,
+			@RequestParam(name = "businessDate") String businessDate, @RequestParam(name = "bookingToken") String token,
+			@RequestParam(name = "seatType", required = false) Integer seatType, HttpSession session,
+			RedirectAttributes redirect) {
+
+		requireBookingEmployee(session);
+		checkBookingActionToken(session, token);
+
+		try {
+			checkWaitingBusinessDate(businessDate);
+
+			String message;
+
+			switch (operation) {
+			case "NOTIFY" -> {
+				// 指定畫面上預期的下一號。
+				// 同一張表單重複送出，不會連續叫到下一組。
+				WaitingTicket ticket = waitingRedisService.notifyWaiting(tableType, ticketId);
+
+				message = "已叫號：" + ticket.getTicketDisplay();
+			}
+
+			case "MISS" -> {
+				waitingRedisService.missWaiting(tableType, ticketId);
+				message = "候位已設為過號";
+			}
+
+			case "CANCEL" -> {
+				waitingRedisService.cancelByStaff(tableType, ticketId);
+				message = "候位已取消";
+			}
+
+			case "COMMENT" -> {
+				waitingRedisService.updateCommentByStaff(tableType, ticketId, note);
+
+				message = "候位備註已更新";
+			}
+
+			default -> throw new IllegalArgumentException("不支援的候位操作");
+			}
+
+			redirect.addFlashAttribute("message", message);
+
+		} catch (IllegalArgumentException | WaitingUnavailableException ex) {
+			redirect.addFlashAttribute("error", ex.getMessage());
+		}
+
+		redirect.addAttribute("tab", "waiting");
+
+		if (seatType != null && TABLE_TYPES.contains(seatType)) {
+			redirect.addAttribute("seatType", seatType);
+		}
 
 		return "redirect:/staff/booking";
 	}
