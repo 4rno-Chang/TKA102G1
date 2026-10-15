@@ -125,4 +125,11 @@ public class SeatingSeatService {
 		}
 		return seat;
 	}
+	
+	//撰寫by陳巧馨，查一桌+線上點餐要用入座時間 seat_time 當入座客人的代號
+
+	public SeatVO getSeat(String seatNo) {
+		if (seatNo == null) return null;
+	    return repository.findById(seatNo).orElse(null);       // 查不到回傳 null
+	}
 }

@@ -42,7 +42,26 @@ public interface OrdersRepository extends JpaRepository<OrdersVO,Integer>{
 			"WHERE o.member.memNo = :memNo ORDER BY o.ordersTime DESC")  //:memNo 是具名參數的佔位符,代表「這裡的值等執行時再填」。
 	public List<OrdersVO> findByMemNo(@Param("memNo") Integer memNo);
 	
+	//以下三種方法撰寫by陳巧馨，線上點餐用
+	//這一組有多少訂單(已取消之訂單不算)
+	@Query("SELECT COUNT(o) FROM OrdersVO o WHERE o.seatNo.seatNo = :seatNo AND o.ordersTime >= :since " +
+		   "AND EXISTS (SELECT 1 FROM OrdersDetailsVO d WHERE d.orders = o AND (d.odStatus IS NULL OR d.odStatus <> '已取消'))")
+	int countBySeatSince(@Param("seatNo") String seatNo, 
+						 @Param("since") LocalDateTime since);
 	
+	//這一組有幾張「還沒結帳」的訂單(已取消之訂單不算)
+	@Query("SELECT COUNT(o) FROM OrdersVO o WHERE o.seatNo.seatNo = :seatNo " +
+	       "AND o.ordersTime >= :since AND (o.ordersPay IS NULL OR o.ordersPay = '' ) "+
+		   "AND EXISTS (SELECT 1 FROM OrdersDetailsVO d WHERE d.orders = o AND (d.odStatus IS NULL OR d.odStatus <> '已取消'))")
+	int countUnpaidBySeatSince(@Param("seatNo") String seatNo, @Param("since") LocalDateTime since);
+	
+	//這一組「還沒結帳」的訂單編號(已取消之訂單不算)
+	@Query("SELECT o.orders FROM OrdersVO o WHERE o.seatNo.seatNo = :seatNo AND o.ordersTime >= :since " +
+		   "AND (o.ordersPay IS NULL OR o.ordersPay = '') " +
+		   "AND EXISTS (SELECT 1 FROM OrdersDetailsVO d WHERE d.orders = o AND (d.odStatus IS NULL OR d.odStatus <> '已取消')) " +
+		   "ORDER BY o.ordersTime")
+	List<Integer> findUnpaidNosBySeatSince(@Param("seatNo") String seatNo,
+											@Param("since") LocalDateTime since);
 	
 	
 	
