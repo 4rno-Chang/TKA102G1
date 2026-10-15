@@ -615,7 +615,8 @@ public class SeatTypeService {
 	// 候位入座：桌子 → 其它者使用；Redis 號碼牌 → 已入座
 	// 先改桌子再改號碼牌：號碼牌已入座／過號／取消，或不是這個桌型（Redis 依桌型分開存，會找不到）都會丟錯誤，
 	// 交易還原，桌子不會變成使用中；兩個人同時按同一組，Redis 的 Lua 只會讓一個人成功
-	@Transactional
+	// 舊的 MySQL 候位入座入口停止使用。
+	// 實際分桌待與 Redis 候位完成一致性串接後啟用。
 	public void seatWaiting(String seatNo, String ticketId) {
 		if (ticketId == null || ticketId.isBlank()) {
 			throw new IllegalArgumentException("請選擇一組候位");

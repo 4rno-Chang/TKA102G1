@@ -20,30 +20,41 @@
 		</a>
 
 		<div class="staff-menu">
-			<a class="staff-menu-item" th:href="@{/staff/workboard}"
-				th:classappend="${active == 'workboard'} ? 'active'"> <svg
-					viewBox="0 0 24 24" aria-hidden="true">
+			<a class="staff-menu-item"
+				th:href="${hasWorkboard == true} ? @{/staff/workboard} : null"
+				th:classappend="${active == 'workboard'} ? 'active' : (${hasWorkboard == true} ? '' : 'no-permission')"
+				th:attr="aria-disabled=${hasWorkboard != true}" data-permission-link>
+				<svg viewBox="0 0 24 24" aria-hidden="true">
 					<rect x="4" y="5" width="16" height="15" rx="2" />
 					<path d="M9 5V3h6v2M8 11h8M8 15h5" /></svg> <span>工作面板</span>
-			</a> <a class="staff-menu-item" th:href="@{/staff/seating}"
-				th:classappend="${active == 'seating'} ? 'active'"> <svg
-					viewBox="0 0 24 24" aria-hidden="true">
+			</a> <a class="staff-menu-item"
+				th:href="${hasSeating == true} ? @{/staff/seating} : null"
+				th:classappend="${active == 'seating'} ? 'active' : (${hasSeating == true} ? '' : 'no-permission')"
+				th:attr="aria-disabled=${hasSeating != true}" data-permission-link>
+				<svg viewBox="0 0 24 24" aria-hidden="true">
 					<path d="M3 9h18M6 9v10M18 9v10M9 9v5h6V9" /></svg> <span>入座管理</span>
-			</a> <a class="staff-menu-item" th:href="@{/staff/booking}"
-				th:classappend="${active == 'booking'} ? 'active'"> <svg
-					viewBox="0 0 24 24" aria-hidden="true">
-					<rect x="4" y="5" width="16" height="15" rx="2" />
-					<path d="M4 10h16M8 3v4M16 3v4" /></svg> <span>訂候位</span>
-			</a> <a class="staff-menu-item" th:href="@{/staff/orders}"
-				th:classappend="${active == 'orders'} ? 'active'"> <svg
-					viewBox="0 0 24 24" aria-hidden="true">
+			</a> <a class="staff-menu-item"
+				th:href="${hasBooking == true} ? @{/staff/reservations} : null"
+				th:classappend="${active == 'booking'} ? 'active' : (${hasBooking == true} ? '' : 'no-permission')"
+				th:attr="aria-disabled=${hasBooking != true}" data-permission-link>
+				<svg viewBox="0 0 24 24" aria-hidden="true">
+        <rect x="4" y="5" width="16" height="15" rx="2" />
+        <path d="M4 10h16M8 3v4M16 3v4" />
+    </svg> <span>訂候位</span>
+			</a> <a class="staff-menu-item"
+				th:href="${hasOrders == true} ? @{/staff/orders} : null"
+				th:classappend="${active == 'orders'} ? 'active' : (${hasOrders == true} ? '' : 'no-permission')"
+				th:attr="aria-disabled=${hasOrders != true}" data-permission-link>
+				<svg viewBox="0 0 24 24" aria-hidden="true">
 					<path d="M8 6h12M8 12h12M8 18h12" />
 					<circle cx="4" cy="6" r="1" />
 					<circle cx="4" cy="12" r="1" />
 					<circle cx="4" cy="18" r="1" /></svg> <span>訂單管理</span>
-			</a> <a class="staff-menu-item" th:href="@{/staff/checkout}"
-				th:classappend="${active == 'checkout'} ? 'active'"> <svg
-					viewBox="0 0 24 24" aria-hidden="true">
+			</a> <a class="staff-menu-item"
+				th:href="${hasCheckout == true} ? @{/staff/checkout} : null"
+				th:classappend="${active == 'checkout'} ? 'active' : (${hasCheckout == true} ? '' : 'no-permission')"
+				th:attr="aria-disabled=${hasCheckout != true}" data-permission-link>
+				<svg viewBox="0 0 24 24" aria-hidden="true">
 					<circle cx="12" cy="12" r="9" />
 					<path
 						d="M15 9.5c-.5-1-1.600-1.500-3-1.500-1.700 0-3 .8-3 2s1.300 1.700 3 2 3 .8 3 2-1.300 2-3 2c-1.400 0-2.500-.5-3-1.500M12 6v2M12 16v2" /></svg>
@@ -66,7 +77,8 @@
          【Thymeleaf 串接】之後員工管理、會員管理、菜單管理做好了，把它們的名稱也加進條件裡，例如
            th:classappend="${active == 'promote' or active == 'announcement-and-qa' or active == 'employees'} ? 'open'" -->
 			<div class="staff-group"
-				th:classappend="${active == 'promote' or active == 'announcement-and-qa' or active == 'employees'} ? 'open'">
+				th:attr="data-can-manage=${canManageBackend == true}"
+				th:classappend="${canManageBackend == true and (active == 'promote' or active == 'announcement-and-qa' or active == 'employees')} ? 'open'">
 				<button type="button" class="staff-menu-item staff-group-toggle"
 					data-menu-group aria-expanded="false">
 					<svg viewBox="0 0 24 24" aria-hidden="true">
@@ -186,7 +198,8 @@
 		<div th:replace="~{staff/employee/staff_profile :: profileModal}"></div>
 
 		<!-- 一般員工修改密碼彈窗 -->
-		<div th:replace="~{staff/employee/staff_profile :: normalPasswordModal}"></div>
+		<div
+			th:replace="~{staff/employee/staff_profile :: normalPasswordModal}"></div>
 
 		<!-- 員工個人資料彈窗功能 -->
 		<script th:src="@{/js/staff/staff_profile.js}" defer></script>
