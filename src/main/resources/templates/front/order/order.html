@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="zh-Hant" xmlns:th="http://www.thymeleaf.org">
-
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -14,92 +13,17 @@
   <link rel="stylesheet" th:href="@{/css/front/front.css}" />
   <link rel="stylesheet" th:href="@{/css/front/member.css}" />
   <link rel="stylesheet" th:href="@{/css/front/order.css}" />
-  <!-- member.js：會員的登入／註冊對話框和會員中心（頁首的「登入 / 註冊」要用到） -->
   <script th:src="@{/js/front/member.js}" defer></script>
   <script th:src="@{/js/front/order.js}" defer></script>
 </head>
 
-<!--
-  前台「線上點餐」（桌邊點餐）：客人用手機掃桌上的 QR code 進來點餐的頁面（主要給手機看，電腦上會置中、不會太寬）。
-    網址：/bistroops/order?seat=A01      ← QR code 裡放的就是這個網址，seat 是桌號
-  Controller 是 com.bistroops.frontorder.controller.FrontOrderController，回傳的名稱是 "front/order/order"。
-  CSS：static/css/front/order.css（要先載入 front.css）　JS：static/js/front/order.js
-
-  ★ 頁首用前台共用的 front_layout.html 裡的「精簡頁首」simpleHeader：只有 logo（不能按）和會員登入，沒有其他連結，
-    也沒有頁尾、不從首頁連過來。客人是在座位上掃 QR code 直接進來的，選單的連結會把人帶離點餐頁，所以拿掉了。
-    會員登入保留：客人登入之後送出訂單，訂單會記下會員編號（會員中心才看得到這筆消費），做法寫在 FrontOrderController.java 的步驟 4。
-    桌號不放在頁首，顯示在購物車的標題後面。
-
-  對應的資料表（createTable_v1_4.sql）和 VO：
-    ★ 頁面「不直接」讀這些 VO：Controller 放進 Model 的是點餐專用的小物件（MenuSectionDTO、MenuMealCardDTO、CartItemDTO、OrderedItemDTO），
-      圖片不會被一起查出來，VO 改名時頁面也不用動。下面列 VO 是讓你知道資料從哪張表來。
-    菜品類別  meal_type       MealtypeVO       mealtypeNo、mealtypeName、meals（這個類別的菜）、
-                                               ★ 標籤代號（資料表的 meal_type_hashtag，例如「前菜」「主餐」）── 決定這個類別的菜有哪些「常用備註」可以按
-    菜品      meal            MealVO           mealNo、mealType、mealName、mealImg、mealExp、mealPrice、mealStatusEn（上架／未上架）
-    活動菜品  promote_meal    PromoteMealVO    promote（活動）、meal（菜品）、promoteDiscount（★ 是「折扣後的金額」，不是折多少）
-    活動      promote         PromoteVO        promoteNo、promoteName、promoteBegin、promoteEnd
-    訂單      orders          OrdersVO         orders（訂單編號）、seatNo（桌位）、member、ordersTime、ordersTotal、ordersDiscountTotal、ordersActualPrice、ordersPay
-    訂單明細  orders_details  OrdersDetailsVO  ordersDetailsNo、orders、meal、promote、odMealNum、odDiscountPrice、odDiscountTotal、odActualPrice、odComment、odStatus
-    桌位      seat            SeatVO           seatNo、seatStatus、seatTime（入座時間）
-  購物車沒有資料表：★ 放在 Redis，客人按「送出訂單」的時候才把購物車的內容寫進 MySQL 的訂單、訂單明細（做法寫在 Controller）。
-
-  這一頁的畫面有「兩份」，上下排在一起：
-    【資料庫資料】用 Thymeleaf 寫好的版本。Controller 還沒把資料放進 Model 時，這一塊不會出現。
-    【假資料】    order.js 用假資料產生的版本，目前看到的就是這一塊。
-  兩份同時出現時，各自會多一個「資料庫」「假資料」的小標籤，可以對照著看。
-
-  這一頁有四個部分：
-    1. 頁首      前台共用的精簡頁首：logo（不能按）、會員登入（不顯示用餐時間還剩多久；時間的限制由 Controller 檢查）
-    2. 菜單      一排類別（按了跳到那一類），每個類別的菜是一張一張的卡片。
-                 按卡片會跳出「菜品的對話框」：照片、完整的說明、價錢，可以選數量、寫備註，再加入購物車。
-                 類別是「資料庫有哪些就產生哪些」；最前面另外多一個「活動商品」，現在沒有活動的菜就不會出現
-    3. 購物車    從右下角的按鈕打開：每一項可以直接加減數量；按「編輯」會再跳出菜品的對話框，可以改數量、備註或移除。
-                 最下面是送出訂單
-    4. 已點餐點  從右下角的按鈕打開：這一桌已經送出的餐點，取消的會標出來（資料表沒有另外的東西，就是訂單明細）
-
-  ★★ 欄位名稱、Model 的名稱都是「範例」★★
-    【資料庫資料】裡 ${...} 用的是小物件的屬性名稱；Model 的名稱（seatNo、menuSections、cartItems 等）是我先取的。
-    組員可以照自己的想法改名，只要 Controller 放進去的名稱和這裡寫的相同就好；VO 的屬性改名時這裡也要跟著改。
-
-  【Thymeleaf 串接】步驟（詳細的參數、要注意的事寫在 FrontOrderController.java，步驟的號碼相同）
-    1. 進入頁面：GET /bistroops/order?seat=A01。Controller 確認這一桌可以點餐（有客人入座、沒有換人、沒有超過 90 分鐘、還沒結帳），
-       把桌號和「這一組的代號」（桌號＋入座時間）記在 session，再把 seatNo 放進 Model。不能點的時候改放 orderError。
-    2. 菜單：把 menuSections（依類別分好的菜，List<MenuSectionDTO>）、promoMeals（現在有活動的菜，給最前面的「活動商品」用，
-       List<MenuMealCardDTO>）放進 Model。活動價已經套在每張卡片上（MenuMealCardDTO 的 price、promoName），頁面不用再查。
-       只要 menuSections 不是 null，【資料庫資料】的菜單就會出現。
-    3. 購物車：把 cartItems（購物車裡的每一項）、cartCount（共幾份）、cartTotal（合計）放進 Model。★ 從 Redis 讀。
-       加入（菜品的對話框）、改數量、編輯（菜品的對話框）、移除、清空都是 POST 的表單，改完 Redis 之後 redirect 回這一頁。
-       ★ 購物車是「同一組客人共用一個」（Redis 的 key 是桌號＋入座時間），同桌的每一支手機看到的是同一個。
-       ★ 同桌的手機要「自動」看到彼此加的東西，用 WebSocket（Controller 的步驟 3-D、order.js 的 A-7）；頁面這裡不用改。
-    4. 送出訂單：POST /bistroops/order/submit。把 Redis 的購物車變成訂單、訂單明細存進 MySQL，再把 Redis 的購物車刪掉。
-    5. 已點餐點：把 orderedItems（這一組客人還沒結帳的訂單明細，List<OrderedItemDTO>）、orderedTotal（合計）放進 Model。
-    6. 菜的圖片：GET /bistroops/order/mealImg?mealNo=1 輸出圖片（做法和活動的圖片相同，多加瀏覽器快取）。
-    7. [✓] 假資料已經刪掉了（這個檔案的 5 段、order.js 的 B 區、小標籤、order.css 的第 10 區、<body> 上給假資料用的桌號）。
-       ★ order.js 的 A 區（A-1～A-7）是資料庫的版本在用的程式，不要刪。
--->
-
 <body class="order-page">
-
-  <!-- 會員的登入／註冊對話框和會員中心（前台共用，內容在 templates/front/member/member_modals.html） -->
   <div th:replace="~{front/member/member_modals :: modals}"></div>
 
-  <!-- ================================================================
-       1. 頁首：前台共用的精簡頁首（front_layout.html 的 simpleHeader）── logo（不能按）和會員登入
-       【Thymeleaf 串接】這裡不用放任何東西：登入狀態是讀 session 裡的 member（和前台其他頁一樣），接上資料庫後也不用改。
-       ★ 頁面上不顯示用餐時間還剩多久。90 分鐘的限制完全由 Controller 檢查：時間到了之後，客人不管是重新整理、
-         加入購物車還是送出訂單，Controller 都會改成顯示下面的「目前無法點餐」（放 orderError）。
-       ★ 桌號（seatNo）顯示在購物車的標題後面。
-       ================================================================ -->
-  <header th:replace="~{front/front_layout :: simpleHeader}"></header>
+  <!-- 1. 頁首 -->
+  <div th:replace="~{front/front_layout :: simpleHeader}"></div>
 
   <main class="order-main">
-
-    <!-- ================================================================
-         不能點餐的時候顯示的說明（三種情況，出現其中一種時，下面的菜單、購物車都不會出現）
-           (1) 沒有桌號：網址沒有帶 seat，session 裡也沒有記 → Controller 不放 seatNo
-           (2) 【資料庫資料】Controller 放了 orderError（String）：例如「這一桌目前沒有開放點餐」「用餐時間已經結束」
-           (3) 【假資料】假資料的 90 分鐘到了（由 order.js 顯示）
-         ================================================================ -->
     <section class="order-notice" th:if="${seatNo == null}">
       <h1 class="order-notice-title">請掃描桌上的 QR code</h1>
       <p>點餐頁面需要知道您的桌號。請用手機的相機掃描桌上的 QR code 重新進入；找不到的話請洽服務人員。</p>
@@ -110,69 +34,26 @@
       <p th:text="${orderError}">用餐時間已經結束，如需加點請洽服務人員。</p>
     </section>
 
-
-
-    <!-- 可以點餐的時候（有桌號、沒有錯誤訊息）才顯示下面的內容 -->
     <th:block th:if="${seatNo != null and orderError == null}">
-
       <div class="order-intro">
         <p class="eyebrow">Menu</p>
         <h1 class="order-title">線上點餐</h1>
       </div>
 
-      <!-- 操作完成的訊息。Controller 用 RedirectAttributes 的 addFlashAttribute("message", "...") 帶過來就會顯示，
-           例如「已加入購物車：松露起司薯條 × 1」「訂單已送出，餐點製作中」 -->
       <p class="order-alert" th:if="${message != null}" th:text="${message}">已加入購物車</p>
 
+      <!-- 2. 菜單 -->
 
-      <!-- ╔══════════════════════════════════════════════════════════════╗
-           ║  2. 菜單                                                      ║
-           ╚══════════════════════════════════════════════════════════════╝ -->
-
-      <!-- ================================================================
-           【資料庫資料】Thymeleaf 串接：菜單
-           Controller 放進 Model（都是點餐專用的小物件，類別在 com.bistroops.frontorder.model）：
-             menuSections  List<MenuSectionDTO>：每個類別一個，依類別編號排序。★ 只有「有上架的菜」的類別才會在裡面，
-                           所以頁面不用再判斷要不要顯示這個類別。每一個 MenuSectionDTO 有：
-                             s.mealtypeNo    類別編號（做成 id="type-編號"，上面那一排類別按了才跳得過去）
-                             s.mealtypeName  類別名稱
-                             s.meals         這一類的菜（List<MenuMealCardDTO>）
-             promoMeals    List<MenuMealCardDTO>：現在有活動、而且上架的菜，顯示在最前面的「活動商品」。
-                           ★ 活動商品不是資料庫裡的類別。是空的清單時，「活動商品」的按鈕和區塊都不會出現。
-                           這些菜在自己原本的類別裡也還是會出現（等於出現兩次），兩邊顯示的都是活動價。
-           一張卡片（MenuMealCardDTO）有：mealNo、mealName、mealExp、origPrice（原價）、price（現在的價錢）、
-             promoName（活動名稱，沒有活動是 null）、tagCode（類別的標籤代號，常用備註用）、hasImg（有沒有圖片）。
-             ★ 活動價已經套好了：有活動的卡片 price 是活動價、promoName 有值；沒有活動的 price 和 origPrice 一樣。
-             ★ 活動菜品沒有填價錢（promote_discount 是空值）：一樣算活動商品（promoName 有值），price 用原價。
-           畫面怎麼產生：
-             ・外面一層 th:each 是類別，裡面一層是那個類別的菜。
-             ・類別沒有寫死在頁面上：menuSections 裡有幾個類別、叫什麼名字，上面那一排和下面的區塊就產生幾個。
-               後台新增或改名類別之後，這一頁不用改。
-             ・卡片上沒有「加入」的按鈕：整張卡片都可以按，按了跳出菜品的對話框（這個檔案下面的「菜品的對話框」），在那裡選數量、寫備註。
-           ★ 圖片：卡片只帶「有沒有圖片」（m.hasImg），圖片本身另外由 /bistroops/order/mealImg?mealNo= 一張一張給。
-             查菜單的時候不會把圖片讀進記憶體；瀏覽器也會記住下載過的圖（Controller 步驟 6 的快取設定）。
-           ================================================================ -->
-
-      <!-- 一排類別：按了會跳到下面那個類別（href="#type-編號" 對應下面每個類別的 id）。這一排會黏在畫面上方，不會跟著捲走。
-           資料庫和假資料的兩排放在同一個 .order-cats-wrap 裡，才能一起黏在上方 -->
-      <!-- .order-body 把「一排類別」和「菜單」包在一起：手機上是上下排；畫面夠寬（1000px 以上）時，
-           order.css 會把類別移到左邊變成直的一欄、菜單在右邊 -->
       <div class="order-body">
       <div class="order-cats-wrap">
         <nav class="order-cats" th:if="${menuSections != null}" aria-label="菜品類別">
-          
-          <!-- 「活動商品」固定排在最前面；promoMeals 是空的（現在沒有活動的菜）就不顯示 -->
           <a class="order-cat order-cat-promo" href="#type-promo" th:if="${promoMeals != null and !#lists.isEmpty(promoMeals)}">活動商品</a>
           <a class="order-cat" th:each="s : ${menuSections}" th:href="|#type-${s.mealtypeNo}|" th:text="${s.mealtypeName}">開胃菜</a>
         </nav>
 
       </div>
 
-      <!-- 【資料庫資料】每個類別的菜 -->
       <div class="source-block" th:if="${menuSections != null}">
-
-        <!-- 活動商品：排在所有類別的前面。promoMeals 是空的（現在沒有活動的菜）整個區塊不顯示。
-             id="type-promo" 對應上面那一排的「活動商品」。這裡的菜 id 是 promo-meal-編號（同一道菜在下面的類別裡還有一個 meal-編號，id 不能重複）。 -->
         <section class="order-type order-type-promo" id="type-promo" th:if="${promoMeals != null and !#lists.isEmpty(promoMeals)}">
           <h2 class="order-type-title">活動商品</h2>
           <th:block th:each="m : ${promoMeals}"><article th:replace="~{:: mealCard(${m}, 'promo-meal-')}"></article></th:block>
@@ -182,24 +63,13 @@
           <section class="order-type" th:id="|type-${s.mealtypeNo}|">
             <h2 class="order-type-title" th:text="${s.mealtypeName}">開胃菜</h2>
 
-            <!-- 每一道菜的內容寫在這個檔案最下面的「片段」mealCard，這裡用 th:replace 把它放進來（和上面的活動商品共用同一份）。
-                 第二個參數 'meal-' 是 id 的開頭：這裡的菜 id 是 meal-編號，
-                 給「加入購物車之後回到同一道菜的位置」用（Controller redirect 時在網址後面加 #meal-編號）。 -->
             <th:block th:each="m : ${s.meals}"><article th:replace="~{:: mealCard(${m}, 'meal-')}"></article></th:block>
           </section>
         </th:block>
       </div>
 
+      </div>
 
-      </div><!-- .order-body 結束 -->
-
-
-      <!-- ================================================================
-           浮在畫面右下角的兩顆按鈕：「已點餐點」和「購物車」。按了會從右邊滑出對應的面板。
-           按鈕上的 data-sheet-open="面板的 id"：order.js（A-1）會把那個面板打開，不用重新載入頁面。
-           【資料庫資料】購物車那一顆上面顯示 cartCount（共幾份）和 cartTotal（合計），Controller 從 Redis 算出來放進 Model。
-                         Controller 還沒放 cartItems／orderedItems 之前，這兩顆不會出現。
-           ================================================================ -->
       <div class="order-bar">
         <div class="order-bar-row" th:if="${cartItems != null or orderedItems != null}">
           <button type="button" class="order-bar-side" data-sheet-open="dbOrderedSheet" th:if="${orderedItems != null}">
@@ -216,51 +86,8 @@
     </th:block>
   </main>
 
+  <!-- 3. 購物車 -->
 
-  <!-- ╔══════════════════════════════════════════════════════════════╗
-       ║  3. 購物車（從下面滑出來的面板）                              ║
-       ╚══════════════════════════════════════════════════════════════╝ -->
-
-  <!-- ================================================================
-       【資料庫資料】Thymeleaf 串接：購物車
-       ★ 購物車的內容放在 Redis（不是 MySQL），按「送出訂單」才寫進 MySQL。怎麼存、怎麼讀寫在 FrontOrderController.java 的步驟 3、4。
-       Controller 放進 Model：
-         cartItems   購物車裡的每一項（List）。每一項需要這些屬性（名稱是範例；用 Map 或另外寫一個小類別來裝都可以）：
-                       mealNo     菜品編號
-                       mealName   菜名
-                       price      單價（有活動就是活動價）  ★ Controller 從資料庫查出來的，不是存在 Redis 裡的
-                       num        數量
-                       comment    備註（可以是空的）
-                       subtotal   小計 ＝ price × num
-                     購物車是空的要放「空的清單」，不要放 null（null 會讓資料庫這一份整塊不出現）。
-         cartCount   購物車裡總共幾份（每一項的 num 加起來）
-         cartTotal   合計（每一項的 subtotal 加起來）
-         open        要不要一進頁面就把面板打開：放 "cart" → 購物車開著；放 "ordered" → 已點餐點開著；不放就都關著。
-                     在購物車裡改數量、改備註之後，Controller redirect 回來時帶 open=cart，面板才不會關掉。
-       面板的開關：平常是藏著的（th:hidden）；按下面那一條的「購物車」→ order.js（A-1）打開；按背景或 × → 關掉。
-       標題「購物車」的後面顯示桌號（seatNo，頁首已經放進 Model 的那一個，不用另外放）。
-
-       每一項是一個 method="post" 的表單，送到 /bistroops/order/cart/update，欄位：
-         mealNo    菜品編號（藏著的欄位）
-         num       新的數量。★ − 和 ＋ 兩顆按鈕本身就是「送出」的按鈕，而且各自帶著 name="num" 和算好的數字（目前的數量減 1、加 1），
-                   按哪一顆就送哪一個數字，所以不需要 JS。Controller 收到 num 是 0（或更小）就把這一項從購物車拿掉。
-         comment   備註（藏著的欄位，放的是目前的備註）。按 −、＋ 的時候把它原封不動送回去，備註才不會因為改數量而不見。
-         oldComment  這一列原本的備註（藏著的欄位，和 comment 一樣）。用來找「是購物車的哪一列」：
-                   同一道菜不同備註是不同的列（例如牛肉麵「要辣」、牛肉麵「沒有備註」），只有菜品編號分不出來。
-       備註在這裡只是顯示（沒有備註就不顯示那一行）。
-       「編輯」不是送出表單：它是 type="button"，按了會打開下面的「菜品的對話框」，並把這一項的數量、備註帶進去；
-         在對話框裡可以改數量、改備註，或按「從購物車移除」。按鈕上的 data-* 是要帶進對話框的資料：
-           data-item-open="dbItemSheet"   要打開哪一個對話框
-           data-item-edit                 這是「編輯」（不是從菜單新加入）
-           data-meal-no、data-num、data-comment   這一項的菜品編號、數量、備註
-           data-name、data-price          菜名和單價（對話框會先用菜單上那張卡片的資料；萬一找不到卡片才用這兩個）
-
-       下面兩顆：
-         清空購物車  POST /bistroops/order/cart/clear
-         送出訂單    POST /bistroops/order/submit（不用帶任何欄位：桌號在 session，購物車在 Redis；
-                     客人有登入的話，會員也在 session 裡，Controller 會把會員編號一起存進訂單）
-       兩個表單都有 data-confirm，送出前 order.js（A-3）會先跳出確認的視窗。
-       ================================================================ -->
   <div class="order-sheet" id="dbCartSheet" th:if="${seatNo != null and orderError == null and cartItems != null}" th:hidden="${open != 'cart'}">
     <div class="order-sheet-backdrop" data-sheet-close></div>
     <section class="order-sheet-panel" role="dialog" aria-modal="true" aria-labelledby="dbCartHeading">
@@ -313,24 +140,8 @@
     </section>
   </div>
 
+  <!-- 4. 已點餐點 -->
 
-  <!-- ╔══════════════════════════════════════════════════════════════╗
-       ║  4. 已點餐點（從下面滑出來的面板）                            ║
-       ╚══════════════════════════════════════════════════════════════╝ -->
-
-  <!-- ================================================================
-       【資料庫資料】Thymeleaf 串接：已點餐點（這一桌已經送出的餐點）
-       Controller 放進 Model：
-         orderedItems   這一組客人「還沒結帳」的訂單明細（List<OrderedItemDTO>，點餐專用的小物件），依明細編號排序（先點的在前面）。
-                        ★ 整筆取消（明細全部取消）的訂單不算，Java 不會查它；客人再點餐時會另開一張新的訂單。
-                        沒有點過要放「空的清單」，不要放 null。
-                        ★ 用小物件：查的時候只拿菜名，不會把整道菜（連圖片）查出來；訂單明細的 VO 改名時頁面也不用動。
-         orderedTotal   這些明細的合計（已取消的不要算進去）
-       每一列：菜名（d.mealName）、數量（d.num）、小計（d.subtotal）、備註（d.comment）、有沒有取消（d.cancelled）。
-       只標出「已取消」的明細：灰色的「已取消」標籤，菜名和小計畫刪除線（不算進合計）。
-       沒取消的不顯示製作中、送餐中這些狀態（d.cancelled 是 OrderedItemDTO 的 isCancelled()）。
-       這個面板只能看，不能改：送出之後要取消或修改，請客人找服務人員（由後台的工作面板處理）。
-       ================================================================ -->
   <div class="order-sheet" id="dbOrderedSheet" th:if="${seatNo != null and orderError == null and orderedItems != null}" th:hidden="${open != 'ordered'}">
     <div class="order-sheet-backdrop" data-sheet-close></div>
     <section class="order-sheet-panel" role="dialog" aria-modal="true" aria-labelledby="dbOrderedHeading">
@@ -359,39 +170,7 @@
     </section>
   </div>
 
-
-
-  <!-- ================================================================
-       【資料庫資料】Thymeleaf 串接：菜品的對話框（按菜單上的卡片、或購物車的「編輯」時出現）
-       這個對話框整頁只有「一個」，所有的菜共用：平常藏著（hidden），打開的時候 order.js（A-4）才把那道菜的資料填進去。
-       ★ 資料從哪裡來：不是再向後端要（我們不用 JSON），而是菜單上那張卡片本身就帶著（卡片上的 data-name、data-price 等，
-         見最下面的片段 mealCard）。所以打開對話框不用重新載入頁面。
-       對話框裡的 data-item-field="名稱" 是「要填文字的地方」、data-item-input="名稱" 是「要填值的欄位」、data-item-img 是照片。
-
-       兩種用法，用的是同一個表單，order.js 打開時會把表單的 action 換掉（兩個網址寫在表單的 data-add-action、data-edit-action）：
-         從菜單打開（新加入）  送到 POST /bistroops/order/cart/add     按鈕顯示「加入購物車」
-         從購物車的「編輯」打開  送到 POST /bistroops/order/cart/update  按鈕顯示「更新購物車」，並多出「從購物車移除」
-       表單的欄位（兩種用法相同）：
-         mealNo      菜品編號（藏著的欄位，order.js 填入）
-         oldComment  編輯時：這一列原本的備註（藏著的欄位，order.js 填入），用來找是購物車的哪一列；新加入時是空的、Controller 不用它
-         num         數量（1～20）。旁邊的 −、＋ 由 order.js（A-2）處理
-         comment     備註（最多 30 個字）
-       add 和 update 的差別（Controller 要做的事不一樣，寫在 FrontOrderController.java 的步驟 3）：
-         add     購物車裡已經有「同一道菜、同一個備註」→ 數量「加上去」；備註不一樣 → 變成新的一列
-         update  數量和備註都「直接換成」送來的值（改了備註的話，這一列會搬到新的備註底下）
-       「從購物車移除」用 th:formaction 改送到 /bistroops/order/cart/remove（用 mealNo 和 oldComment 找到那一列）。
-       最下面一列（畫面上由左到右）：「從購物車移除」（編輯時才有）、小計（單價 × 數量，order.js 會跟著數量重算）、「加入購物車」。
-       ★ 按鈕的順序：HTML 裡「加入購物車」寫在最前面、「移除」寫在最後面，畫面上卻是移除在最左邊、加入購物車在右下角（order.css 用 row-reverse 反過來排）。
-         原因：在備註的格子裡按 Enter 時，瀏覽器會自動按「表單裡的第一顆送出按鈕」。
-         移除如果寫在前面，客人只是想存備註，這道菜卻被移除了。
-       ★ 常用備註（備註上面那一排可以按的標籤）：每個類別有一個「標籤代號」（meal_type_hashtag：前菜、主餐、甜點、飲料），
-         代號跟著菜單的卡片一起到頁面上（卡片的 data-tags）；打開對話框時，order.js（A-5）依代號產生對應的標籤，
-         按一下就把那幾個字加進備註（用「、」接在後面，已經有的不重複加）。這道菜的類別沒有設定代號，這一排就不顯示。
-         ・哪個代號有哪些標籤，寫在 order.js 的 NOTE_TAGS（要新增、修改標籤改那裡）。
-         ・HTML 的寫法：data-item-tags-row 是整列（沒有標籤時藏起來）、data-item-tags 是放標籤的地方、
-           data-item-tags-hint 是「放不下了」的提示（備註超過 30 個字的時候才出現）。
-         ・按標籤只是幫客人打字，送出去的還是原本的 comment 欄位，所以 Controller 不用多做任何事。
-       ================================================================ -->
+  <!-- 菜品的對話框 -->
   <div class="order-sheet order-sheet-item" id="dbItemSheet" th:if="${seatNo != null and orderError == null and menuSections != null}" hidden>
     <div class="order-sheet-backdrop" data-sheet-close></div>
     <section class="order-sheet-panel" role="dialog" aria-modal="true" aria-labelledby="dbItemHeading">
@@ -407,7 +186,7 @@
           <h2 class="order-item-name" id="dbItemHeading">
             <span data-item-field="name">菜名</span>
             <span class="order-promo-tag" data-item-field="promo" hidden></span>
-            
+
           </h2>
           <p class="order-item-exp" data-item-field="exp"></p>
           <p class="order-price"><s data-item-field="orig" hidden></s><b data-item-field="price"></b></p>
@@ -420,7 +199,6 @@
               <button type="button" data-step="1" aria-label="增加一份">＋</button>
             </div>
           </div>
-          <!-- 常用備註：依這道菜的類別顯示不同的標籤，內容由 order.js（A-5）產生；沒有標籤時整列不顯示 -->
           <div class="order-item-row order-item-col" data-item-tags-row hidden>
             <span class="order-item-label">常用備註<small>點一下就會加進下面的備註</small></span>
             <div class="order-tags" data-item-tags></div>
@@ -441,30 +219,12 @@
     </section>
   </div>
 
-
-  <!-- ================================================================
-       片段：一道菜的卡片（mealCard）── 上面「活動商品」和每個類別的菜都是用 th:replace 引用這一段，要改卡片的長相只要改這裡。
-         th:fragment="mealCard(m, idPrefix)"：片段的名字是 mealCard，使用的時候要給它兩個東西：
-           m          那一道菜（MenuMealCardDTO，點餐專用的小物件）
-           idPrefix   id 的開頭（'meal-' 或 'promo-meal-'），後面會接上菜品編號
-         有沒有活動：m.promoName != null（活動價已經放在 m.price，原價在 m.origPrice）。
-         劃掉的原價：價錢和原價不一樣才顯示（活動菜品沒填價錢、用原價時，只顯示活動的小標籤，不劃掉原價）。
-       整張卡片都可以按（role="button" tabindex="0" 讓它用鍵盤也選得到、按得到），按了會打開上面的菜品對話框：
-         data-item-open="dbItemSheet"   要打開哪一個對話框
-         data-item-card="dbItemSheet"   這是那個對話框的「資料來源」（從購物車按「編輯」時，order.js 會用菜品編號回來找這張卡片）
-         th:attr 裡的 data-*            要帶進對話框的資料：菜品編號、菜名、完整的說明、現在的價錢、原價、活動名稱、標籤代號
-                                        ★ data-tags 是這道菜的類別的標籤代號（m.tagCode，查詢時從 meal_type_hashtag 拿的）。
-                                        （照片不用另外帶，對話框直接用卡片上那張圖的網址）
-       ★ 這些資料只是「顯示」用的。真正加入購物車時送出去的只有菜品編號、數量、備註，價錢 Controller 會自己從資料庫查。
-       外面包的 th:block th:if="${false}"：條件永遠不成立，所以這一段「不會直接顯示在這個位置」，只有被 th:replace 引用的地方才會出現。
-       ================================================================ -->
+  <!-- 片段：一道菜的卡片（mealCard） -->
   <th:block th:if="${false}">
 <article class="order-meal" th:fragment="mealCard(m, idPrefix)" th:id="|${idPrefix}${m.mealNo}|"
          role="button" tabindex="0" data-item-open="dbItemSheet" data-item-card="dbItemSheet"
          th:attr="data-meal-no=${m.mealNo}, data-name=${m.mealName}, data-exp=${m.mealExp}, data-price=${m.price}, data-orig-price=${m.origPrice}, data-promo-name=${m.promoName}, data-tags=${m.tagCode}">
   <div class="order-meal-img">
-    <!-- 有圖片：網址是 /bistroops/order/mealImg?mealNo=編號（Controller 的步驟 6）。沒有圖片：顯示預設的插圖。
-         m.hasImg 是查詢時算出來的「有沒有圖片」，不是圖片本身 -->
     <img th:if="${m.hasImg}" th:src="@{/bistroops/order/mealImg(mealNo=${m.mealNo})}" th:alt="${m.mealName}" loading="lazy">
     <img th:unless="${m.hasImg}" th:src="@{/images/dish-main.svg}" alt="" loading="lazy">
   </div>
@@ -473,12 +233,10 @@
     <h3 class="order-meal-name" th:text="${m.mealName}">松露起司薯條</h3>
     <p class="order-meal-exp" th:text="${m.mealExp}">現炸金黃薯條刨上帕瑪森起司佐黑松露醬</p>
     <div class="order-meal-foot">
-      <!-- 價錢：活動價和原價不一樣時，原價畫刪除線、旁邊顯示活動價；一樣（沒有活動、或活動沒填價錢）只顯示一個價錢 -->
       <p class="order-price">
         <s th:if="${m.price != m.origPrice}" th:text="|NT$ ${m.origPrice}|">NT$ 190</s>
         <b th:text="|NT$ ${m.price}|">NT$ 190</b>
       </p>
-      <!-- 右下角的「＋」只是提示這張卡片可以按，本身不是按鈕 -->
       <span class="order-meal-more" aria-hidden="true">＋</span>
     </div>
   </div>
