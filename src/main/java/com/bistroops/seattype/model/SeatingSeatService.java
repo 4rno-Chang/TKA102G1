@@ -67,7 +67,7 @@ public class SeatingSeatService {
 			throw new IllegalStateException(seatNo + " 目前是「" + seat.getSeatStatus() + "」，不能入座（可能別人剛安排了，請重新整理）");
 		}
 		seat.setSeatStatus(status);
-		seat.setSeatTime(LocalTime.now().truncatedTo(ChronoUnit.SECONDS));
+		seat.setSeatTime(LocalTime.now(java.time.ZoneId.of("Asia/Taipei")).truncatedTo(ChronoUnit.SECONDS));
 		return seat;
 	}
 
@@ -125,11 +125,12 @@ public class SeatingSeatService {
 		}
 		return seat;
 	}
-	
-	//撰寫by陳巧馨，查一桌+線上點餐要用入座時間 seat_time 當入座客人的代號
+
+	// 撰寫by陳巧馨，查一桌+線上點餐要用入座時間 seat_time 當入座客人的代號
 
 	public SeatVO getSeat(String seatNo) {
-		if (seatNo == null) return null;
-	    return repository.findById(seatNo).orElse(null);       // 查不到回傳 null
+		if (seatNo == null)
+			return null;
+		return repository.findById(seatNo).orElse(null); // 查不到回傳 null
 	}
 }

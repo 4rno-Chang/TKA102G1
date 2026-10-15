@@ -61,8 +61,8 @@
                        seatType=${seatType})}">
 						刷新頁面 </a>
 
-					<a class="staff-btn btn-pay" th:href="@{/bistroops/waiting/manage}">
-						候位管理操作 </a>
+					<a class="staff-btn btn-pay" href="#staffWaitingCreate"
+						th:if="${waitingAvailable == true}"> 新增候位 </a>
 				</th:block>
 			</div>
 		</div>
@@ -228,7 +228,9 @@
 		</section>
 
 		<!-- 候位：資料來源為 Redis。 -->
+		<!-- 候位：資料來源為 Redis。 -->
 		<section th:if="${tab == 'waiting'}">
+
 			<p class="booking-alert"
 				th:if="${waitingAvailable != true and error == null}">
 				目前無法取得候位資料，請稍後重新整理。</p>
@@ -237,25 +239,62 @@
 				th:if="${waitingAvailable == true and waitingList != null}"
 				th:with="shownWaiting=${waitingList.?[waitingStatus != '取消']}">
 
+				<div class="staff-card" id="staffWaitingCreate">
+					<h2 class="staff-card-title">新增候位</h2>
+
+					<form class="booking-tools"
+						th:action="@{/staff/booking/waiting/join}" method="post">
+
+						<input type="hidden" name="bookingToken"
+							th:value="${bookingToken}"> <input type="hidden"
+							name="businessDate" th:value="${waitingBusinessDate}"> <label
+							class="booking-tool"> <span>桌型</span> <select
+							class="staff-input" name="tableType" required>
+								<option th:each="type : ${ {2, 4, 6} }" th:value="${type}"
+									th:selected="${waitingCreate != null
+                                    and waitingCreate.tableType == type}"
+									th:text="|${type} 人桌|"></option>
+						</select>
+						</label> <label class="booking-tool"> <span>電話 *</span> <input
+							type="tel" class="staff-input" name="phone" inputmode="numeric"
+							maxlength="10" pattern="09[0-9]{8}" autocomplete="tel" required
+							th:value="${waitingCreate != null
+                               ? waitingCreate.phone : ''}">
+						</label> <label class="booking-tool"> <span>姓名（選填）</span> <input
+							type="text" class="staff-input" name="name" maxlength="30"
+							th:value="${waitingCreate != null
+                               ? waitingCreate.name : ''}">
+						</label> <label class="booking-tool booking-tool-grow"> <span>備註（最多
+								20 個字元）</span> <input type="text" class="staff-input" name="note"
+							maxlength="20"
+							th:value="${waitingCreate != null
+                               ? waitingCreate.note : ''}">
+						</label>
+
+						<button type="submit" class="staff-btn btn-pay">取號</button>
+					</form>
+				</div>
+
 				<div class="booking-split">
 					<div class="booking-split-main">
+
 						<div class="booking-waiting-head">
 							<div class="chips booking-seat-filter">
 								<a class="chip" th:href="@{/staff/booking(tab='waiting')}"
 									th:classappend="${seatType == null} ? 'active'"> 全部 </a> <a
 									class="chip" th:each="b : ${seatBoards}"
 									th:href="@{/staff/booking(
-                                   tab='waiting',
-                                   seatType=${b.seatTypeNo})}"
+                               tab='waiting',
+                               seatType=${b.seatTypeNo})}"
 									th:classappend="${seatType == b.seatTypeNo}
-                                   ? 'active'"
+                               ? 'active'"
 									th:text="|${b.seatTypeNo} 人桌|"></a>
 							</div>
 
 							<p class="booking-summary">
 								今日候位， <span
 									th:text="${seatType == null
-                                ? '全部' : seatType + ' 人桌'}"></span>
+                            ? '全部' : seatType + ' 人桌'}"></span>
 								共 <b th:text="${#lists.size(shownWaiting)}"></b> 筆
 							</p>
 						</div>
@@ -271,44 +310,93 @@
 										<th scope="col">狀態</th>
 										<th scope="col">通知時間</th>
 										<th scope="col">備註</th>
+										<th scope="col" class="booking-col-act">操作</th>
 									</tr>
 								</thead>
 
 								<tbody>
 									<tr th:if="${#lists.isEmpty(shownWaiting)}">
-										<td colspan="7" class="staff-empty">今日沒有符合條件的候位資料</td>
+										<td colspan="8" class="staff-empty">今日沒有符合條件的候位資料</td>
 									</tr>
 
-									<tr th:each="w : ${shownWaiting}">
+									<tr th:each="w : ${shownWaiting}"
+										th:with="active=${w.waitingStatus == '候位中'
+                                or w.waitingStatus == '已通知'}">
+
 										<td class="booking-no" th:text="${w.ticketDisplay}"></td>
-
-										<td
-											th:text="${#strings.isEmpty(w.waitingName)
-                                    ? '未填寫' : w.waitingName}"></td>
-
+										<td th:text="${w.waitingName}"></td>
 										<td th:text="${w.waitingTel}"></td>
-
 										<td th:text="|${w.seatType.seatTypeNo} 人桌|"></td>
 
 										<td><span class="tag"
 											th:classappend="${w.waitingStatus == '候位中'
-                                              ? 'tag-yellow'
-                                              : (w.waitingStatus == '已通知'
-                                                  ? 'tag-red'
-                                                  : (w.waitingStatus == '已入座'
-                                                      ? 'tag-green' : 'tag-gray'))}"
+                                          ? 'tag-yellow'
+                                          : (w.waitingStatus == '已通知'
+                                              ? 'tag-red'
+                                              : (w.waitingStatus == '已入座'
+                                                  ? 'tag-green' : 'tag-gray'))}"
 											th:text="${w.waitingStatus}"></span></td>
 
 										<td
 											th:text="${w.waitingNotifyTime == null
-                                    ? '—'
-                                    : #temporals.format(
-                                        w.waitingNotifyTime, 'HH:mm:ss')}"></td>
+                                ? '—'
+                                : #temporals.format(
+                                    w.waitingNotifyTime, 'HH:mm:ss')}"></td>
 
-										<td class="booking-note"><span
+										<td>
+											<form th:if="${active}"
+												th:action="@{/staff/booking/waiting/action}" method="post">
+
+												<input type="hidden" name="operation" value="COMMENT">
+												<input type="hidden" name="tableType"
+													th:value="${w.seatType.seatTypeNo}"> <input
+													type="hidden" name="ticketId" th:value="${w.waitingNo}">
+												<input type="hidden" name="seatType" th:value="${seatType}">
+												<input type="hidden" name="businessDate"
+													th:value="${waitingBusinessDate}"> <input
+													type="hidden" name="bookingToken"
+													th:value="${bookingToken}"> <input type="text"
+													class="staff-input" name="note" maxlength="20"
+													aria-label="候位備註" th:value="${w.waitingComment}">
+
+												<button type="submit" class="staff-btn booking-btn-sm">
+													儲存備註</button>
+											</form> <span th:unless="${active}"
 											th:text="${#strings.isEmpty(w.waitingComment)
-                                              ? '—' : w.waitingComment}"
-											th:title="${w.waitingComment}"></span></td>
+                                          ? '—' : w.waitingComment}"></span>
+										</td>
+
+										<td class="booking-col-act">
+											<div class="booking-actions" th:if="${active}">
+
+												<a class="staff-btn booking-btn-sm"
+													th:href="@{/staff/seating(
+                                           type=${w.seatType.seatTypeNo})}">
+													安排入座 </a>
+
+												<form th:action="@{/staff/booking/waiting/action}"
+													method="post"
+													th:attr="data-confirm=|確定操作候位 ${w.ticketDisplay} 嗎？|">
+
+													<input type="hidden" name="tableType"
+														th:value="${w.seatType.seatTypeNo}"> <input
+														type="hidden" name="ticketId" th:value="${w.waitingNo}">
+													<input type="hidden" name="seatType" th:value="${seatType}">
+													<input type="hidden" name="businessDate"
+														th:value="${waitingBusinessDate}"> <input
+														type="hidden" name="bookingToken"
+														th:value="${bookingToken}">
+
+													<button type="submit" name="operation" value="MISS"
+														th:if="${w.waitingStatus == '已通知'}"
+														class="staff-btn booking-btn-sm">過號</button>
+
+													<button type="submit" name="operation" value="CANCEL"
+														class="staff-btn btn-danger-outline booking-btn-sm">
+														取消候位</button>
+												</form>
+											</div> <span th:unless="${active}">—</span>
+										</td>
 									</tr>
 								</tbody>
 							</table>
@@ -320,12 +408,31 @@
 
 						<div class="booking-boards">
 							<article class="booking-board" th:each="b : ${seatBoards}">
+
 								<div class="booking-board-head">
 									<h3 class="booking-board-title" th:text="|${b.seatTypeNo} 人桌|"></h3>
+
+									<form th:action="@{/staff/booking/waiting/action}"
+										method="post" data-confirm="確定叫下一號？叫號後一分鐘未報到會自動過號。">
+
+										<input type="hidden" name="operation" value="NOTIFY">
+										<input type="hidden" name="tableType"
+											th:value="${b.seatTypeNo}"> <input type="hidden"
+											name="ticketId" th:value="${b.nextTicketId}"> <input
+											type="hidden" name="seatType" th:value="${seatType}">
+										<input type="hidden" name="businessDate"
+											th:value="${waitingBusinessDate}"> <input
+											type="hidden" name="bookingToken" th:value="${bookingToken}">
+
+										<button type="submit"
+											class="staff-btn btn-card booking-btn-sm"
+											th:disabled="${#strings.isEmpty(b.nextTicketId)}">
+											叫下一號</button>
+									</form>
 								</div>
 
 								<p class="booking-board-meta">
-									可用 <b th:text="${b.pending}"></b> 桌 <i>・</i> 未完成候位 <b
+									可安排 <b th:text="${b.pending}"></b> 桌 <i>・</i> 未完成候位 <b
 										th:text="${b.waitingCount}"></b> 組
 								</p>
 
@@ -341,7 +448,7 @@
 						</div>
 
 						<p class="booking-sms">人工叫號後，一分鐘未報到會自動過號； 過號後請重新掃描 QR Code 取號。
-							可用桌數尚待入座管理整合，暫以「—」表示。</p>
+							可安排桌數已扣除入座管理需保留的訂位桌數； 實際入座請進入入座管理選桌確認。</p>
 					</aside>
 				</div>
 			</div>
