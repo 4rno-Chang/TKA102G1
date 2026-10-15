@@ -9,13 +9,12 @@ import java.util.Map;
 
 import org.springframework.stereotype.Service;
 
-// 活動接上時要打開的 import（見下面的【接活動】）
-// import com.bistroops.promote.model.PromoteService;
-// import com.bistroops.promote.model.PromoteVO;
+import com.bistroops.promote.model.PromoteService;
+import com.bistroops.promote.model.PromoteVO;
 
 /*
  * 首頁 hero 的輪播（frontend_index.html 用 ${@heroSlideService.getHeroSlides()} 直接呼叫）
- * 把公告（之後加上活動）整理成同一種格式，模板只要一個 th:each：
+ * 把公告和活動整理成同一種格式，模板只要一個 th:each：
  *   title   標題（顯示在圖片下方的標題條）
  *   href    點了去哪（不含 context path，模板用 @{${slide.href}} 轉成完整網址）
  *   imgSrc  圖片網址；null ＝ 沒有圖，模板改顯示 logo
@@ -33,18 +32,13 @@ public class HeroSlideService {
 	private static final int MAX = 5;
 
 	private final AnnouncementService announcementService;
-	// 【接活動】打開這行，並把下面的建構子換成有 PromoteService 的版本
-	// private final PromoteService promoteService;
+	private final PromoteService promoteService;
 
-	public HeroSlideService(AnnouncementService announcementService) {
+	// Spring 會自動注入 ishaya 的 PromoteService
+	public HeroSlideService(AnnouncementService announcementService, PromoteService promoteService) {
 		this.announcementService = announcementService;
+		this.promoteService = promoteService;
 	}
-
-	// 【接活動】換成這個建構子（Spring 會自動注入 ishaya 的 PromoteService）
-	// public HeroSlideService(AnnouncementService announcementService, PromoteService promoteService) {
-	// 	this.announcementService = announcementService;
-	// 	this.promoteService = promoteService;
-	// }
 
 	public List<Map<String, Object>> getHeroSlides() {
 		List<Map<String, Object>> contents = new ArrayList<>();
@@ -63,19 +57,18 @@ public class HeroSlideService {
 			empties.add(slide("最新消息", "/bistroops/announcement", "/images/slide-no-announcement.svg", null, "empty"));
 		}
 
-		// 2. 【接活動】ishaya 做好前台活動頁和前台的活動圖片網址後，打開這一段，
-		//    把 "/bistroops/promote/" 換成實際的活動頁網址、"/bistroops/promote/img?promoteNo=" 換成實際的圖片網址
-		// List<PromoteVO> promotes = promoteService.getPromoteByStatus("進行中", "", LocalDateTime.now(), 1).getContent();
-		// for (PromoteVO promote : promotes) {
-		// 	boolean hasImage = promote.getPromoteImg() != null && promote.getPromoteImg().length > 0;
-		// 	contents.add(slide(promote.getPromoteName(),
-		// 			"/bistroops/promote/" + promote.getPromoteNo(),
-		// 			hasImage ? "/bistroops/promote/img?promoteNo=" + promote.getPromoteNo() : null,
-		// 			promote.getPromoteBegin(), "promote"));
-		// }
-		// if (promotes.isEmpty()) {
-		// 	empties.add(slide("優惠活動", "/bistroops/promote", "/images/slide-no-promote.svg", null, "empty"));
-		// }
+		// 2. 活動：進行中的（網址在 promote/controller/FrontPromoteController，頁面和公告共用 news-detail.html）
+		List<PromoteVO> promotes = promoteService.getPromoteByStatus("進行中", "", LocalDateTime.now(), 1).getContent();
+		for (PromoteVO promote : promotes) {
+			boolean hasImage = promote.getPromoteImg() != null && promote.getPromoteImg().length > 0;
+			contents.add(slide(promote.getPromoteName(),
+					"/bistroops/promote/" + promote.getPromoteNo(),
+					hasImage ? "/bistroops/promote/img?promoteNo=" + promote.getPromoteNo() : null,
+					promote.getPromoteBegin(), "promote"));
+		}
+		if (promotes.isEmpty()) {
+			empties.add(slide("優惠活動", "/bistroops/announcement", "/images/slide-no-promote.svg", null, "empty"));
+		}
 
 		// 3. 依日期新到舊，取前 MAX 張；空位圖接在後面，也算在 MAX 張裡
 		contents.sort(Comparator.comparing((Map<String, Object> slide) -> (LocalDateTime) slide.get("date"),
