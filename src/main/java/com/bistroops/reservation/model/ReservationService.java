@@ -116,7 +116,7 @@ public class ReservationService {
 			throw new IllegalArgumentException("此時段未開放訂位");
 		}
 
-		if (!diningTime.isAfter(LocalDateTime.now())) {
+		if (!diningTime.isAfter(LocalDateTime.now(RESERVATION_ZONE))) {
 			throw new IllegalArgumentException("此時段已開始，請選擇其他時段");
 		}
 
@@ -150,7 +150,7 @@ public class ReservationService {
 		reservation.setMember(member);
 		reservation.setRsvDt(timeSlot);
 		reservation.setSeatType(seatType);
-		reservation.setRsvCreateTime(LocalDateTime.now());
+		reservation.setRsvCreateTime(LocalDateTime.now(RESERVATION_ZONE));
 		reservation.setRsvStatus("預約");
 		reservation.setRsvComment(comment);
 
@@ -178,7 +178,7 @@ public class ReservationService {
 		Set<LocalTime> allowedTimes = Set.of(LocalTime.of(11, 0), LocalTime.of(12, 30), LocalTime.of(17, 0),
 				LocalTime.of(18, 30));
 
-		LocalDateTime now = LocalDateTime.now();
+		LocalDateTime now = LocalDateTime.now(RESERVATION_ZONE);
 
 		return rsvDtRepository
 				.findByRsvDtDatetimeGreaterThanEqualAndRsvDtDatetimeLessThanOrderByRsvDtDatetimeAsc(date.atStartOfDay(),
@@ -309,7 +309,7 @@ public class ReservationService {
 			throw new IllegalArgumentException("訂位缺少用餐時間");
 		}
 
-		if (!diningTime.toLocalDate().equals(LocalDate.now())) {
+		if (!diningTime.toLocalDate().equals(LocalDate.now(RESERVATION_ZONE))) {
 			throw new IllegalArgumentException("只能將今日的訂位標記為實到");
 		}
 
@@ -330,7 +330,7 @@ public class ReservationService {
 			throw new IllegalArgumentException("訂位缺少用餐時間");
 		}
 
-		if (diningTime.isAfter(LocalDateTime.now())) {
+		if (diningTime.isAfter(LocalDateTime.now(RESERVATION_ZONE))) {
 			throw new IllegalArgumentException("尚未到用餐時間，不能標記為未到");
 		}
 
@@ -346,7 +346,7 @@ public class ReservationService {
 
 		List<ReservationVO> reservations = repository.findByMemberNo(memNo);
 
-		LocalDateTime now = LocalDateTime.now();
+		LocalDateTime now = LocalDateTime.now(RESERVATION_ZONE);
 
 		List<ReservationVO> current = reservations.stream()
 				.filter(reservation -> isCurrentReservation(reservation, now)).toList();
@@ -362,7 +362,7 @@ public class ReservationService {
 	// 不包含候位統計。
 	public Map<String, Object> getStaffReservationSummary() {
 
-		LocalDateTime now = LocalDateTime.now();
+		LocalDateTime now = LocalDateTime.now(RESERVATION_ZONE);
 		LocalDateTime tomorrow = now.toLocalDate().plusDays(1).atStartOfDay();
 
 		List<ReservationVO> upcoming = repository.findUpcomingReservations(now, tomorrow);
@@ -428,7 +428,7 @@ public class ReservationService {
 
 		LocalDateTime diningTime = reservation.getRsvDt().getRsvDtDatetime();
 
-		if (diningTime == null || !diningTime.isAfter(LocalDateTime.now())) {
+		if (diningTime == null || !diningTime.isAfter(LocalDateTime.now(RESERVATION_ZONE))) {
 			throw new IllegalArgumentException("已到用餐時間，請聯絡餐廳處理");
 		}
 	}
@@ -691,6 +691,26 @@ public class ReservationService {
 		}
 
 		ReservationVO reservation = getOwnedReservationForUpdate(rsvNo, memNo);
+
+		applyReservationEdit(reservation, date, rsvDtNo, tableType, bookingName, note);
+	}
+
+	// 員工編輯不要求該訂位會員已驗證。
+	// 員工登入身分由後台 Controller 檢查。
+	@Transactional(isolation = Isolation.READ_COMMITTED)
+	public void editByStaff(Long rsvNo, LocalDate date, Long rsvDtNo, Integer tableType, String bookingName,
+			String note) {
+
+		ReservationVO reservation = getReservationForUpdate(rsvNo);
+
+		applyReservationEdit(reservation, date, rsvDtNo, tableType, bookingName, note);
+	}
+
+	// 沿用既有的時間、容量、重複訂位及鎖定檢查。
+	private void applyReservationEdit(ReservationVO reservation, LocalDate date, Long rsvDtNo, Integer tableType,
+			String bookingName, String note) {
+
+		Integer memNo = reservation.getMember().getMemNo();
 
 		requireFutureReservation(reservation);
 

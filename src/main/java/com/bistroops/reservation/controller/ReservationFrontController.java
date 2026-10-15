@@ -140,13 +140,16 @@ public class ReservationFrontController {
 		// 只有已驗證且目前登入的會員可預填自己的電話。
 		// 不用客人輸入的電話去帶出其他會員資料。
 		if (!model.containsAttribute("phone")) {
-			Object sessionMember = session.getAttribute("member");
-
 			String phone = "";
 
-			if (sessionMember instanceof MemberVO member && "已驗證".equals(member.getMemStatus())) {
+			Object stored = session.getAttribute("memberNo");
 
-				phone = member.getMemTel() == null ? "" : member.getMemTel();
+			if (stored instanceof Integer memberNo) {
+				MemberVO member = memberService.getMemNoQuery(memberNo);
+
+				if (member != null && "已驗證".equals(member.getMemStatus())) {
+					phone = member.getMemTel() == null ? "" : member.getMemTel();
+				}
 			}
 
 			model.addAttribute("phone", phone);
@@ -291,49 +294,55 @@ public class ReservationFrontController {
 	@ResponseBody
 	public ResponseEntity<?> getMyReservations(HttpSession session) {
 
-		Object stored = session.getAttribute("member");
+		Object stored = session.getAttribute("memberNo");
 
-		if (!(stored instanceof MemberVO member)) {
-			return ResponseEntity.status(401).header("Cache-Control", "no-store").body(Map.of("message", "請先登入會員"));
+		if (!(stored instanceof Integer memberNo)) {
+			return ResponseEntity.status(HttpStatus.UNAUTHORIZED).header("Cache-Control", "no-store")
+					.body(Map.of("message", "請先登入會員"));
 		}
 
-		MemberVO current = memberService.getMemNoQuery(member.getMemNo());
+		MemberVO current = memberService.getMemNoQuery(memberNo);
 
 		if (current == null) {
-			session.removeAttribute("member");
+			session.removeAttribute("memberNo");
+			session.removeAttribute("memberExpireAt");
 
-			return ResponseEntity.status(401).header("Cache-Control", "no-store")
+			return ResponseEntity.status(HttpStatus.UNAUTHORIZED).header("Cache-Control", "no-store")
 					.body(Map.of("message", "登入已失效，請重新登入"));
 		}
 
-		boolean canManage = "已驗證".equals(member.getMemStatus()) && "已驗證".equals(current.getMemStatus());
+		// 未驗證也能查看；只有已驗證會員能編輯、取消。
+		boolean canManage = "已驗證".equals(current.getMemStatus());
 
 		Map<String, Object> result = new LinkedHashMap<>();
 
-		result.putAll(reservationService.getMemberReservationSnapshot(current.getMemNo()));
+		result.putAll(reservationService.getMemberReservationSnapshot(memberNo));
 
 		result.put("canManage", canManage);
-		result.put("csrfToken", canManage ? reservationActionToken(session, current.getMemNo()) : "");
+		result.put("csrfToken", canManage ? reservationActionToken(session, memberNo) : "");
 
 		return ResponseEntity.ok().header("Cache-Control", "no-store").body(result);
 	}
 
-	// 確認這個登入 Session 及資料庫中的會員都已驗證。
+	// 編輯與取消訂位前，確認登入會員已完成電話驗證。
 	private MemberVO requireVerifiedReservationMember(HttpSession session) {
 
-		Object stored = session.getAttribute("member");
+		Object stored = session.getAttribute("memberNo");
 
-		if (!(stored instanceof MemberVO member)) {
+		if (!(stored instanceof Integer memberNo)) {
 			throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "請先登入會員");
 		}
 
-		MemberVO current = memberService.getMemNoQuery(member.getMemNo());
+		MemberVO current = memberService.getMemNoQuery(memberNo);
 
 		if (current == null) {
+			session.removeAttribute("memberNo");
+			session.removeAttribute("memberExpireAt");
+
 			throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "登入已失效");
 		}
 
-		if (!"已驗證".equals(member.getMemStatus()) || !"已驗證".equals(current.getMemStatus())) {
+		if (!"已驗證".equals(current.getMemStatus())) {
 			throw new ResponseStatusException(HttpStatus.FORBIDDEN, "請先完成電話驗證");
 		}
 
