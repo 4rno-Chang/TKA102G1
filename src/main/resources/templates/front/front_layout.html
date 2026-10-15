@@ -1,8 +1,7 @@
 <!DOCTYPE html>
 <html lang="zh-Hant" xmlns:th="http://www.thymeleaf.org">
 <body>
-
-	<!--
+<!--
   前台共用的「頁首」和「頁尾」
   首頁（frontend_index.html）、最新消息、預約訂位、候位、常見問題的頁面都是引用這裡，所以選單要增減項目時，改這一個檔案就好。
 
@@ -24,86 +23,112 @@
     「常見問題」：頁首連到首頁下方的常見問題（#faq），頁尾連到前台常見問題頁 /bistroops/qa（FrontQaController）。
 
   選單裡「瀏覽菜單」等連結已經寫成完整網址，從哪一頁點都能回到首頁的那個區塊。
+
+  ★ 另外有一個「精簡的頁首」simpleHeader（在完整頁首的下面）：只有 logo（不能按）和會員登入，沒有其他連結。
+    給「不希望客人離開這一頁」的頁面用，目前是線上點餐（templates/front/order/order.html）：
+      <header th:replace="~{front/front_layout :: simpleHeader}"></header>
+    一樣要載入 member.css、member.js 和會員對話框（寫法同上）；這個片段的樣式寫在使用它的頁面自己的 CSS（點餐頁是 order.css）。
 -->
 
-	<!-- ========== 頁首 ========== -->
-	<header class="site-header" id="siteHeader"
-		th:fragment="header(active)">
-		<div class="header-inner">
-			<a th:href="@{/bistroops}" class="logo"> <img
-				th:src="@{/images/logo-dark.svg}" alt="bistroops">
-			</a>
+<!-- ========== 頁首 ========== -->
+<header class="site-header" id="siteHeader" th:fragment="header(active)">
+  <div class="header-inner">
+    <a th:href="@{/bistroops}" class="logo">
+      <img th:src="@{/images/logo-dark.svg}" alt="bistroops">
+    </a>
 
-			<button class="menu-toggle" id="menuToggle" aria-label="開啟選單"
-				aria-expanded="false">
-				<span></span>
-			</button>
+    <button class="menu-toggle" id="menuToggle" aria-label="開啟選單" aria-expanded="false"><span></span></button>
 
-			<nav class="nav" id="mainNav">
-				<ul class="nav-list">
-					<li><a th:href="@{/bistroops/announcement}"
-						th:classappend="${active == 'announcement'} ? 'active'">最新消息</a></li>
-					<li><a th:href="@{/bistroops/reservation}"
-						th:classappend="${active == 'reservation'} ? 'active'">預約訂位</a></li>
-					<li><a th:href="@{/bistroops/waiting}"
-						th:classappend="${active == 'waiting'} ? 'active'">候位狀況</a></li>
-					<li><a th:href="@{/bistroops} + '#menu'">瀏覽菜單</a></li>
-					<li><a th:href="@{/bistroops} + '#faq'">常見問題</a></li>
-					<li><a th:href="@{/bistroops} + '#about'">關於我們</a></li>
-				</ul>
+    <nav class="nav" id="mainNav">
+      <ul class="nav-list">
+        <li><a th:href="@{/bistroops/announcement}" th:classappend="${active == 'announcement'} ? 'active'">最新消息</a></li>
+        <li><a th:href="@{/bistroops/reservation}" th:classappend="${active == 'reservation'} ? 'active'">預約訂位</a></li>
+        <li><a th:href="@{/bistroops/waiting}" th:classappend="${active == 'waiting'} ? 'active'">候位狀況</a></li>
+        <li><a th:href="@{/bistroops} + '#menu'">瀏覽菜單</a></li>
+        <li><a th:href="@{/bistroops} + '#faq'">常見問題</a></li>
+        <li><a th:href="@{/bistroops} + '#about'">關於我們</a></li>
+      </ul>
 
-				<!-- 未登入 -->
-				<button type="button" class="btn-login" data-open-auth
-					th:if="${member == null}">登入 / 註冊</button>
+      <!-- 未登入 -->
+      <button type="button" class="btn-login" data-open-auth th:if="${session.member == null}">
+        登入 / 註冊
+      </button>
 
-				<!-- 已登入 -->
-				<button type="button" class="member-menu-toggle"
-					data-member-tab="profile" th:if="${member != null}">
-					<span
-						th:text="${member.memName != null and !member.memName.isBlank() ? member.memName : member.memTel}">
-						09XXXXXXXX </span> 會員，你好
-				</button>
-			</nav>
-		</div>
-	</header>
+      <!-- 已登入 -->
+      <button type="button" class="member-menu-toggle" data-member-tab="profile" th:if="${session.member != null}">
+        <span th:text="${session.member.memName != null and !session.member.memName.isBlank() ? session.member.memName : session.member.memTel}">
+          09XXXXXXXX
+        </span>
+        會員，你好
+      </button>
+    </nav>
+  </div>
+</header>
 
-	<!-- ========== 頁尾 ========== -->
-	<footer class="site-footer" th:fragment="footer">
-		<div class="footer-grid">
-			<div>
-				<h4>一起面對有限公司</h4>
-			</div>
+<!-- ========== 精簡的頁首（線上點餐用）==========
+     和上面的頁首用同一組 class（site-header、header-inner、logo、btn-login、member-menu-toggle），所以外觀一樣，差別是：
+       ・logo 不是連結（<span>，不是 <a>），按了不會回到首頁
+       ・沒有選單的連結，也沒有手機版的漢堡按鈕
+       ・登入的按鈕不放在 .nav 裡面：前台在平板和手機上會把 .nav 收起來（要按漢堡按鈕才出現），放在外面才能一直看得到
+     登入、會員中心的功能和上面的頁首完全相同（data-open-auth、data-member-tab 由 member.js 處理）。
+     class 多了 site-header-simple，方便使用的頁面另外調整樣式。 -->
+<header class="site-header site-header-simple" id="siteHeader" th:fragment="simpleHeader">
+  <div class="header-inner">
+    <span class="logo">
+      <img th:src="@{/images/logo-dark.svg}" alt="bistroops">
+    </span>
 
-			<div>
-				<h4>Navigation</h4>
-				<ul class="footer-links">
-					<li><a th:href="@{/bistroops/announcement}">最新消息</a></li>
-					<li><a th:href="@{/bistroops} + '#menu'">瀏覽菜單</a></li>
-					<li><a th:href="@{/bistroops/reservation}">預約訂位</a></li>
-					<li><a th:href="@{/bistroops/qa}">常見問題</a></li>
-					<li><a th:href="@{/bistroops/waiting}">候位狀況</a></li>
-					<li><a th:href="@{/bistroops} + '#about'">關於我們</a></li>
-				</ul>
-			</div>
+    <div class="header-member">
+      <!-- 未登入 -->
+      <button type="button" class="btn-login" data-open-auth th:if="${session.member == null}">
+        登入 / 註冊
+      </button>
 
-			<div class="footer-contact">
-				<h4>Contact</h4>
-				<p>組別：TKA102G1</p>
-				<p>成員：</p>
-			</div>
+      <!-- 已登入 -->
+      <button type="button" class="member-menu-toggle" data-member-tab="profile" th:if="${session.member != null}">
+        <span th:text="${session.member.memName != null and !session.member.memName.isBlank() ? session.member.memName : session.member.memTel}">
+          09XXXXXXXX
+        </span>
+        會員，你好
+      </button>
+    </div>
+  </div>
+</header>
 
-			<div>
-				<h4>Follow Us</h4>
-			</div>
-		</div>
-		<p class="copyright">
-			© <span id="year"></span> Bistroops. All rights reserved.
-		</p>
-	</footer>
+<!-- ========== 頁尾 ========== -->
+<footer class="site-footer" th:fragment="footer">
+  <div class="footer-grid">
+    <div>
+      <h4>一起面對有限公司</h4>
+    </div>
 
-	<!-- ========== 回到頂端 ========== -->
-	<button class="back-to-top" id="backToTop" aria-label="回到頂端"
-		th:fragment="backToTop">↑</button>
+    <div>
+      <h4>Navigation</h4>
+      <ul class="footer-links">
+        <li><a th:href="@{/bistroops/announcement}">最新消息</a></li>
+        <li><a th:href="@{/bistroops} + '#menu'">瀏覽菜單</a></li>
+        <li><a th:href="@{/bistroops/reservation}">預約訂位</a></li>
+        <li><a th:href="@{/bistroops/qa}">常見問題</a></li>
+        <li><a th:href="@{/bistroops/waiting}">候位狀況</a></li>
+        <li><a th:href="@{/bistroops} + '#about'">關於我們</a></li>
+      </ul>
+    </div>
+
+    <div class="footer-contact">
+      <h4>Contact</h4>
+      <p>組別：TKA102G1</p>
+      <p>成員：</p>
+    </div>
+
+    <div>
+      <h4>Follow Us</h4>
+    </div>
+  </div>
+  <p class="copyright">© <span id="year"></span> Bistroops. All rights reserved.</p>
+</footer>
+
+<!-- ========== 回到頂端 ========== -->
+<button class="back-to-top" id="backToTop" aria-label="回到頂端" th:fragment="backToTop">↑</button>
 
 </body>
 </html>

@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="zh-Hant" xmlns:th="http://www.thymeleaf.org">
+<head>
+
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bistroops｜線上點餐</title>
+  <link rel="icon" th:href="@{/images/logo-mark.svg}" type="image/svg+xml">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Noto+Sans+TC:wght@300;400;500;700&family=Noto+Serif+TC:wght@500;600&display=swap">
+  <link rel="stylesheet" th:href="@{/css/front/front.css}" />
+  <link rel="stylesheet" th:href="@{/css/front/member.css}" />
+  <link rel="stylesheet" th:href="@{/css/front/order.css}" />
+  <script th:src="@{/js/front/member.js}" defer></script>
+  <script th:src="@{/js/front/order.js}" defer></script>
+</head>
+
+<body class="order-page">
+  <div th:replace="~{front/member/member_modals :: modals}"></div>
+
+  <!-- 1. 頁首 -->
+  <div th:replace="~{front/front_layout :: simpleHeader}"></div>
+
+  <main class="order-main">
+    <section class="order-notice" th:if="${seatNo == null}">
+      <h1 class="order-notice-title">請掃描桌上的 QR code</h1>
+      <p>點餐頁面需要知道您的桌號。請用手機的相機掃描桌上的 QR code 重新進入；找不到的話請洽服務人員。</p>
+    </section>
+
+    <section class="order-notice" th:if="${seatNo != null and orderError != null}">
+      <h1 class="order-notice-title">目前無法點餐</h1>
+      <p th:text="${orderError}">用餐時間已經結束，如需加點請洽服務人員。</p>
+    </section>
+
+    <th:block th:if="${seatNo != null and orderError == null}">
+      <div class="order-intro">
+        <p class="eyebrow">Menu</p>
+        <h1 class="order-title">線上點餐</h1>
+      </div>
+
+      <p class="order-alert" th:if="${message != null}" th:text="${message}">已加入購物車</p>
+
+      <!-- 2. 菜單 -->
+
+      <div class="order-body">
+      <div class="order-cats-wrap">
+        <nav class="order-cats" th:if="${menuSections != null}" aria-label="菜品類別">
+          <a class="order-cat order-cat-promo" href="#type-promo" th:if="${promoMeals != null and !#lists.isEmpty(promoMeals)}">活動商品</a>
+          <a class="order-cat" th:each="s : ${menuSections}" th:href="|#type-${s.mealtypeNo}|" th:text="${s.mealtypeName}">開胃菜</a>
+        </nav>
+
+      </div>
+
+      <div class="source-block" th:if="${menuSections != null}">
+        <section class="order-type order-type-promo" id="type-promo" th:if="${promoMeals != null and !#lists.isEmpty(promoMeals)}">
+          <h2 class="order-type-title">活動商品</h2>
+          <th:block th:each="m : ${promoMeals}"><article th:replace="~{:: mealCard(${m}, 'promo-meal-')}"></article></th:block>
+        </section>
+
+        <th:block th:each="s : ${menuSections}">
+          <section class="order-type" th:id="|type-${s.mealtypeNo}|">
+            <h2 class="order-type-title" th:text="${s.mealtypeName}">開胃菜</h2>
+
+            <th:block th:each="m : ${s.meals}"><article th:replace="~{:: mealCard(${m}, 'meal-')}"></article></th:block>
+          </section>
+        </th:block>
+      </div>
+
+      </div>
+
+      <div class="order-bar">
+        <div class="order-bar-row" th:if="${cartItems != null or orderedItems != null}">
+          <button type="button" class="order-bar-side" data-sheet-open="dbOrderedSheet" th:if="${orderedItems != null}">
+            已點餐點
+          </button>
+          <button type="button" class="order-bar-cart" data-sheet-open="dbCartSheet" th:if="${cartItems != null}">
+            <span>購物車 <b th:text="${cartCount}">3</b> 份</span>
+            <span class="order-bar-total">NT$ <b th:text="${cartTotal}">880</b> ›</span>
+          </button>
+        </div>
+
+      </div>
+
+    </th:block>
+  </main>
+
+  <!-- 3. 購物車 -->
+
+  <div class="order-sheet" id="dbCartSheet" th:if="${seatNo != null and orderError == null and cartItems != null}" th:hidden="${open != 'cart'}">
+    <div class="order-sheet-backdrop" data-sheet-close></div>
+    <section class="order-sheet-panel" role="dialog" aria-modal="true" aria-labelledby="dbCartHeading">
+      <header class="order-sheet-head">
+        <h2 class="order-sheet-title" id="dbCartHeading">購物車<span class="order-sheet-seat" th:text="|桌號 ${seatNo}|">桌號 A01</span></h2>
+        <button type="button" class="order-sheet-close" data-sheet-close aria-label="關閉">×</button>
+      </header>
+
+      <div class="order-sheet-body">
+        <p class="order-empty" th:if="${#lists.isEmpty(cartItems)}">購物車是空的，先去挑幾道菜吧。</p>
+
+        <form class="order-cart-item" th:each="c : ${cartItems}" th:action="@{/bistroops/order/cart/update}" method="post">
+          <input type="hidden" name="mealNo" th:value="${c.mealNo}">
+          <input type="hidden" name="comment" th:value="${c.comment}">
+          <input type="hidden" name="oldComment" th:value="${c.comment}">
+
+          <div class="order-cart-top">
+            <div class="order-cart-info">
+              <h3 class="order-cart-name" th:text="${c.mealName}">松露起司薯條</h3>
+              <p class="order-cart-price">NT$ <span th:text="${c.price}">190</span> ／份</p>
+              <p class="order-cart-note" th:if="${!#strings.isEmpty(c.comment)}" th:text="${c.comment}">不要香菜</p>
+            </div>
+            <div class="order-stepper">
+              <button type="submit" name="num" th:value="${c.num - 1}" aria-label="減少一份">−</button>
+              <span class="order-stepper-num" th:text="${c.num}">2</span>
+              <button type="submit" name="num" th:value="${c.num + 1}" th:disabled="${c.num >= 20}" aria-label="增加一份">＋</button>
+            </div>
+            <b class="order-cart-sub">NT$ <span th:text="${c.subtotal}">380</span></b>
+          </div>
+
+          <div class="order-cart-bottom">
+            <button type="button" class="order-link" data-item-open="dbItemSheet" data-item-edit
+                    th:attr="data-meal-no=${c.mealNo}, data-num=${c.num}, data-comment=${c.comment}, data-name=${c.mealName}, data-price=${c.price}">編輯</button>
+          </div>
+        </form>
+      </div>
+
+      <footer class="order-sheet-foot">
+        <p class="order-total">合計<b>NT$ <span th:text="${cartTotal}">880</span></b></p>
+        <div class="order-foot-actions" th:unless="${#lists.isEmpty(cartItems)}">
+          <form th:action="@{/bistroops/order/cart/clear}" method="post" data-confirm="確定要清空購物車嗎？">
+            <button type="submit" class="order-btn order-btn-ghost">清空</button>
+          </form>
+          <form class="order-foot-main" th:action="@{/bistroops/order/submit}" method="post"
+                data-confirm="確定要送出訂單嗎？送出後餐點就會開始製作，無法自行取消。">
+            <button type="submit" class="order-btn order-btn-main">送出訂單</button>
+          </form>
+        </div>
+      </footer>
+    </section>
+  </div>
+
+  <!-- 4. 已點餐點 -->
+
+  <div class="order-sheet" id="dbOrderedSheet" th:if="${seatNo != null and orderError == null and orderedItems != null}" th:hidden="${open != 'ordered'}">
+    <div class="order-sheet-backdrop" data-sheet-close></div>
+    <section class="order-sheet-panel" role="dialog" aria-modal="true" aria-labelledby="dbOrderedHeading">
+      <header class="order-sheet-head">
+        <h2 class="order-sheet-title" id="dbOrderedHeading">已點餐點</h2>
+        <button type="button" class="order-sheet-close" data-sheet-close aria-label="關閉">×</button>
+      </header>
+
+      <div class="order-sheet-body">
+        <p class="order-empty" th:if="${#lists.isEmpty(orderedItems)}">還沒有送出的餐點。</p>
+
+        <div class="order-ordered-item" th:each="d : ${orderedItems}" th:classappend="${d.cancelled} ? 'is-cancelled'">
+          <div class="order-ordered-main">
+            <h3 class="order-cart-name"><span th:text="${d.mealName}">松露起司薯條</span> <small>× <span th:text="${d.num}">2</span></small></h3>
+            <p class="order-ordered-note" th:if="${!#strings.isEmpty(d.comment)}" th:text="${d.comment}">不要香菜</p>
+          </div>
+          <span class="order-status is-off" th:if="${d.cancelled}">已取消</span>
+          <b class="order-cart-sub">NT$ <span th:text="${d.subtotal}">380</span></b>
+        </div>
+      </div>
+
+      <footer class="order-sheet-foot">
+        <p class="order-total">合計<b>NT$ <span th:text="${orderedTotal}">1,260</span></b></p>
+        <p class="order-foot-note">用餐結束後請至櫃檯結帳。餐點送出後如需取消或修改，請洽服務人員。</p>
+      </footer>
+    </section>
+  </div>
+
+  <!-- 菜品的對話框 -->
+  <div class="order-sheet order-sheet-item" id="dbItemSheet" th:if="${seatNo != null and orderError == null and menuSections != null}" hidden>
+    <div class="order-sheet-backdrop" data-sheet-close></div>
+    <section class="order-sheet-panel" role="dialog" aria-modal="true" aria-labelledby="dbItemHeading">
+      <button type="button" class="order-item-close" data-sheet-close aria-label="關閉">×</button>
+      <div class="order-item-photo"><img data-item-img th:src="@{/images/dish-main.svg}" alt=""></div>
+
+      <form class="order-item-form" method="post" th:action="@{/bistroops/order/cart/add}"
+            th:attr="data-add-action=@{/bistroops/order/cart/add}, data-edit-action=@{/bistroops/order/cart/update}">
+        <input type="hidden" name="mealNo" data-item-input="mealNo">
+        <input type="hidden" name="oldComment" data-item-input="oldComment">
+
+        <div class="order-item-body">
+          <h2 class="order-item-name" id="dbItemHeading">
+            <span data-item-field="name">菜名</span>
+            <span class="order-promo-tag" data-item-field="promo" hidden></span>
+
+          </h2>
+          <p class="order-item-exp" data-item-field="exp"></p>
+          <p class="order-price"><s data-item-field="orig" hidden></s><b data-item-field="price"></b></p>
+
+          <div class="order-item-row">
+            <span class="order-item-label">數量</span>
+            <div class="order-stepper" data-stepper>
+              <button type="button" data-step="-1" aria-label="減少一份">−</button>
+              <input type="number" name="num" data-item-input="num" value="1" min="1" max="20" inputmode="numeric" aria-label="數量">
+              <button type="button" data-step="1" aria-label="增加一份">＋</button>
+            </div>
+          </div>
+          <div class="order-item-row order-item-col" data-item-tags-row hidden>
+            <span class="order-item-label">常用備註<small>點一下就會加進下面的備註</small></span>
+            <div class="order-tags" data-item-tags></div>
+            <small class="order-tags-hint" data-item-tags-hint hidden>備註最多 30 個字，放不下了。</small>
+          </div>
+          <label class="order-item-row order-item-col">
+            <span class="order-item-label">備註<small>最多 30 個字</small></span>
+            <input type="text" class="order-input" name="comment" data-item-input="comment" maxlength="30" autocomplete="off">
+          </label>
+        </div>
+
+        <footer class="order-item-foot">
+          <button type="submit" class="order-btn order-btn-main" data-item-field="submit">加入購物車</button>
+          <p class="order-item-total">小計<b>NT$ <span data-item-field="total">0</span></b></p>
+          <button type="submit" class="order-link order-link-danger" data-item-remove th:formaction="@{/bistroops/order/cart/remove}" hidden>從購物車移除</button>
+        </footer>
+      </form>
+    </section>
+  </div>
+
+  <!-- 片段：一道菜的卡片（mealCard） -->
+  <th:block th:if="${false}">
+<article class="order-meal" th:fragment="mealCard(m, idPrefix)" th:id="|${idPrefix}${m.mealNo}|"
+         role="button" tabindex="0" data-item-open="dbItemSheet" data-item-card="dbItemSheet"
+         th:attr="data-meal-no=${m.mealNo}, data-name=${m.mealName}, data-exp=${m.mealExp}, data-price=${m.price}, data-orig-price=${m.origPrice}, data-promo-name=${m.promoName}, data-tags=${m.tagCode}">
+  <div class="order-meal-img">
+    <img th:if="${m.hasImg}" th:src="@{/bistroops/order/mealImg(mealNo=${m.mealNo})}" th:alt="${m.mealName}" loading="lazy">
+    <img th:unless="${m.hasImg}" th:src="@{/images/dish-main.svg}" alt="" loading="lazy">
+  </div>
+  <span class="order-promo-tag" th:if="${m.promoName != null}" th:text="${m.promoName}">雙十節活動</span>
+  <div class="order-meal-body">
+    <h3 class="order-meal-name" th:text="${m.mealName}">松露起司薯條</h3>
+    <p class="order-meal-exp" th:text="${m.mealExp}">現炸金黃薯條刨上帕瑪森起司佐黑松露醬</p>
+    <div class="order-meal-foot">
+      <p class="order-price">
+        <s th:if="${m.price != m.origPrice}" th:text="|NT$ ${m.origPrice}|">NT$ 190</s>
+        <b th:text="|NT$ ${m.price}|">NT$ 190</b>
+      </p>
+      <span class="order-meal-more" aria-hidden="true">＋</span>
+    </div>
+  </div>
+</article>
+  </th:block>
+
+</body>
+
+</html>
