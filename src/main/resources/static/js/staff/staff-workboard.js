@@ -41,6 +41,14 @@ document.querySelectorAll('[data-board-view]').forEach(link => {
   link.classList.toggle('active', link.dataset.boardView === currentView);
 });
 
+// 沒有權限的按鈕：點擊時顯示提示，不進行跳轉
+document.querySelectorAll('.board-btn.no-permission').forEach(link => {
+    link.addEventListener('click', e => {
+        e.preventDefault();
+        staffToast('您沒有此功能的操作權限');
+    });
+});
+
 
 /* ---------- A-2. 左右箭頭 ----------
    卡片排成一列超出畫面時，用箭頭一次移動兩張卡片。

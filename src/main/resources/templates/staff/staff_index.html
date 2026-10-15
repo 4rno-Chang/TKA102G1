@@ -41,19 +41,28 @@
 		<!-- 常用功能的大按鈕 -->
 		<section class="home-grid">
 			<!-- 每個大按鈕上方的圖示，和左邊選單同一項的圖示相同（從 staff_sidebar.html 複製過來的） -->
-			<a class="home-tile tile-red" th:href="@{/staff/workboard}"> <svg
+			<a class="home-tile tile-red"
+				th:href="${hasWorkboard} ? @{/staff/workboard} : null"
+				th:classappend="${!hasWorkboard} ? 'no-permission'"
+				th:attr="aria-disabled=${!hasWorkboard}" data-permission-link> <svg
 					class="home-tile-icon" viewBox="0 0 24 24" aria-hidden="true">
 					<rect x="4" y="5" width="16" height="15" rx="2" />
 					<path d="M9 5V3h6v2M8 11h8M8 15h5" /></svg> <span
 				class="home-tile-title">工作面板</span> <span class="home-tile-desc">內場出餐、外場送餐</span>
-			</a> <a class="home-tile tile-yellow" th:href="@{/staff/checkout}"> <svg
-					class="home-tile-icon" viewBox="0 0 24 24" aria-hidden="true">
+			</a> <a class="home-tile tile-yellow"
+				th:href="${hasCheckout == true} ? @{/staff/checkout} : null"
+				th:classappend="${hasCheckout != true} ? 'no-permission' : ''"
+				th:attr="aria-disabled=${hasCheckout != true}" data-permission-link>
+				<svg class="home-tile-icon" viewBox="0 0 24 24" aria-hidden="true">
 					<circle cx="12" cy="12" r="9" />
 					<path
 						d="M15 9.5c-.5-1-1.600-1.500-3-1.500-1.700 0-3 .8-3 2s1.300 1.700 3 2 3 .8 3 2-1.300 2-3 2c-1.400 0-2.500-.5-3-1.500M12 6v2M12 16v2" /></svg>
 				<span class="home-tile-title">結帳</span> <span class="home-tile-desc">查看餐點明細並收款</span>
-			</a> <a class="home-tile tile-green" th:href="@{/staff/orders}"> <svg
-					class="home-tile-icon" viewBox="0 0 24 24" aria-hidden="true">
+			</a> <a class="home-tile tile-green"
+				th:href="${hasOrders == true} ? @{/staff/orders} : null"
+				th:classappend="${hasOrders != true} ? 'no-permission' : ''"
+				th:attr="aria-disabled=${hasOrders != true}" data-permission-link>
+				<svg class="home-tile-icon" viewBox="0 0 24 24" aria-hidden="true">
 					<path d="M8 6h12M8 12h12M8 18h12" />
 					<circle cx="4" cy="6" r="1" />
 					<circle cx="4" cy="12" r="1" />
@@ -79,10 +88,13 @@
          只要 nextRoundCount 不是 null，這個長條就會出現在假資料的上面。
          ★★ 上面四個名稱目前都是「範例」★★ 要叫什麼名字請負責的組員自己決定，
          決定後把下面 ${...} 裡的名稱（包含 th:if 裡的 nextRoundCount）改成 Controller 實際放進 Model 的名稱。 -->
-		<a class="staff-card home-bar" th:href="@{/staff/reservations}"> <span
-			class="home-bar-title">訂候位管理</span> <span class="home-bar-stats">
-				<span class="home-bar-stat"> 最近一輪訂位（ <strong
-					th:text="${nextRoundTime}"></strong> ）共 <strong
+		<a class="staff-card home-bar" th:if="${nextRoundCount != null}"
+			th:href="${hasBooking == true} ? @{/staff/reservations} : null"
+			th:classappend="${hasBooking == true} ? '' : 'no-permission'"
+			th:attr="aria-disabled=${hasBooking != true}" data-permission-link>
+			<span class="home-bar-title">訂候位管理</span> <span
+			class="home-bar-stats"> <span class="home-bar-stat">
+					最近一輪訂位（ <strong th:text="${nextRoundTime}"></strong> ）共 <strong
 					class="home-bar-num" th:text="${nextRoundCount}">0</strong> 組
 			</span>
 		</span> <span class="home-bar-arrow" aria-hidden="true">›</span>
@@ -90,11 +102,13 @@
 
 		<!-- ===== 【假資料】四個 <strong> 裡的數字由 staff.js 的「B. 假資料」填入（依照 data-demo-home 的名稱）。
          資料庫的版本確認沒問題後，這個 button 整個刪掉 ===== -->
-		<button type="button" class="staff-card home-bar"
-			data-coming-soon="訂候位">
+		<a class="staff-card home-bar" th:if="${nextRoundCount == null}"
+			th:href="${hasBooking == true} ? @{/staff/reservations} : null"
+			th:classappend="${hasBooking == true} ? '' : 'no-permission'"
+			th:attr="aria-disabled=${hasBooking != true}" data-permission-link>
 			<span class="home-bar-title">訂候位管理<span class="source-tag"
 				th:if="${nextRoundCount != null}">假資料</span></span> <span
-				class="home-bar-stats"> <span class="home-bar-stat">最近一輪訂位（<strong
+			class="home-bar-stats"> <span class="home-bar-stat">最近一輪訂位（<strong
 					data-demo-home="nextRoundTime"></strong>）共 <strong
 					class="home-bar-num" data-demo-home="nextRoundCount"></strong> 組
 			</span> <span class="home-bar-stat">目前候位 <strong class="home-bar-num"
@@ -102,9 +116,8 @@
 			</span> <span class="home-bar-stat">目前叫號 <strong class="home-bar-num"
 					data-demo-home="callingNumber"></strong> 號
 			</span>
-			</span> <span class="home-bar-arrow" aria-hidden="true">›</span>
-		</button>
-
+		</span> <span class="home-bar-arrow" aria-hidden="true">›</span>
+		</a>
 		<!-- ===== 【假資料】示範資料的說明與重設按鈕。
          假資料都刪掉之後，這個 section 也整個刪掉（按鈕的程式在 staff.js 的「B. 假資料」） ===== -->
 		<section class="staff-card home-note">
@@ -118,7 +131,10 @@
 		aria-live="polite"></div>
 
 	<!-- 首次登入修改密碼彈窗 -->
-	<div th:replace="~{staff/employee/staff_change_password :: passwordModal}"></div>
+	<div
+		th:replace="~{staff/employee/staff_change_password :: passwordModal}"></div>
+
+
 </body>
 
 </html>

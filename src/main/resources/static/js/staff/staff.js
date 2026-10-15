@@ -52,35 +52,71 @@ document.addEventListener('click', e => {
   if (btn) staffToast(`「${btn.dataset.comingSoon}」功能尚未開放`);
 });
 
+/* ========== A-3-1. 無權限的選單與按鈕 ========== */
+document.addEventListener('click', e => {
+    const link = e.target.closest('[data-permission-link].no-permission');
+
+    if (!link) return;
+
+    e.preventDefault();
+    staffToast('您沒有此功能的操作權限');
+});
 
 /* ========== A-4. 選單的摺疊群組（後臺管理） ==========
    點「後臺管理」會展開或收起下面的項目。做法是替外層的 .staff-group 加上或拿掉 open 這個 class，
    顯示與隱藏由 staff.css 處理。
    展開的狀態會記在 sessionStorage（這個分頁關掉前都記得），換到別的後台頁面時選單不會自己收起來。
    這一區和資料庫無關，之後接上 Thymeleaf 也可以保留。 */
-const MENU_GROUP_KEY = 'bistroopsStaffMenuGroupOpen';
+   const MENU_GROUP_KEY = 'bistroopsStaffMenuGroupOpen';
 
-function setMenuGroupOpen(group, open) {
-  group.classList.toggle('open', open);   // 第二個參數是 true 就加上、false 就拿掉
-  group.querySelector('[data-menu-group]').setAttribute('aria-expanded', open);
-}
+   function setMenuGroupOpen(group, open) {
+     group.classList.toggle('open', open);
+     group.querySelector('[data-menu-group]')
+          .setAttribute('aria-expanded', String(open));
+   }
 
-// 頁面載入時：上次是展開的，就先展開
-document.querySelectorAll('.staff-group').forEach(group => {
-  let wasOpen = false;
-  try { wasOpen = sessionStorage.getItem(MENU_GROUP_KEY) === 'yes'; } catch (e) { /* 讀不到就當作收起 */ }
-  // HTML 已經寫了 open（之後由 Thymeleaf 加上）的話也維持展開
-  setMenuGroupOpen(group, wasOpen || group.classList.contains('open'));
-});
+   // 頁面載入時檢查權限
+   document.querySelectorAll('.staff-group').forEach(group => {
 
-document.addEventListener('click', e => {
-  const toggle = e.target.closest('[data-menu-group]');
-  if (!toggle) return;
-  const group = toggle.closest('.staff-group');
-  const open = !group.classList.contains('open');
-  setMenuGroupOpen(group, open);
-  try { sessionStorage.setItem(MENU_GROUP_KEY, open ? 'yes' : 'no'); } catch (e) { /* 存不了就算了 */ }
-});
+     const canManage = group.dataset.canManage === 'true';
+
+     if (!canManage) {
+       setMenuGroupOpen(group, false);
+       return;
+     }
+
+     let wasOpen = false;
+
+     try {
+       wasOpen = sessionStorage.getItem(MENU_GROUP_KEY) === 'yes';
+     } catch (e) {}
+
+     setMenuGroupOpen(group, wasOpen || group.classList.contains('open'));
+   });
+
+   // 點擊後臺管理
+   document.addEventListener('click', e => {
+
+     const toggle = e.target.closest('[data-menu-group]');
+     if (!toggle) return;
+
+     const group = toggle.closest('.staff-group');
+     const canManage = group.dataset.canManage === 'true';
+
+     if (!canManage) {
+       setMenuGroupOpen(group, false);
+       staffToast('您沒有此功能的操作權限');
+       return;
+     }
+
+     const open = !group.classList.contains('open');
+
+     setMenuGroupOpen(group, open);
+
+     try {
+       sessionStorage.setItem(MENU_GROUP_KEY, open ? 'yes' : 'no');
+     } catch (e) {}
+   });
 
 
 /* ========== A-5. 右上角的日期與時間 ========== */

@@ -46,6 +46,12 @@
 .board-btn.active { background: var(--st-red); border-color: var(--st-red); color: #fff; }
 .board-btn-done { font-size: 15px; font-weight: 500; }
 
+
+/* 沒有權限的工作面板按鈕 */
+.board-btn.no-permission { cursor: not-allowed; opacity: 0.45;}
+
+/* 沒有權限時，滑鼠移上去不改變背景 */
+.board-btn.no-permission:hover { background: var(--st-card);}
 /* 右邊的內容區：高度剛好等於畫面，裡面由上到下排「標題」和「卡片區」 */
 .board-main {
   display: flex; flex-direction: column;

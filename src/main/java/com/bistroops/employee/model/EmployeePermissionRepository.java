@@ -12,4 +12,7 @@ public interface EmployeePermissionRepository
 
     // 刪除指定員工的權限
     void deleteByEmployee_EmpNo(Integer empNo);
+    
+    // 新增：判斷指定員工是否擁有某項權限
+    boolean existsByIdsEmpNoAndIdsPermNo(Integer empNo, Integer permNo);
 }

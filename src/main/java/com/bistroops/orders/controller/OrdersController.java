@@ -1,5 +1,8 @@
 package com.bistroops.orders.controller;
 
+import com.bistroops.employee.model.EmployeeService;
+import jakarta.servlet.http.HttpSession;
+
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -29,6 +32,9 @@ import com.bistroops.ordersdetails.model.OrdersDetailsService;
 @Controller
 @RequestMapping("/staff")
 public class OrdersController {
+	
+	@Autowired
+	EmployeeService employeeService;
 
 	@Autowired
 	OrdersService ordersService;
@@ -88,9 +94,37 @@ public class OrdersController {
 	}
 
 	//==============workboard給畫面==================
-	@GetMapping("/workboard") //@{/staff/workboard(view='kitchen')}
-	public String workboard(@RequestParam(defaultValue="kitchen")String view,Model model) {//view=kitchen、floor、done
-		model.addAttribute("view",view); 
+	@GetMapping("/workboard")
+	public String workboard(
+	        @RequestParam(required = false) String view,
+	        Model model,
+	        HttpSession session) {
+
+	    // 取得目前登入的員工編號
+	    Integer empNo = (Integer) session.getAttribute("employeeNo");
+
+	    // 查詢內場與外場權限
+	    boolean hasKitchen = employeeService.hasPermission(empNo, 1);
+	    boolean hasFloor = employeeService.hasPermission(empNo, 2);
+
+	    // 沒有指定 view，依權限選擇預設畫面
+	    if (view == null || view.isBlank()) {
+
+	        if (hasKitchen) {
+	            return "redirect:/staff/workboard?view=kitchen";
+	        }
+
+	        if (hasFloor) {
+	            return "redirect:/staff/workboard?view=floor";
+	        }
+
+	        return "redirect:/staff";
+	    }
+
+	    // 將權限資訊傳給 HTML
+	    model.addAttribute("hasKitchen", hasKitchen);
+	    model.addAttribute("hasFloor", hasFloor);	
+	    model.addAttribute("view",view); 
 		model.addAttribute("workboardlistAll", "done".equals(view)?ordersService.getDone():ordersService.getActive());
 		
 		return "staff/workboard" ;
@@ -98,9 +132,21 @@ public class OrdersController {
 	
 	//============workboard訂單修改=============
 	@GetMapping("/workboard/edit")
-	public String workboardEdit(@RequestParam Integer orderId,Model model) {
-		OrdersVO editOrder=ordersService.getOne(orderId);
-		if (editOrder == null) return "redirect:/staff/workboard";
+	public String workboardEdit( @RequestParam Integer orderId, Model model, HttpSession session) {
+
+	    OrdersVO editOrder = ordersService.getOne(orderId);
+
+	    if (editOrder == null) {
+	        return "redirect:/staff/workboard";
+	    }
+
+	    // 新增：取得員工編號
+	    Integer empNo = (Integer) session.getAttribute("employeeNo");
+
+	    // 新增：提供內場、外場權限給 HTML
+	    model.addAttribute("hasKitchen", employeeService.hasPermission(empNo, 1));
+
+	    model.addAttribute("hasFloor", employeeService.hasPermission(empNo, 2));
 		
 		model.addAttribute("view","kitchen");
 		model.addAttribute("workboardlistAll",ordersService.getActive());

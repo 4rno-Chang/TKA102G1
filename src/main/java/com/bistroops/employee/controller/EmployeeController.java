@@ -7,6 +7,13 @@ import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
 import java.util.Arrays;
 
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
+
+import com.bistroops.config.EmployeeAuthenticationService;
+
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.multipart.MultipartFile;
@@ -33,46 +40,86 @@ import org.springframework.http.ResponseEntity;
 public class EmployeeController {
 
 	private final EmployeeService employeeService;
+	private final EmployeeAuthenticationService employeeAuthenticationService;
 
-	public EmployeeController(EmployeeService employeeService) {
-		this.employeeService = employeeService;
+	public EmployeeController(
+	        EmployeeService employeeService,
+	        EmployeeAuthenticationService employeeAuthenticationService) {
+
+	    this.employeeService = employeeService;
+	    this.employeeAuthenticationService = employeeAuthenticationService;
 	}
 
 	// 員工登入
 	@PostMapping("/login")
-	public ResponseEntity<Map<String, Object>> login(@RequestBody Map<String, String> data, HttpSession session) {
+	public ResponseEntity<Map<String, Object>> login(
+	        @RequestBody Map<String, String> data,
+	        HttpSession session) {
 
-		// 1. 取得員工編號與密碼
-		String empNoText = data.get("empNo");
-		String password = data.get("password");
+	    // 1. 取得員工編號與密碼
+	    String empNoText = data.get("empNo");
+	    String password = data.get("password");
 
-		if (empNoText == null || !empNoText.matches("\\d+") || password == null || password.isBlank()) {
-			return ResponseEntity.badRequest().body(Map.of("message", "請輸入正確的員工編號及密碼"));
-		}
+	    if (empNoText == null || !empNoText.matches("\\d+")
+	            || password == null || password.isBlank()) {
 
-		Integer empNo;
-		try {
-			empNo = Integer.valueOf(empNoText);
-		} catch (NumberFormatException e) {
-			return ResponseEntity.badRequest().body(Map.of("message", "員工編號格式錯誤"));
-		}
+	        return ResponseEntity.badRequest()
+	                .body(Map.of("message", "請輸入正確的員工編號及密碼"));
+	    }
 
-		// 2. 呼叫 Service 驗證帳號密碼
-		EmployeeVO employee = employeeService.login(empNo, password);
+	    Integer empNo;
 
-		if (employee == null) {
-			return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "員工編號或密碼錯誤，或帳號已停用"));
-		}
+	    try {
+	        empNo = Integer.valueOf(empNoText);
+	    } catch (NumberFormatException e) {
+	        return ResponseEntity.badRequest()
+	                .body(Map.of("message", "員工編號格式錯誤"));
+	    }
 
-		// 3. 登入成功，記錄員工編號到 Session
-		session.setAttribute("employeeNo", employee.getEmpNo());
-		session.setMaxInactiveInterval(12 * 60 * 60);
-		session.setAttribute("employeeExpireAt",
-		        System.currentTimeMillis() + 12 * 60 * 60 * 1000L);
+	    // 2. 使用 Spring Security 員工認證服務驗證
+	    Authentication authentication =
+	            employeeAuthenticationService.authenticate(empNo, password);
 
-		// 4. 回傳登入結果
-		return ResponseEntity.ok(Map.of("message", "登入成功", "empNo", employee.getEmpNo(), "empName",
-				employee.getEmpName(), "mustChangePassword", !Boolean.TRUE.equals(employee.getEmpPwdChanged())));
+	    if (authentication == null) {
+	        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+	                .body(Map.of("message", "員工編號或密碼錯誤，或帳號已停用"));
+	    }
+
+	    // 3. 取得員工資料
+	    EmployeeVO employee = employeeService.getEmployeeById(empNo)
+	            .orElseThrow();
+
+	    // 4. 建立 Spring Security 認證資訊
+	    SecurityContext context = SecurityContextHolder.createEmptyContext();
+	    context.setAuthentication(authentication);
+
+	    SecurityContextHolder.setContext(context);
+
+	    // 5. 將 Spring Security 認證資訊存入 Session
+	    session.setAttribute(
+	            HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY,
+	            context
+	    );
+
+	    // 6. 保留原本的員工 Session 與 12 小時登入期限
+	    session.setAttribute("employeeNo", employee.getEmpNo());
+
+	    session.setMaxInactiveInterval(12 * 60 * 60);
+
+	 // 員工登入後固定 12 小時到期
+	    session.setAttribute(
+	        "employeeExpireAt",
+	        System.currentTimeMillis() + 12 * 60 * 60 * 1000L
+	    );
+
+	    // 7. 回傳原本的登入結果
+	    return ResponseEntity.ok(Map.of(
+	            "message", "登入成功",
+	            "empNo", employee.getEmpNo(),
+	            "empName", employee.getEmpName(),
+	            "mustChangePassword",
+	            !Boolean.TRUE.equals(employee.getEmpPwdChanged())
+	    ));
 	}
 
 	// 員工修改密碼
@@ -105,12 +152,19 @@ public class EmployeeController {
 	@PostMapping("/logout")
 	public ResponseEntity<Map<String, String>> logout(HttpSession session) {
 
-		// 只清除員工登入資訊
-		session.removeAttribute("employeeNo");
-		session.removeAttribute("employeeExpireAt");
-		
+	    // 1. 清除 Spring Security 認證資訊
+	    SecurityContextHolder.clearContext();
 
-		return ResponseEntity.ok(Map.of("message", "登出成功"));
+	    session.removeAttribute(
+	            HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY
+	    );
+
+	    // 2. 清除原本員工登入資訊
+	    session.removeAttribute("employeeNo");
+	    session.removeAttribute("employeeExpireAt");
+
+	    // 3. 回傳登出結果
+	    return ResponseEntity.ok(Map.of("message", "登出成功"));
 	}
 
 	// 員工自行修改個人資料
@@ -183,7 +237,7 @@ public class EmployeeController {
 	// 查詢全部員工
 	@GetMapping
 	public List<EmployeeVO> getAllEmployees() {
-		return employeeService.getAllEmployees();
+	    return employeeService.getAllEmployees();
 	}
 
 	// 根據員工編號查詢
@@ -195,34 +249,77 @@ public class EmployeeController {
 	}
 
 	// 查詢指定員工擁有的權限
+	// 查詢指定員工擁有的權限
 	@GetMapping("/{empNo}/permissions")
-	public ResponseEntity<List<Integer>> getEmployeePermissions(@PathVariable Integer empNo) {
+	public ResponseEntity<List<Integer>> getEmployeePermissions(
+	        @PathVariable Integer empNo,
+	        HttpSession session) {
 
-		// 確認員工是否存在
-		if (employeeService.getEmployeeById(empNo).isEmpty()) {
-			return ResponseEntity.notFound().build();
-		}
+	    // 1. 確認操作者已登入
+	    Integer loginEmpNo =
+	            (Integer) session.getAttribute("employeeNo");
 
-		// 查詢員工權限
-		List<Integer> permissions = employeeService.getEmployeePermissions(empNo);
+	    if (loginEmpNo == null) {
+	        return ResponseEntity
+	                .status(HttpStatus.UNAUTHORIZED)
+	                .build();
+	    }
 
-		return ResponseEntity.ok(permissions);
+	    // 2. 只有權限 7 可以查詢員工權限
+	    if (!employeeService.hasPermission(loginEmpNo, 7)) {
+	        return ResponseEntity
+	                .status(HttpStatus.FORBIDDEN)
+	                .build();
+	    }
+
+	    // 3. 確認被查詢的員工存在
+	    if (employeeService.getEmployeeById(empNo).isEmpty()) {
+	        return ResponseEntity.notFound().build();
+	    }
+
+	    // 4. 查詢員工權限
+	    List<Integer> permissions =
+	            employeeService.getEmployeePermissions(empNo);
+
+	    return ResponseEntity.ok(permissions);
 	}
 
 	// 修改指定員工的權限
 	@PutMapping("/{empNo}/permissions")
-	public ResponseEntity<String> updateEmployeePermissions(@PathVariable Integer empNo,
-			@RequestBody List<Integer> permNos) {
+	public ResponseEntity<String> updateEmployeePermissions(
+	        @PathVariable Integer empNo,
+	        @RequestBody List<Integer> permNos,
+	        HttpSession session) {
 
-		try {
-			employeeService.updateEmployeePermissions(empNo, permNos);
+	    // 1. 確認操作者已登入
+	    Integer loginEmpNo =
+	            (Integer) session.getAttribute("employeeNo");
 
-			return ResponseEntity.ok("員工權限修改成功");
+	    if (loginEmpNo == null) {
+	        return ResponseEntity
+	                .status(HttpStatus.UNAUTHORIZED)
+	                .body("請先登入");
+	    }
 
-		} catch (IllegalArgumentException e) {
+	    // 2. 確認操作者擁有後臺管理權限（7）
+	    if (!employeeService.hasPermission(loginEmpNo, 7)) {
+	        return ResponseEntity
+	                .status(HttpStatus.FORBIDDEN)
+	                .body("權限不足");
+	    }
 
-			return ResponseEntity.badRequest().body(e.getMessage());
-		}
+	    // 3. 修改指定員工的權限
+	    try {
+	        employeeService.updateEmployeePermissions(
+	                empNo, permNos);
+
+	        return ResponseEntity.ok("員工權限修改成功");
+
+	    } catch (IllegalArgumentException e) {
+	        return ResponseEntity
+	                .badRequest()
+	                .body(e.getMessage());
+	    }
 	}
 
 	// 新增員工

@@ -1,20 +1,94 @@
+/* ===== 員工停用／恢復在職確認視窗 ===== */
+
+function employeeConfirm(message) {
+    return new Promise((resolve) => {
+        const modal = document.getElementById("employeeConfirmModal");
+        const box = modal.querySelector(".employee-confirm-box");
+        const messageEl = document.getElementById("employeeConfirmMessage");
+        const okBtn = document.getElementById("employeeConfirmOk");
+        const cancelBtn = document.getElementById("employeeConfirmCancel");
+
+        const previousFocus = document.activeElement;
+
+        messageEl.textContent = message;
+        modal.hidden = false;
+        cancelBtn.focus();
+
+        function finish(result) {
+            modal.hidden = true;
+            box.classList.remove("is-shaking");
+
+            okBtn.removeEventListener("click", onOk);
+            cancelBtn.removeEventListener("click", onCancel);
+            modal.removeEventListener("click", onOverlayClick);
+            document.removeEventListener("keydown", onKeydown, true);
+            box.removeEventListener("animationend", onAnimationEnd);
+
+            if (previousFocus && previousFocus.isConnected) {
+                previousFocus.focus();
+            }
+
+            resolve(result);
+        }
+
+        function onOk() {
+            finish(true);
+        }
+
+        function onCancel() {
+            finish(false);
+        }
+
+        function onOverlayClick(event) {
+            if (event.target !== modal) return;
+
+            // 重新觸發震動動畫
+            box.classList.remove("is-shaking");
+            void box.offsetWidth;
+            box.classList.add("is-shaking");
+        }
+
+        function onAnimationEnd() {
+            box.classList.remove("is-shaking");
+        }
+
+        function onKeydown(event) {
+            if (event.key === "Escape") {
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                return;
+            }
+
+            // 防止 Tab 移動到背景頁面
+            if (event.key === "Tab") {
+                event.preventDefault();
+                if (document.activeElement === cancelBtn) {
+                    okBtn.focus();
+                } else {
+                    cancelBtn.focus();
+                }
+            }
+        }
+
+        okBtn.addEventListener("click", onOk);
+        cancelBtn.addEventListener("click", onCancel);
+        modal.addEventListener("click", onOverlayClick);
+        document.addEventListener("keydown", onKeydown, true);
+        box.addEventListener("animationend", onAnimationEnd);
+    });
+}
+
+
 
 /* ===== 員工權限清單 ===== */
 const EMPLOYEE_PERMISSIONS = [
-    { no: 1, name: "員工管理" },
-    { no: 2, name: "會員管理" },
-    { no: 3, name: "菜單管理" },
-    { no: 4, name: "活動管理" },
-    { no: 5, name: "公告設定" },
-    { no: 6, name: "桌型管理" },
-    { no: 7, name: "入座管理" },
-    { no: 8, name: "訂單管理_廚師" },
-    { no: 9, name: "訂單管理_菜口" },
-    { no: 10, name: "訂單管理_外場" },
-    { no: 11, name: "結帳" },
-    { no: 12, name: "預約管理" },
-    { no: 13, name: "候位管理" },
-    { no: 14, name: "回饋表單管理" }
+    { no: 1, name: "訂單管理_內場" },
+    { no: 2, name: "訂單管理_外場" },
+    { no: 3, name: "入座管理" },
+    { no: 4, name: "訂候位管理" },
+    { no: 5, name: "訂單管理" },
+    { no: 6, name: "結帳" },
+    { no: 7, name: "後臺管理" }
 ];
 
 
@@ -101,8 +175,9 @@ async function loadEmployees() {
             disableBtn.type = "button";
             disableBtn.textContent = "停用";
             disableBtn.className = "employee-action-btn employee-danger-btn";
-            disableBtn.dataset.action = "disable";
-            disableBtn.dataset.empNo = emp.empNo;
+			disableBtn.dataset.action = "disable";
+			disableBtn.dataset.empNo = emp.empNo;
+			disableBtn.dataset.empName = emp.empName ?? "";
 
             // 判斷員工是否已停用
             const isDisabled = emp.empStatus === "2";
@@ -237,7 +312,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         } catch (error) {
             console.error("讀取員工資料失敗：", error);
-            alert("讀取員工資料失敗，請稍後再試");
+            staffToast("讀取員工資料失敗，請稍後再試");
         }
     });
 
@@ -265,9 +340,19 @@ document.addEventListener("DOMContentLoaded", () => {
                 `/api/employees/${empNo}/permissions`
             );
 
-            if (!response.ok) {
-                throw new Error("HTTP " + response.status);
-            }
+			if (response.status === 403) {
+			    staffToast("權限不足");
+			    return;
+			}
+
+			if (response.status === 401) {
+			    staffToast("請先登入");
+			    return;
+			}
+
+			if (!response.ok) {
+			    throw new Error("HTTP " + response.status);
+			}
 
             const employeePermissions = await response.json();
             const selectedPermissions = new Set(employeePermissions.map(Number));
@@ -293,7 +378,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         } catch (error) {
             console.error("讀取員工權限失敗：", error);
-            alert("讀取員工權限失敗，請稍後再試");
+            staffToast("讀取員工權限失敗，請稍後再試");
         }
     });
 
@@ -308,11 +393,16 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
 
-        const empNo = Number(disableBtn.dataset.empNo);
 
-        if (!confirm(`確定要停用員工 ${empNo} 嗎？`)) {
-            return;
-        }
+
+		const empNo = Number(disableBtn.dataset.empNo);
+		const empName = disableBtn.dataset.empName;
+
+		if (!await employeeConfirm(
+		    `確定要停用員工 ${empNo}－${empName} 嗎？`
+		)) {
+		    return;
+		}
 
         disableBtn.disabled = true;
 
@@ -326,12 +416,12 @@ document.addEventListener("DOMContentLoaded", () => {
                 throw new Error("HTTP " + response.status);
             }
 
-            alert("員工停用成功！");
+            staffToast("員工停用成功！");
             await loadEmployees();
 
         } catch (error) {
             console.error("停用員工失敗：", error);
-            alert("停用員工失敗，請稍後再試");
+            staffToast("停用員工失敗，請稍後再試");
             disableBtn.disabled = false;
         }
     });
@@ -347,11 +437,14 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
 
-        const empNo = Number(enableBtn.dataset.empNo);
+		const empNo = Number(enableBtn.dataset.empNo);
+		const empName = enableBtn.dataset.empName;
 
-        if (!confirm(`確定要取消停用員工 ${empNo}，恢復在職嗎？`)) {
-            return;
-        }
+		if (!await employeeConfirm(
+		    `確定要取消停用員工 ${empNo}－${empName}，恢復在職嗎？`
+		)) {
+		    return;
+		}
 
         enableBtn.disabled = true;
 
@@ -365,12 +458,12 @@ document.addEventListener("DOMContentLoaded", () => {
                 throw new Error("HTTP " + response.status);
             }
 
-            alert("員工已恢復在職！");
+            staffToast("員工已恢復在職！");
             await loadEmployees();
 
         } catch (error) {
             console.error("取消停用員工失敗：", error);
-            alert("取消停用員工失敗，請稍後再試");
+            staffToast("取消停用員工失敗，請稍後再試");
             enableBtn.disabled = false;
         }
     });
@@ -403,16 +496,25 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
             );
 
-            if (!response.ok) {
-                throw new Error("HTTP " + response.status);
-            }
+			if (response.status === 403) {
+			    staffToast("權限不足");
+			    return;
+			}
 
-            alert("員工權限修改成功！");
+			if (response.status === 401) {
+			    staffToast("請先登入");
+			    return;
+			}
+
+			if (!response.ok) {
+			    throw new Error("HTTP " + response.status);
+			}
+            staffToast("員工權限修改成功！");
             permissionModal.hidden = true;
 
         } catch (error) {
             console.error("儲存員工權限失敗：", error);
-            alert("儲存員工權限失敗，請稍後再試");
+            staffToast("儲存員工權限失敗，請稍後再試");
 
         } finally {
             submitBtn.disabled = false;
@@ -425,36 +527,69 @@ document.addEventListener("DOMContentLoaded", () => {
     const closePermissionBtn = document.getElementById("closePermissionModal");
     const cancelPermissionBtn = document.getElementById("cancelPermissionBtn");
 
-    function closePermissionModal() {
-        permissionModal.hidden = true;
-    }
-
+	function closePermissionModal() {
+	    permissionModal.hidden = true;
+	    permissionModal.querySelector(".employee-modal-content")
+	        .classList.remove("is-shaking");
+	}
     closePermissionBtn.addEventListener("click", closePermissionModal);
     cancelPermissionBtn.addEventListener("click", closePermissionModal);
 
-    permissionModal.addEventListener("click", (event) => {
-        if (event.target === permissionModal) {
-            closePermissionModal();
-        }
-    });
+	// 點擊權限視窗外側時，震動但不關閉
+	permissionModal.addEventListener("click", (event) => {
+	    if (event.target === permissionModal) {
+	        const box = permissionModal.querySelector(".employee-modal-content");
+
+	        box.classList.remove("is-shaking");
+	        void box.offsetWidth;
+	        box.classList.add("is-shaking");
+	    }
+	});
 
 
     // 關閉視窗
-    function closeModal() {
-        modal.hidden = true;
-        photoPreview.hidden = true;
-        photoPreview.removeAttribute("src");
-    }
+	function closeModal() {
+	    modal.hidden = true;
+	    modal.querySelector(".employee-modal-content")
+	        .classList.remove("is-shaking");
+
+	    photoPreview.hidden = true;
+	    photoPreview.removeAttribute("src");
+	}
 
     closeBtn.addEventListener("click", closeModal);
     cancelBtn.addEventListener("click", closeModal);
 
-    // 點擊視窗外側關閉
-    modal.addEventListener("click", (event) => {
-        if (event.target === modal) {
-            closeModal();
-        }
-    });
+	// 點擊背景時，視窗震動但不關閉
+	modal.addEventListener("click", (event) => {
+	    if (event.target === modal) {
+	        const box = modal.querySelector(".employee-modal-content");
+
+	        box.classList.remove("is-shaking");
+	        void box.offsetWidth;
+	        box.classList.add("is-shaking");
+	    }
+	});
+	
+	// ===== 新增、編輯、權限視窗：按 Esc 關閉 =====
+	document.addEventListener("keydown", (event) => {
+	    if (event.key !== "Escape") {
+	        return;
+	    }
+
+	    // 權限設定視窗
+	    if (!permissionModal.hidden) {
+	        event.preventDefault();
+	        closePermissionModal();
+	        return;
+	    }
+
+	    // 新增／編輯員工視窗
+	    if (!modal.hidden) {
+	        event.preventDefault();
+	        closeModal();
+	    }
+	});
 
 	// 選擇照片後預覽
 	photoInput.addEventListener("change", () => {
@@ -474,7 +609,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
 
         if (!allowedTypes.includes(file.type) || file.size > 5 * 1024 * 1024) {
-            alert("請選擇 JPG、PNG、WebP，且小於 5 MB 的照片");
+            staffToast("請選擇 JPG、PNG、WebP，且小於 5 MB 的照片");
             photoInput.value = "";
             photoPreview.hidden = true;
             photoPreview.removeAttribute("src");
@@ -575,28 +710,10 @@ document.addEventListener("DOMContentLoaded", () => {
 			    }
 			}
 
-			// 顯示 Bistroops 後台成功提示
-			const toast = document.createElement("div");
-			toast.className = "staff-toast";
-			toast.textContent = isEditing ? "✓ 員工修改成功" : "✓ 員工新增成功";
-
-			document.body.appendChild(toast);
-
-			// 淡入動畫
-			requestAnimationFrame(() => {
-			    requestAnimationFrame(() => {
-			        toast.classList.add("show");
-			    });
-			});
-
-			// 3 秒後淡出並移除
-			setTimeout(() => {
-			    toast.classList.remove("show");
-
-			    setTimeout(() => {
-			        toast.remove();
-			    }, 300);
-			}, 3000);
+			// 統一使用 Bistroops 後台 Toast
+			staffToast(
+			    isEditing ? "✓ 員工修改成功" : "✓ 員工新增成功"
+			);
             closeModal();
             await loadEmployees();
 
@@ -606,17 +723,17 @@ document.addEventListener("DOMContentLoaded", () => {
             console.error("員工資料儲存失敗：", error);
 
             if (createdEmpNo !== null) {
-                alert(
-                    `員工 ${createdEmpNo} 的基本資料已儲存，` +
-                    `但後續操作失敗：${error.message}`
-                );
+				staffToast(
+				    `員工 ${createdEmpNo} 的基本資料已儲存，` +
+				    `但後續操作失敗：${error.message}`
+				);
                 closeModal();
                 await loadEmployees();
             } else {
-                alert(
-                    (editingEmpNo !== null ? "修改" : "新增") +
-                    "員工失敗，請檢查資料或後端服務"
-                );
+				staffToast(
+				    (editingEmpNo !== null ? "修改" : "新增") +
+				    "員工失敗，請檢查資料或後端服務"
+				);
             }
 
         } finally {

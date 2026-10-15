@@ -1,7 +1,7 @@
-
 package com.bistroops.config;
 
 import com.bistroops.interceptor.MemberLoginInterceptor;
+
 
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
@@ -14,6 +14,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
 
 	private final EmployeeLoginInterceptor employeeLoginInterceptor;
 	private final MemberLoginInterceptor memberLoginInterceptor;
+	
 
 	public WebMvcConfig(
 	        EmployeeLoginInterceptor employeeLoginInterceptor,
@@ -47,5 +48,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
                         "/bistroops/**",
                         "/member/**"
                 );
+        
+        
     }
 }

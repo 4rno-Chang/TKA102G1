@@ -113,6 +113,7 @@ public class IndexController_inSpringBoot {
         // 顯示目前登入員工的姓名
         model.addAttribute("staffEmployeeName", employee.getEmpName());
 
+
         // 4. 載入原本後台資料
         model.addAllAttributes(
                 reservationService.getStaffReservationSummary());

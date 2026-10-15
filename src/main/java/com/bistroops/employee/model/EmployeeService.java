@@ -148,6 +148,21 @@ public class EmployeeService {
 		return employeePermissionRepository.findByEmployee_EmpNo(empNo).stream().map(ep -> ep.getIds().getPermNo())
 				.toList();
 	}
+	
+	// 判斷指定員工是否擁有某項權限
+	@Transactional(readOnly = true)
+	public boolean hasPermission(Integer empNo, Integer permNo) {
+
+	    if (empNo == null || permNo == null) {
+	        return false;
+	    }
+
+	    return employeeRepository.findById(empNo)
+	            .filter(emp -> "1".equals(emp.getEmpStatus()))
+	            .isPresent()
+	            && employeePermissionRepository
+	                    .existsByIdsEmpNoAndIdsPermNo(empNo, permNo);
+	}
 
 	// 修改指定員工的權限
 	@Transactional

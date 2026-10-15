@@ -333,3 +333,123 @@ button[data-action="edit"], button[data-action="permissions"], button[data-actio
 .employee-photo-btn:active {
     transform: scale(0.97);
 }
+
+/* ===== 員工停用／恢復在職確認視窗 ===== */
+
+/* 背景遮罩：與原本員工管理視窗一致 */
+.employee-confirm-overlay[hidden] {
+    display: none;
+}
+
+.employee-confirm-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1100;
+    background: rgba(0, 0, 0, 0.55);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+}
+
+/* 確認視窗：沿用員工管理白底、圓角風格 */
+.employee-confirm-box {
+    background: white;
+    border-radius: 12px;
+    width: 100%;
+    max-width: 420px;
+    padding: 24px;
+    box-sizing: border-box;
+    text-align: center;
+}
+
+/* 確認訊息 */
+#employeeConfirmMessage {
+    margin: 0 0 24px;
+    color: #333;
+    font-size: 16px;
+    line-height: 1.6;
+}
+
+/* 取消在左、確定在右，兩個按鈕置中 */
+.employee-confirm-actions {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+}
+
+/* 兩個按鈕共用樣式 */
+.employee-confirm-actions button {
+    padding: 10px 18px;
+    border-radius: 8px;
+    cursor: pointer;
+    font: inherit;
+    transition: background-color 0.2s ease,
+                color 0.2s ease,
+                box-shadow 0.2s ease,
+                transform 0.2s ease;
+}
+
+/* 取消：白底、紅字、紅框 */
+#employeeConfirmCancel {
+    background: white;
+    color: #a52a2a;
+    border: 1px solid #a52a2a;
+}
+
+/* 確定：Bistroops 紅底、白字 */
+#employeeConfirmOk {
+    background: #a52a2a;
+    color: white;
+    border: 1px solid #a52a2a;
+}
+
+/* 滑鼠移入 */
+#employeeConfirmCancel:hover {
+    background: #a52a2a;
+    color: white;
+    box-shadow: 0 5px 12px rgba(165, 42, 42, 0.3);
+    transform: translateY(-2px);
+}
+
+#employeeConfirmOk:hover {
+    background: #8b2020;
+    box-shadow: 0 5px 12px rgba(165, 42, 42, 0.3);
+    transform: translateY(-2px);
+}
+
+/* 按下效果 */
+.employee-confirm-actions button:active {
+    transform: scale(0.97);
+}
+
+/* 點擊黑色遮罩時，視窗左右震動 */
+@keyframes employeeConfirmShake {
+    0%, 100% { transform: translateX(0); }
+    20%, 60% { transform: translateX(-8px); }
+    40%, 80% { transform: translateX(8px); }
+}
+
+.employee-confirm-box.is-shaking {
+    animation: employeeConfirmShake 0.35s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .employee-confirm-box.is-shaking {
+        animation: none;
+    }
+}
+
+
+/* ===== 新增、編輯、權限視窗：點擊背景震動 ===== */
+
+.employee-modal-content.is-shaking {
+    animation: employeeConfirmShake 0.35s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .employee-modal-content.is-shaking {
+        animation: none;
+    }
+}
