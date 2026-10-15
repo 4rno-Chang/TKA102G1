@@ -35,7 +35,9 @@ public class WebMvcConfig implements WebMvcConfigurer {
         )
         .excludePathPatterns(
                 "/staff/login",
-                "/api/employees/login"
+                "/api/employees/login",
+                "/staff/checkout/ecpay-return",   // 綠界伺服器付款通知（綠界沒有登入）
+                "/staff/checkout/ecpay-result"    // 付款後小視窗被綠界帶回（跨網站，瀏覽器不會帶登入 cookie）
         );
         
      // 會員登入期限檢查
