@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 import com.bistroops.employee.model.EmployeeService;
 import com.bistroops.employee.model.EmployeeVO;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 
 @ControllerAdvice(annotations = Controller.class)
@@ -17,12 +18,19 @@ public class StaffAccountModelAdvice {
     private EmployeeService employeeService;
 
     @ModelAttribute("staffEmployeeName")
-    public String staffEmployeeName(HttpSession session) {
+    public String staffEmployeeName(HttpServletRequest request) {
 
-        // 1. 取得目前登入的員工編號
+        // 1. 取得現有的 session；沒有就不要新建
+        //    （綠界付款完把小視窗帶回來時不會帶 cookie，這裡如果新建 session，會把員工的登入 cookie 蓋掉）
+        HttpSession session = request.getSession(false);//只讀現有的 session，沒有就不要新建。
+        if (session == null) {
+            return null;
+        }
+
+        // 2. 取得目前登入的員工編號
         Integer empNo = (Integer) session.getAttribute("employeeNo");
 
-        // 2. 沒有登入就不顯示姓名
+        // 3. 沒有登入就不顯示姓名
         if (empNo == null) {
             return null;
         }

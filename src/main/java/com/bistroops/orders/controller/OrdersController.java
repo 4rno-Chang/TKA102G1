@@ -36,6 +36,9 @@ public class OrdersController {
 	@Autowired
 	OrdersDetailsService ordersDetailsService;
 	
+	@Autowired
+	EcpayUtil ecpayUtil; // 綠界小工具（商店資料從 application.properties 讀）
+	
 	@Value("${ecpay.return-url}")   // 從 application.properties 讀綠界的 ReturnURL
     private String ecpayReturnUrl;
 	
@@ -122,7 +125,7 @@ public class OrdersController {
             OrdersVO orders = ordersService.getOne(order);
             String base = ServletUriComponentsBuilder.fromCurrentContextPath().toUriString(); // 現在網站的網址，例如 http://localhost:8080
             Map<String, String> p = new LinkedHashMap<>();
-            p.put("MerchantID", EcpayUtil.MERCHANT_ID);
+            p.put("MerchantID", ecpayUtil.getMerchantId());
             p.put("MerchantTradeNo", "BO" + order + "T" + System.currentTimeMillis() % 100000); // 英數、20字內、不可重複
             p.put("MerchantTradeDate", LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm:ss")));
             p.put("PaymentType", "aio");
@@ -134,14 +137,14 @@ public class OrdersController {
             p.put("ChoosePayment", "Credit"); // 只開信用卡；填 ALL 就是全部付款方式
             p.put("EncryptType", "1");
             p.put("CustomField1", String.valueOf(order)); // 付款完成後用它找回是哪一筆訂單
-            return EcpayUtil.buildForm(p);
+            return ecpayUtil.buildForm(p);
     }
 
 	// 綠界付款完成後，由綠界的伺服器直接呼叫這裡
 	@PostMapping("/checkout/ecpay-return")
 	@ResponseBody
 	public String ecpayReturn(@RequestParam Map<String, String> params) {
-	        String mac = EcpayUtil.checkMacValue(params);
+	        String mac = ecpayUtil.checkMacValue(params);
 	        if (!mac.equals(params.get("CheckMacValue"))) return "0|CheckMacValue Error"; // 被竄改或偽造的通知
 	        if ("1".equals(params.get("RtnCode"))) {
 	        	try {
@@ -156,7 +159,7 @@ public class OrdersController {
 	@PostMapping("/checkout/ecpay-result")
 	@ResponseBody
 	public String ecpayResult(@RequestParam Map<String, String> params) {
-	        boolean ok = EcpayUtil.checkMacValue(params).equals(params.get("CheckMacValue"))
+	        boolean ok = ecpayUtil.checkMacValue(params).equals(params.get("CheckMacValue"))
 	                        && "1".equals(params.get("RtnCode"));
 	        if (ok) {
 	                try {
