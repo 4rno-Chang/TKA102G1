@@ -2,7 +2,10 @@ package com.bistroops.promote.model;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -15,10 +18,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class PromoteService {
+	
+	//設定查詢時的分頁每頁幾個結果
+	private static final int PAGE_SIZE = 8;
 
 	@Autowired
-	PromoteRepository repository;
-	
+	private PromoteRepository repository;
 	
 	// 新增一筆活動
 	@Transactional
@@ -182,9 +187,6 @@ public class PromoteService {
 			return "結束日期最早是開始日期的隔天";
 		return null;
 	}
-
-	//設定查詢時的分頁每頁幾個
-	private static final int PAGE_SIZE = 8;
 	
 	//設定如何分頁與排序
 	private Pageable getPromotePageable(int pageNum) {
@@ -214,6 +216,23 @@ public class PromoteService {
 	    return "進行中";
 	}
 	
+	@Transactional(readOnly = true)
+	public Map<Integer, PromoPriceDTO> getActivePrices() {
+	    LocalDateTime now = LocalDateTime.now();
+	    List<PromoteVO> promotes = repository.findAllActivePromotes(now);
+	    
+	    Map<Integer, PromoPriceDTO> result = null;
+	    
+	    result = promotes.stream()
+	    				 .flatMap(p -> p.getPromoteMeals().stream())
+	    				 .collect(Collectors.toMap(
+	    						  pm -> pm.getMeal().getMealNo(),
+	    						  pm -> new PromoPriceDTO(
+	    							        pm.getPromoteDiscount() != null ? pm.getPromoteDiscount() : pm.getMeal().getMealPrice(),
+	    							        pm.getPromote()),  
+	    						  (a, b) -> a.getPrice() <= b.getPrice() ? a : b));
 
+	    return result;
+	}
 	
 }

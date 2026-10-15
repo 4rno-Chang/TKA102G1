@@ -1,6 +1,7 @@
 package com.bistroops.orders.model;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -119,6 +120,22 @@ public class OrdersService {
 				.toList();
 	}
 	
+	//以下兩個方法，撰寫by陳巧馨，線上點餐用
+	//（整筆取消的訂單不算：由 OrdersRepository 的三個查詢排除，見那裡的【線上點餐・要改】；這兩個方法不用改）
+	//查詢訂單是否都結帳，假設訂單都已結帳回傳true
+	public boolean isSeatingPaid(String seatNo, LocalDateTime since) {
+		int all = ordersRepository.countBySeatSince(seatNo, since);
+		int unpaid = ordersRepository.countUnpaidBySeatSince(seatNo, since);
+		
+		return all > 0 && unpaid == 0;
+	}
+	
+	//已送出訂單按鈕用，同組客人還沒結帳的那張訂單的編號，沒有就是 null
+	public Integer getUnpaidOrderNo(String seatNo, LocalDateTime since) {
+		List<Integer> orderNos = ordersRepository.findUnpaidNosBySeatSince(seatNo,since);
+		
+		return orderNos.isEmpty() ? null : orderNos.get(0);
+	}
 	
 	
 	

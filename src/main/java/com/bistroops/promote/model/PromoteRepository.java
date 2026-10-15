@@ -1,6 +1,7 @@
 package com.bistroops.promote.model;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -14,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Repository
 public interface PromoteRepository extends JpaRepository<PromoteVO, Integer> {
+
 	//查詢活動有關鍵字的全部活動
 	@Query("SELECT p FROM PromoteVO p WHERE " +
 		   "(:keyword = '' OR p.promoteName LIKE CONCAT('%', :keyword, '%')) AND " +
@@ -22,11 +24,11 @@ public interface PromoteRepository extends JpaRepository<PromoteVO, Integer> {
 			@Param("keyword") String promoteName, Pageable pageable);
 	
 
-	//查詢活動有關鍵字且未開始的活動
+	//查詢活動有關鍵字且未開始的活動含分頁
 	Page<PromoteVO> findByPromoteNameContainingAndPromoteBeginAfter(
 			String keyword, LocalDateTime now, Pageable pageable);
 	
-	//查詢活動有關鍵字且進行中的活動
+	//查詢活動有關鍵字且進行中的活動含分頁
 	@Query("SELECT p FROM PromoteVO p WHERE " +
 	       "(:keyword = '' OR p.promoteName LIKE CONCAT('%', :keyword, '%')) AND " +
 	       "p.promoteBegin <= :now AND p.promoteEnd >= :now")
@@ -34,8 +36,14 @@ public interface PromoteRepository extends JpaRepository<PromoteVO, Integer> {
 	            @Param("keyword") String keyword, 
 	            @Param("now") LocalDateTime now, 
 	            Pageable pageable);
+	
+	//查詢所有進行中的活動
+	@Query("SELECT p FROM PromoteVO p WHERE " +
+		       "p.promoteBegin <= :now AND p.promoteEnd >= :now")
+	List<PromoteVO> findAllActivePromotes(
+				@Param("now") LocalDateTime now);
 
-	//查詢活動有關鍵字已結束的活動
+	//查詢活動有關鍵字已結束的活動含分頁
 	Page<PromoteVO> findByPromoteNameContainingAndPromoteEndBefore(
 					String keyword, LocalDateTime now, Pageable pageable);
 	
