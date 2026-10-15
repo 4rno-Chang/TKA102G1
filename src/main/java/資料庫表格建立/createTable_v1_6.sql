@@ -1,4 +1,5 @@
 -- createTable_v1_6.sql ＝ G1 createTable_v1_5.sql（4e97aef）＋ 修正 meal 的 meal_type_no（ishaya 拿掉「主打推薦」後要全部減 1）＋ qa 點擊次數改成 demo 用的數字
+--   2026-10-15 再修正不合邏輯的資料：訂單 1～3 已結帳但餐點沒送完／金額不對／不在活動期間、回饋時間、16:30 時段、候位電話與號碼順序、訂位成立時間、訂單早於開店
 /*SHOW DATABASES;*/
 DROP DATABASE IF EXISTS project;
 CREATE DATABASE IF NOT EXISTS project;
@@ -383,10 +384,12 @@ INSERT INTO member (
 ); 
 
 -- 6. 插入義餐訂單主檔 (orders)
-INSERT INTO orders (seat_no, member_no, orders_time, orders_total, orders_discount_total, orders_actual_price, orders_pay) VALUES 
-('A01', 1, '2026-08-24 18:30:00', 820, 50, 770, '刷卡'),
-('B01', 2, '2026-08-24 19:15:00', 1180, 100, 1080, '刷卡'),
-('C01', 3, '2026-08-24 19:40:00', 430, 0, 430, '現金');
+-- 05 修正：已結帳的單，明細要全部已送達／已取消（不然畫面顯示「用餐中」）；金額＝明細加總（不算已取消）；
+--         日期改到 10-01，才在中秋節活動（09-20～10-06）期間內，也和明細的送達時間同一天
+INSERT INTO orders (seat_no, member_no, orders_time, orders_total, orders_discount_total, orders_actual_price, orders_pay) VALUES
+('A01', 1, '2026-10-01 18:30:00', 700, 40, 660, '刷卡'),
+('B01', 2, '2026-10-01 19:15:00', 980, 50, 930, '刷卡'),
+('C01', 3, '2026-10-01 19:40:00', 400, 0, 400, '現金');
 
 -- 7. 活動 (promote)
 INSERT INTO promote (promote_name, promote_begin, promote_end, promote_content) VALUES
@@ -418,14 +421,14 @@ INSERT INTO orders_details (orders_no, meal_no, promote_no, od_meal_num, od_disc
 (1,  1,    1, 1, 160, 40, 120, '麵包要烤酥一點', '已送達',   '2026-10-01 18:42:00'),
 (1, 14, NULL, 1, 380,  0, 380, '飯軟一點',       '已送達',   '2026-10-01 18:55:00'),
 (1, 37, NULL, 1, 100,  0, 100, '少冰',           '已取消',   NULL),
-(1, 29, NULL, 1, 160,  0, 160, '',               '等待送餐', NULL),
+(1, 29, NULL, 1, 160,  0, 160, '',               '已送達',   '2026-10-01 19:05:00'),
 -- 訂單 2 (B01)：卡布里沙拉套用中秋特價 150
 (2,  3,    1, 1, 200, 50, 150, '',               '已送達',   '2026-10-01 19:27:00'),
-(2, 21, NULL, 1, 680,  0, 680, '三分熟',         '等待送餐', NULL),
-(2, 37, NULL, 1, 100,  0, 100, '加冰塊與檸檬片', '製作中',   NULL),
--- 訂單 3 (C01)：剛點完
-(3, 10, NULL, 1, 300,  0, 300, '起司多一點',     '製作中',   NULL),
-(3, 37, NULL, 1, 100,  0, 100, '去冰',           '製作中',   NULL);
+(2, 21, NULL, 1, 680,  0, 680, '三分熟',         '已送達',   '2026-10-01 19:45:00'),
+(2, 37, NULL, 1, 100,  0, 100, '加冰塊與檸檬片', '已送達',   '2026-10-01 19:35:00'),
+-- 訂單 3 (C01)：已結帳，餐點都送完了
+(3, 10, NULL, 1, 300,  0, 300, '起司多一點',     '已送達',   '2026-10-01 19:58:00'),
+(3, 37, NULL, 1, 100,  0, 100, '去冰',           '已送達',   '2026-10-01 19:50:00');
 
 -- 10. 候位 (waiting)
 INSERT INTO waiting (
@@ -438,9 +441,9 @@ INSERT INTO waiting (
     waiting_notify_time
 )
 VALUES
-    (2, NULL, '0985510798', '王小明', '靠窗座位', '已入座', '18:10:00'),
-    (4, NULL, '0985510798', '陳美玲', '4位用餐', '取消', '18:20:00'),
-    (6, NULL, '0985510798', '林志豪', '慶生聚餐', '已入座', '18:30:00');
+    (2, NULL, '0912345678', '王小明', '靠窗座位', '已入座', '18:10:00'),   -- 05 修正：電話改成王小明自己的（原本是陳小華的）
+    (4, NULL, '0922100001', '陳美玲', '4位用餐', '取消', '18:20:00'),
+    (6, NULL, '0922100002', '林志豪', '慶生聚餐', '已入座', '18:30:00');
 
 -- 11. 訂位時段 (reservation_datetime)
 INSERT INTO reservation_datetime (
@@ -450,7 +453,7 @@ VALUES
     ('2026-08-25 11:00:00'),
     ('2026-08-25 12:30:00'),
     ('2026-08-25 17:00:00'),
-    ('2026-08-25 16:30:00');
+    ('2026-08-25 18:30:00');   -- 05 修正：原本 16:30 不是正式時段（11:00、12:30、17:00、18:30）
 
 -- 12. 訂位 (reservation)
 INSERT INTO reservation (
@@ -515,12 +518,14 @@ INSERT INTO emp_permission (emp_no, perm_no) VALUES
 (2, 3);
 
 -- 16. 回饋 (feedback)
-INSERT INTO feedback (orders_no, fee_customer, fee_customer_tel, fee_customer_time, fee_time, fee_content, fee_rating) VALUES 
-(1, '顧客A', '0985510798', '2026-08-24 19:40:00', '2026-08-25 19:40:00', '餐點非常美味，服務親切！', 10),
-(1, '顧客B', '0985510798', '2026-08-25 11:00:00', '2026-08-26 19:40:00', '氣氛很好，會再光顧。', 9),
-(1, '顧客C', '0985510798', '2026-08-25 12:30:00', '2026-08-26 19:40:00', '出餐稍微慢了點。', 5),
-(2, '顧客D', '0985510798', '2026-08-25 18:30:00', '2026-08-27 19:40:00', '牛排熟度稍微過熟。', 3),
-(3, '顧客E', '0985510798', '2026-08-26 11:40:00', '2026-08-28 19:40:00', '濃湯冷掉了，希望改進。', 1);
+-- 05 修正：用餐時間＝那張訂單的下單時間，回饋時間在用餐之後；A01 是 2 人桌，所以 3 筆回饋分給 3 張單；
+--         內容對上那張單的菜（訂單 2 是羊排、訂單 3 是肉醬麵）
+INSERT INTO feedback (orders_no, fee_customer, fee_customer_tel, fee_customer_time, fee_time, fee_content, fee_rating) VALUES
+(1, '顧客A', '0985510798', '2026-10-01 18:30:00', '2026-10-01 21:10:00', '餐點非常美味，服務親切！', 10),
+(2, '顧客B', '0985510798', '2026-10-01 19:15:00', '2026-10-02 10:20:00', '氣氛很好，會再光顧。', 9),
+(3, '顧客C', '0985510798', '2026-10-01 19:40:00', '2026-10-02 12:05:00', '出餐稍微慢了點。', 5),
+(2, '顧客D', '0985510798', '2026-10-01 19:15:00', '2026-10-02 19:40:00', '羊排熟度稍微過熟。', 3),
+(3, '顧客E', '0985510798', '2026-10-01 19:40:00', '2026-10-03 19:40:00', '肉醬麵送來時有點冷掉，希望改進。', 1);
 
 -- 17. 推播 (announcement)
 INSERT INTO announcement (ann_title, ann_begin, ann_img, ann_text) VALUES 
@@ -548,7 +553,8 @@ SET time_zone = '+08:00';
 -- 現在（去掉秒）；訂位時段再取到 5 分鐘的整數，畫面上比較好讀
 SET @now = NOW() - INTERVAL SECOND(NOW()) SECOND;
 SET @t0  = @now - INTERVAL MOD(MINUTE(@now), 5) MINUTE;
-SET @pwd = '{bcrypt}$2a$10$UCU/PUmq7rIyr0fLtWD2teTjzAuaS1DMu.6JKqV83FsHPGsmclcrG';   -- 明碼 Test0004
+SET @open = TIMESTAMP(CURDATE(), '11:00:00');   -- 開店時間：訂單不會早於這個時間（變數會存成字串，用的時候要 CAST 回 DATETIME）
+SET @pwd ='{bcrypt}$2a$10$UCU/PUmq7rIyr0fLtWD2teTjzAuaS1DMu.6JKqV83FsHPGsmclcrG';   -- 明碼 Test0004
 
 -- 19. 測試會員 (member 4～16)
 INSERT INTO member (mem_no, mem_tel, mem_name, mem_account, mem_password, mem_mail, mem_barcode, mem_tag, mem_birth, mem_fb, mem_line, mem_goo, mem_x, mem_status) VALUES
@@ -579,8 +585,9 @@ INSERT INTO reservation_datetime (rsv_dt_no, rsv_dt_datetime) VALUES
 --     past_status 是「預約」＝時間過了還沒來 → 入座管理顯示「逾時未到」
 --     每個時段的筆數照 CJ 的上限：2 人桌 5、4 人桌 3、6 人桌 1；同一位會員同一個時段只有一筆
 INSERT INTO reservation (rsv_no, mem_no, rsv_dt_no, seat_type_no, rsv_create_time, rsv_status, rsv_comment)
-SELECT r.rsv_no, r.mem_no, r.rsv_dt_no, r.seat_type_no, @now - INTERVAL r.days DAY,
-       IF(d.rsv_dt_datetime <= @now, r.past_status, r.future_status), r.rsv_comment
+SELECT r.rsv_no, r.mem_no, r.rsv_dt_no, r.seat_type_no,
+       LEAST(@now - INTERVAL r.days DAY, d.rsv_dt_datetime - INTERVAL 1 HOUR),   -- 成立時間一定早於時段（至少 1 小時前）
+       IF(d.rsv_dt_datetime <= CAST(@now AS DATETIME), r.past_status, r.future_status), r.rsv_comment
 FROM (
   -- 11:00
             SELECT 4 AS rsv_no, 7 AS mem_no, 5 AS rsv_dt_no, 2 AS seat_type_no, 3 AS days, '實到' AS past_status, '預約' AS future_status, '2人用餐' AS rsv_comment
@@ -621,15 +628,15 @@ JOIN reservation_datetime d ON d.rsv_dt_no = r.rsv_dt_no;   -- JOIN：查時段�
 
 -- 22. 今天的候位 (waiting 4～12)：候位中、已通知會出現；已入座、過號、取消不會
 INSERT INTO waiting (waiting_no, seat_type_no, mem_no, waiting_tel, waiting_name, waiting_comment, waiting_status, waiting_notify_time, waiting_date, waiting_take_time, waiting_ticket_seq) VALUES
-(4,  2, NULL, '0912345678', '張先生', '2位',       '已通知', TIME(@now - INTERVAL 5 MINUTE), CURDATE(), @now - INTERVAL 40 MINUTE, 3),
+(4,  2, NULL, '0912555666', '張先生', '2位',       '已通知', TIME(@now - INTERVAL 5 MINUTE), CURDATE(), @now - INTERVAL 40 MINUTE, 3),
 (5,  2, NULL, '0922333444', '李小姐', '2位',       '候位中', NULL, CURDATE(), @now - INTERVAL 25 MINUTE, 4),
 (6,  2, 15,   '0911000015', '許芳瑜', '2位，會員', '候位中', NULL, CURDATE(), @now - INTERVAL 10 MINUTE, 5),
 (7,  2, NULL, '0933111222', '吳先生', '2位',       '已入座', TIME(@now - INTERVAL 50 MINUTE), CURDATE(), @now - INTERVAL 70 MINUTE, 1),
 (8,  2, NULL, '0933222333', '陳小姐', '2位',       '過號',   TIME(@now - INTERVAL 30 MINUTE), CURDATE(), @now - INTERVAL 60 MINUTE, 2),
 (9,  4, NULL, '0933555666', '趙先生', '4位',       '候位中', NULL, CURDATE(), @now - INTERVAL 15 MINUTE, 1),
-(10, 6, NULL, '0955777888', '何小姐', '6位聚餐',   '候位中', NULL, CURDATE(), @now - INTERVAL 20 MINUTE, 1),
-(11, 6, NULL, '0955888999', '孫先生', '5位',       '候位中', NULL, CURDATE(), @now - INTERVAL 5 MINUTE,  2),
-(12, 6, NULL, '0955999000', '鄭小姐', '6位',       '取消',   NULL, CURDATE(), @now - INTERVAL 35 MINUTE, 3);
+(10, 6, NULL, '0955777888', '何小姐', '6位聚餐',   '候位中', NULL, CURDATE(), @now - INTERVAL 20 MINUTE, 2),
+(11, 6, NULL, '0955888999', '孫先生', '5位',       '候位中', NULL, CURDATE(), @now - INTERVAL 5 MINUTE,  3),
+(12, 6, NULL, '0955999000', '鄭小姐', '6位',       '取消',   NULL, CURDATE(), @now - INTERVAL 35 MINUTE, 1);   -- 號碼照取號時間：最早取的是 1 號
 
 -- 23. 桌位：原始資料的 A01、B01、C01 改成測試狀態
 --     入座時間算出來不是今天（例如半夜執行）的桌子改成「可使用」，不然入座管理會當成時間異常
@@ -677,10 +684,10 @@ INSERT INTO orders (orders_no, seat_no, member_no, orders_time, orders_total, or
 (15, 'B05', NULL, @now - INTERVAL 3 MINUTE,   0, 0, 0, NULL),     -- 明細全部已取消
 (17, 'C02', NULL, @now - INTERVAL 45 MINUTE,  0, 0, 0, NULL),
 -- 今天稍早別組客人的訂單（已結帳）：時間軸上的「稍早用過餐」
-(19, 'A01', 3,    @now - INTERVAL 230 MINUTE, 0, 0, 0, '刷卡'),
+(19, 'A01', 3,    GREATEST(@now - INTERVAL 230 MINUTE, CAST(@open AS DATETIME)), 0, 0, 0, '刷卡'),   -- 不早於開店
 (20, 'A01', NULL, @now - INTERVAL 120 MINUTE, 0, 0, 0, '現金'),   -- 和 19 相隔 110 分鐘 → 另一組客人
 (21, 'A01', NULL, @now - INTERVAL 100 MINUTE, 0, 0, 0, '現金'),   -- 和 20 同一組（加點）→「2 張單」
-(22, 'A07', NULL, @now - INTERVAL 420 MINUTE, 0, 0, 0, '現金'),   -- 時間軸起點之前，不畫（但算在本日訂單）
+(22, 'A07', NULL, GREATEST(@now - INTERVAL 420 MINUTE, CAST(@open AS DATETIME)), 0, 0, 0, '現金'),   -- 時間軸起點之前，不畫（但算在本日訂單）；不早於開店
 (23, 'B03', 4,    @now - INTERVAL 200 MINUTE, 0, 0, 0, '刷卡'),
 (24, 'C01', NULL, @now - INTERVAL 170 MINUTE, 0, 0, 0, '現金'),
 (25, 'A02', NULL, @now - INTERVAL 160 MINUTE, 0, 0, 0, '現金'),
@@ -694,7 +701,7 @@ INSERT INTO orders (orders_no, seat_no, member_no, orders_time, orders_total, or
 --     已送達的送達時間＝下單後 15 分鐘（不晚於現在），其他是 NULL
 INSERT INTO orders_details (orders_no, meal_no, promote_no, od_meal_num, od_discount_price, od_discount_total, od_actual_price, od_comment, od_status, od_served_at)
 SELECT d.orders_no, m.meal_no, NULL, d.qty, m.meal_price, 0, m.meal_price * d.qty, d.cmt, d.st,
-       CASE WHEN d.st = '已送達' THEN LEAST(o.orders_time + INTERVAL 15 MINUTE, @now) ELSE NULL END
+       CASE WHEN d.st = '已送達' THEN LEAST(o.orders_time + INTERVAL 15 MINUTE, CAST(@now AS DATETIME)) ELSE NULL END
 FROM (
             SELECT 4 AS orders_no, 1 AS meal_no, 1 AS qty, '' AS cmt, '已送達' AS st
   UNION ALL SELECT 4,  11, 1, '不要辣', '製作中'
