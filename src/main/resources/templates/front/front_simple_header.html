@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="zh-Hant" xmlns:th="http://www.thymeleaf.org">
+<body>
+<!--
+  前台的「精簡頁首」：只有 logo（不能按）和會員登入，沒有其他連結。
+  給「不希望客人離開這一頁」的頁面用，目前是線上點餐（templates/front/order/order.html）：
+    <div th:replace="~{front/front_simple_header :: simpleHeader}"></div>
+  和完整頁首（front_layout.html）用同一組 class，所以外觀一樣；登入、會員中心由 member.js 處理。
+  頁面要自己載入 member.css、member.js 和會員對話框；這個片段的樣式寫在使用它的頁面自己的 CSS（點餐頁是 order.css）。
+  ★ 為什麼不放在 front_layout.html：那個檔案多一個 <header>，其他頁面引用 :: header('...') 時會連這個也一起抓進去，變成兩個頁首。
+-->
+<header class="site-header site-header-simple" id="siteHeader" th:fragment="simpleHeader">
+  <div class="header-inner">
+    <span class="logo">
+      <img th:src="@{/images/logo-dark.svg}" alt="bistroops">
+    </span>
+
+    <div class="header-member">
+      <!-- 未登入 -->
+      <button type="button" class="btn-login" data-open-auth th:if="${session.member == null}">
+        登入 / 註冊
+      </button>
+
+      <!-- 已登入 -->
+      <button type="button" class="member-menu-toggle" data-member-tab="profile" th:if="${session.member != null}">
+        <span th:text="${session.member.memName != null and !session.member.memName.isBlank() ? session.member.memName : session.member.memTel}">
+          09XXXXXXXX
+        </span>
+        會員，你好
+      </button>
+    </div>
+  </div>
+</header>
+</body>
+</html>

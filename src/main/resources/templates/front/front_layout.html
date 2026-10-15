@@ -24,10 +24,9 @@
 
   選單裡「瀏覽菜單」等連結已經寫成完整網址，從哪一頁點都能回到首頁的那個區塊。
 
-  ★ 另外有一個「精簡的頁首」simpleHeader（在完整頁首的下面）：只有 logo（不能按）和會員登入，沒有其他連結。
-    給「不希望客人離開這一頁」的頁面用，目前是線上點餐（templates/front/order/order.html）：
-      <header th:replace="~{front/front_layout :: simpleHeader}"></header>
-    一樣要載入 member.css、member.js 和會員對話框（寫法同上）；這個片段的樣式寫在使用它的頁面自己的 CSS（點餐頁是 order.css）。
+  ★ 「精簡的頁首」（線上點餐用，只有 logo 和會員登入）放在另一個檔案 front_simple_header.html。
+    ★ 這個檔案裡只能有「一個」<header> 標籤：其他頁面用 :: header('...') 引用時，Thymeleaf 除了找名字叫 header 的片段，
+      也會把檔案裡所有 <header> 標籤一起抓進去。多一個 <header>，每一頁就會多出一個頁首。
 -->
 
 <!-- ========== 頁首 ========== -->
@@ -62,36 +61,6 @@
         會員，你好
       </button>
     </nav>
-  </div>
-</header>
-
-<!-- ========== 精簡的頁首（線上點餐用）==========
-     和上面的頁首用同一組 class（site-header、header-inner、logo、btn-login、member-menu-toggle），所以外觀一樣，差別是：
-       ・logo 不是連結（<span>，不是 <a>），按了不會回到首頁
-       ・沒有選單的連結，也沒有手機版的漢堡按鈕
-       ・登入的按鈕不放在 .nav 裡面：前台在平板和手機上會把 .nav 收起來（要按漢堡按鈕才出現），放在外面才能一直看得到
-     登入、會員中心的功能和上面的頁首完全相同（data-open-auth、data-member-tab 由 member.js 處理）。
-     class 多了 site-header-simple，方便使用的頁面另外調整樣式。 -->
-<header class="site-header site-header-simple" id="siteHeader" th:fragment="simpleHeader">
-  <div class="header-inner">
-    <span class="logo">
-      <img th:src="@{/images/logo-dark.svg}" alt="bistroops">
-    </span>
-
-    <div class="header-member">
-      <!-- 未登入 -->
-      <button type="button" class="btn-login" data-open-auth th:if="${session.member == null}">
-        登入 / 註冊
-      </button>
-
-      <!-- 已登入 -->
-      <button type="button" class="member-menu-toggle" data-member-tab="profile" th:if="${session.member != null}">
-        <span th:text="${session.member.memName != null and !session.member.memName.isBlank() ? session.member.memName : session.member.memTel}">
-          09XXXXXXXX
-        </span>
-        會員，你好
-      </button>
-    </div>
   </div>
 </header>
 
