@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title th:text="|Bistroops｜${ann.annTitle}|"></title>
+  <title th:text="|Bistroops｜${article.title}|"></title>
   <link rel="icon" th:href="@{/images/logo-mark.svg}" type="image/svg+xml">
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -26,27 +26,28 @@
   <!-- ========== Header（共用 front_layout.html，括號內的 announcement 讓「最新消息」顯示為選取中） ========== -->
   <header th:replace="~{front/front_layout :: header('announcement')}"></header>
 
-  <!-- ========== 公告內文 ==========
-       ann：FrontAnnouncementController 放入；查無資料或尚未開始時 Controller 會導回列表 -->
+  <!-- ========== 公告／活動內文（兩種共用這一頁） ==========
+       article：FrontAnnouncementController（公告）或 FrontPromoteController（活動）放入的 Map，
+       欄位 title、date、text、imageUrl（沒有圖片是 null）；查無資料或不能看時 Controller 會導回列表 -->
   <main class="ann-page section">
     <article class="container ann-article">
       <a class="ann-back" th:href="@{/bistroops/announcement}">‹ 返回最新消息</a>
 
       <header class="ann-article-head">
-        <time class="ann-date" th:datetime="${ann.annBegin}"
-          th:text="${#temporals.format(ann.annBegin, 'yyyy.MM.dd')}"></time>
-        <h1 class="ann-article-title" th:text="${ann.annTitle}"></h1>
+        <time class="ann-date" th:datetime="${article.date}"
+          th:text="${#temporals.format(article.date, 'yyyy.MM.dd')}"></time>
+        <h1 class="ann-article-title" th:text="${article.title}"></h1>
       </header>
 
-      <figure class="ann-article-img" th:if="${ann.annImg != null}">
-        <img th:src="@{/bistroops/announcement/image/{no}(no=${ann.annNo})}" th:alt="${ann.annTitle}">
+      <figure class="ann-article-img" th:if="${article.imageUrl != null}">
+        <img th:src="@{${article.imageUrl}}" th:alt="${article.title}">
       </figure>
 
       <!-- 用 th:text（不是 th:utext），內文的換行由 CSS 的 white-space: pre-line 保留 -->
-      <div class="ann-article-body" th:text="${ann.annText}"></div>
+      <div class="ann-article-body" th:text="${article.text}"></div>
 
       <div class="btn-center">
-        <a class="btn-outline" th:href="@{/bistroops/announcement}">返回列表</a>
+        <a class="btn-outline" th:href="@{/bistroops}">返回首頁</a>
       </div>
     </article>
   </main>
