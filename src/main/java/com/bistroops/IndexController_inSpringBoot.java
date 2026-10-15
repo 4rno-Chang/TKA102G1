@@ -5,6 +5,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 
 import com.bistroops.member.model.MemberService;
 import com.bistroops.member.model.MemberVO;
@@ -76,10 +79,23 @@ public class IndexController_inSpringBoot {
     @GetMapping("/staff/login")
     public String staffLogin(HttpSession session) {
 
-        // 已登入的員工直接進入後台
-        if (session.getAttribute("employeeNo") != null) {
+        Integer empNo = (Integer) session.getAttribute("employeeNo");
+        Long expireAt = (Long) session.getAttribute("employeeExpireAt");
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+
+        // 已登入的員工直接進入後台（條件需與 Spring Security 一致，否則會和 /staff 互相重導）
+        if (empNo != null && expireAt != null && System.currentTimeMillis() < expireAt
+                && auth != null && auth.isAuthenticated()
+                && empNo.toString().equals(auth.getName())
+                && auth.getAuthorities().stream().anyMatch(a -> "EMPLOYEE".equals(a.getAuthority()))) {
             return "redirect:/staff";
         }
+
+        // 清除殘留的員工登入資訊（例如舊版 Session 只有 employeeNo、沒有 Security 身分）
+        session.removeAttribute("employeeNo");
+        session.removeAttribute("employeeExpireAt");
+        session.removeAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY);
+        SecurityContextHolder.clearContext();
 
         return "staff/employee/staff_login";
     }
