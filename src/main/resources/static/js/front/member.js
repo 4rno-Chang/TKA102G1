@@ -296,11 +296,11 @@
         if (closer) closeModal(closer.closest('.modal'));
     });
 
-    // 按 Esc 關閉
+    // 按 Esc 關閉（有兩層時，例如會員中心上面又開了回饋對話框，只關最上面那一層）
     document.addEventListener('keydown', e => {
         if (e.key !== 'Escape') return;
-        const opened = document.querySelector('.modal:not([hidden])');
-        if (opened) closeModal(opened);
+        const opened = document.querySelectorAll('.modal:not([hidden])');
+        if (opened.length) closeModal(opened[opened.length - 1]);
     });
 
 
@@ -1314,6 +1314,66 @@
         item.classList.toggle('open', !body.hidden);
         toggle.setAttribute('aria-expanded', !body.hidden);
     });
+
+    // ---------- 歷史訂單：填寫回饋 ----------
+    // 點訂單旁的「填寫回饋」或「編輯回饋」→ 打開 feedbackModal，把訂單編號帶進表單
+    // 兩種按鈕都有 data-deadline（用餐後 7 天的期限）；「編輯回饋」另外有 data-rating、data-content，會把原本的回饋帶進來
+    const feedbackModal = $('feedbackModal');
+    const feedbackForm = $('feedbackForm');
+    const feedbackError = $('feedbackError');
+    const feedbackContent = $('feedbackContent');
+    const feedbackCount = $('feedbackCount');
+    const feedbackDeadline = $('feedbackDeadline');
+
+    if (feedbackModal && feedbackForm) {
+        memberContent.addEventListener('click', e => {
+            const btn = e.target.closest('[data-feedback-open]');
+            if (!btn) return;
+            const d = btn.dataset;
+            const isEdit = d.rating !== undefined;
+
+            feedbackForm.reset();
+            setMsg(feedbackError, '');
+            $('feedbackOrders').value = d.orders;
+            $('feedbackOrderLabel').textContent = d.orderLabel;
+            $('feedbackTitle').textContent = isEdit ? '編輯回饋' : '填寫回饋';
+            $('feedbackSubmit').textContent = isEdit ? '儲存修改' : '送出回饋';
+
+            if (isEdit) {
+                const star = $('feedbackStar' + d.rating);
+                if (star) star.checked = true;
+                feedbackContent.value = d.content || '';
+            }
+            feedbackCount.textContent = feedbackContent.value.length;
+            // 填寫和修改都要在用餐後 7 天內完成（data-deadline）
+            const deadlineText = !d.deadline ? ''
+                : isEdit ? `可以修改到 ${d.deadline}` : `請在 ${d.deadline} 前填寫`;
+            feedbackDeadline.textContent = deadlineText;
+            feedbackDeadline.hidden = !deadlineText;
+
+            openModal(feedbackModal);
+        });
+
+        // 字數
+        feedbackContent.addEventListener('input', () => {
+            feedbackCount.textContent = feedbackContent.value.length;
+        });
+
+        feedbackForm.addEventListener('submit', e => {
+            e.preventDefault();
+            if (!feedbackForm.querySelector('input[name="rating"]:checked')) {
+                setMsg(feedbackError, '※請選擇評分', 'error');
+                return;
+            }
+            if (!feedbackContent.value.trim()) {
+                setMsg(feedbackError, '※請填寫回饋內容', 'error');
+                return;
+            }
+            // 記住目前所在頁面，送出後回到這一頁
+            $('feedbackReturnUrl').value = window.location.pathname + window.location.search;
+            feedbackForm.submit();
+        });
+    }
 
     // ---------- 預約紀錄 ----------
     const resvList = $('resvList');

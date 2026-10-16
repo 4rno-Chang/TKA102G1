@@ -40,4 +40,10 @@ public interface FeedbackRepository extends JpaRepository<FeedbackVO, Integer> {
                           @Param("start") LocalDateTime start,
                           @Param("end") LocalDateTime end,
                           @Param("rating") Integer rating);
+
+    // 查這張訂單的回饋（一張訂單只能有一筆回饋）；沒有回饋過是 null
+    FeedbackVO findFirstByOrders_Orders(Integer orders);
+
+    // 一次查多張訂單的回饋（會員中心的歷史訂單用）
+    List<FeedbackVO> findByOrders_OrdersIn(List<Integer> orders);
 }
