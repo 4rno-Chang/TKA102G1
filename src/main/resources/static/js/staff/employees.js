@@ -92,6 +92,13 @@ const EMPLOYEE_PERMISSIONS = [
 ];
 
 
+let employeeSearch = { name: "", no: "" };
+
+function matchesEmployeeSearch(employee, criteria) {
+    return (!criteria.name || String(employee.empName ?? "").includes(criteria.name))
+        && (!criteria.no || Number(employee.empNo) === Number(criteria.no));
+}
+
 document.addEventListener("DOMContentLoaded", loadEmployees);
 
 async function loadEmployees() {
@@ -104,14 +111,16 @@ async function loadEmployees() {
             throw new Error("HTTP " + response.status);
         }
 
-        const employees = await response.json();
+        const allEmployees = await response.json();
+        const employees = allEmployees.filter(employee => matchesEmployeeSearch(employee, employeeSearch));
         tbody.replaceChildren();
 
         if (employees.length === 0) {
             const row = tbody.insertRow();
             const cell = row.insertCell();
             cell.colSpan = 7;
-            cell.textContent = "目前沒有員工資料";
+            cell.textContent = employeeSearch.name || employeeSearch.no
+                ? "查無符合條件的員工" : "目前沒有員工資料";
             return;
         }
 
@@ -215,6 +224,73 @@ async function loadEmployees() {
 }
 
 
+
+/* ===== 查詢員工功能 ===== */
+document.addEventListener("DOMContentLoaded", () => {
+    const modal = document.getElementById("employeeSearchModal");
+    const box = modal.querySelector(".employee-modal-content");
+    const form = document.getElementById("employeeSearchForm");
+    const openBtn = document.getElementById("searchEmployeeBtn");
+    const nameInput = document.getElementById("searchEmpName");
+    const noInput = document.getElementById("searchEmpNo");
+
+    function closeSearch() {
+        modal.hidden = true;
+        box.classList.remove("is-shaking");
+        openBtn.focus();
+    }
+
+    openBtn.addEventListener("click", () => {
+        nameInput.value = employeeSearch.name;
+        noInput.value = employeeSearch.no;
+        modal.hidden = false;
+        nameInput.focus();
+    });
+    document.getElementById("closeEmployeeSearchModal").addEventListener("click", closeSearch);
+    document.getElementById("cancelEmployeeSearchBtn").addEventListener("click", closeSearch);
+    modal.addEventListener("click", event => {
+        if (event.target !== modal) return;
+        box.classList.remove("is-shaking");
+        void box.offsetWidth;
+        box.classList.add("is-shaking");
+    });
+    modal.addEventListener("keydown", event => {
+        if (event.key === "Escape") {
+            event.preventDefault();
+            closeSearch();
+        }
+        if (event.key === "Tab") {
+            const controls = Array.from(modal.querySelectorAll("button, input"));
+            const first = controls[0];
+            const last = controls[controls.length - 1];
+            if (event.shiftKey && document.activeElement === first) {
+                event.preventDefault();
+                last.focus();
+            } else if (!event.shiftKey && document.activeElement === last) {
+                event.preventDefault();
+                first.focus();
+            }
+        }
+    });
+    form.addEventListener("submit", event => {
+        event.preventDefault();
+        const name = nameInput.value.trim();
+        const no = noInput.value.trim();
+        if (!name && !no) {
+            staffToast("請輸入員工姓名或員工編號");
+            nameInput.focus();
+            return;
+        }
+        employeeSearch = { name, no };
+        closeSearch();
+        loadEmployees();
+    });
+    document.getElementById("resetEmployeeSearchBtn").addEventListener("click", () => {
+        employeeSearch = { name: "", no: "" };
+        form.reset();
+        loadEmployees();
+    });
+});
 
 /* ===== 新增員工功能 ===== */
 
