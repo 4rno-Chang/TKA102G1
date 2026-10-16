@@ -1,4 +1,4 @@
-package com.bistroops;
+package com.bistroops.waiting.controller;
 
 import java.time.Instant;
 import com.bistroops.seattype.model.SeatTypeService;
