@@ -844,12 +844,18 @@
                 } else if (result === 'ALREADY_VERIFIED') {
                     setMsg(verifyPhoneMsg, '✓ 此手機已完成驗證', 'ok');
 
-                } else if (result === 'NOT_LOGIN') {
-                    setMsg(verifyPhoneMsg, '※請先登入會員', 'error');
+					} else if (result === 'NOT_LOGIN') {
+					    setMsg(verifyPhoneMsg, '※請先登入會員', 'error');
 
-                } else {
-                    setMsg(verifyPhoneMsg, '※發送失敗，請稍後再試', 'error');
-                }
+					} else if (result === 'PHONE_ERROR') {
+					    setMsg(verifyPhoneMsg, '※會員手機號碼格式錯誤', 'error');
+
+					} else if (result === 'SEND_FAILED') {
+					    setMsg(verifyPhoneMsg, '※簡訊發送失敗，請稍後再試', 'error');
+
+					} else {
+					    setMsg(verifyPhoneMsg, '※發送失敗，請稍後再試', 'error');
+					}
 
             } catch (error) {
                 setMsg(verifyPhoneMsg, '※無法連線至伺服器', 'error');
