@@ -80,14 +80,6 @@ public class FeedbackVO {
 		this.feeCustomerTel = feeCustomerTel;
 	}
 
-	public LocalDateTime getFeeCustomerTime() {
-		return feeCustomerTime;
-	}
-
-	public void setFeeCustomerTime(LocalDateTime feeCustomerTime) {
-		this.feeCustomerTime = feeCustomerTime;
-	}
-
 	public LocalDateTime getFeeTime() {
 		return feeTime;
 	}
