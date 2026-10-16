@@ -1,4 +1,4 @@
-package com.bistroops.feedback;
+package com.bistroops.feedback.controller;
 
 import java.time.LocalDate;
 import java.util.List;

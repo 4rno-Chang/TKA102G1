@@ -1,4 +1,4 @@
-package com.bistroops.feedback;
+package com.bistroops.feedback.controller;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;

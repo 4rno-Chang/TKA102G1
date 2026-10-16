@@ -131,7 +131,6 @@ public class FeedbackService {
 		String name = member.getMemName();
 		fb.setFeeCustomer(name == null || name.isBlank() ? member.getMemTel() : name);
 		fb.setFeeCustomerTel(member.getMemTel());
-		fb.setFeeCustomerTime(order.getOrdersTime());
 		fb.setFeeTime(LocalDateTime.now());
 		fb.setFeeRating(rating);
 		fb.setFeeContent(text);
