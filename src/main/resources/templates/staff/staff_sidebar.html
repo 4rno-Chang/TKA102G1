@@ -116,6 +116,18 @@
 							<path d="M3 12V4h8l10 10-8 8z" />
 							<circle cx="7.500" cy="8.500" r="1.500" /></svg> <span>活動管理</span>
 					</a>
+					<!-- ===================================== -->
+ 					<a class="staff-menu-item staff-sub-item"
+                       th:href="@{/staff/feedback}"
+                       th:classappend="${active == 'feedback'} ? 'active'">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H5l1.8-3.2A7.5 7.5 0 1 1 20 11.5Z" />
+                            <path d="m12.5 6.8 1.1 2.2 2.4.35-1.75 1.7.4 2.4-2.15-1.15-2.15 1.15.4-2.4L9 9.35l2.4-.35 1.1-2.2Z" />
+                        </svg>
+                        <span>回饋管理</span>
+                    </a>
+                    
+               
 
 					<!-- 公告及QA：連到 /staff/announcement-and-qa，會轉到公告分頁（AnnouncementAndQaController）；
              公告和常見問題的頁面都填 sidebar('announcement-and-qa')；

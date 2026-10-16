@@ -2,6 +2,8 @@ package com.bistroops.feedback.model;
 
 import java.time.LocalDateTime;
 
+import com.bistroops.orders.model.OrdersVO;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -13,16 +15,16 @@ import jakarta.persistence.Table;
 
 @Entity
 @Table(name="feedback")
-public class FeedBackVO {
+public class FeedbackVO {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	@Column(name="feedback_no")
 	private Integer feedbackNo;
 	
-//	@ManyToOne
-//	@JoinColumn(name="orders_no",referencedColumnName = "orders_no")
-//	private OrdersVO orders;
+	@ManyToOne
+	@JoinColumn(name="orders_no",referencedColumnName = "orders_no")
+	private OrdersVO orders;
 
 	@Column(name="fee_customer")
 	private String feeCustomer;
@@ -42,7 +44,7 @@ public class FeedBackVO {
 	@Column(name="fee_rating", columnDefinition = "tinyint")
 	private Integer feeRating;
 	
-	public FeedBackVO() {
+	public FeedbackVO() {
 	}
 
 	public Integer getFeedbackNo() {
@@ -53,13 +55,13 @@ public class FeedBackVO {
 		this.feedbackNo = feedbackNo;
 	}
 
-//	public OrdersVO getOrders() {
-//		return orders;
-//	}
-//
-//	public void setOrders(OrdersVO orders) {
-//		this.orders = orders;
-//	}
+	public OrdersVO getOrders() {
+		return orders;
+	}
+
+	public void setOrders(OrdersVO orders) {
+		this.orders = orders;
+	}
 
 	public String getFeeCustomer() {
 		return feeCustomer;

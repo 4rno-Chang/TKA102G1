@@ -1,0 +1,65 @@
+/* 回饋管理頁自己的樣式（要寫在 staff.css 後面）
+   顏色都用 staff.css 的 --st-* 變數，和其他後台頁面一致 */
+* { box-sizing: border-box; }
+/* body、標題的樣式由 staff.css 負責，這裡只寫回饋頁自己的 */
+.feedback { display: grid; gap: 16px; }
+
+/* 統計卡片 */
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+.stat { background: var(--st-card); border: 1px solid var(--st-border); border-radius: var(--st-radius); padding: 14px; box-shadow: var(--st-shadow); }
+.stat .label { color: var(--st-muted); font-size: 13px; }
+.stat .value { font-family: var(--st-serif); font-size: 26px; font-weight: 700; color: var(--st-text); margin-top: 4px; }
+
+/* 查詢列 */
+.search { background: var(--st-card); border: 1px solid var(--st-border); border-radius: var(--st-radius); padding: 14px;
+          display: flex; flex-wrap: wrap; gap: 10px; align-items: end; box-shadow: var(--st-shadow); }
+.search label { display: flex; flex-direction: column; font-size: 13px; color: var(--st-muted); gap: 4px; }
+.search input, .search select { padding: 7px 10px; border: 1px solid var(--st-border); border-radius: 8px; font-size: 14px;
+                                background: #fff; color: var(--st-text); }
+.search input:focus, .search select:focus { outline: none; border-color: var(--st-red); }
+.btn { padding: 8px 14px; border: 1px solid transparent; border-radius: 8px; cursor: pointer; font-size: 14px; text-decoration: none; display: inline-block; }
+.btn-primary { background: var(--st-red); color: #fff; }
+.btn-primary:hover { background: var(--st-red-dark); }
+.btn-light { background: var(--st-soft); color: var(--st-text); }
+.btn-light:hover { background: var(--st-border); }
+.btn-danger { background: var(--st-card); color: var(--st-red); border-color: var(--st-red); }
+.btn-danger:hover { background: #fbeee9; }
+.btn-sm { padding: 4px 10px; font-size: 13px; }
+
+/* 表格 */
+.table-wrap { background: var(--st-card); border: 1px solid var(--st-border); border-radius: var(--st-radius); overflow-x: auto; box-shadow: var(--st-shadow); }
+table { width: 100%; border-collapse: collapse; min-width: 900px; }
+th, td { padding: 10px 12px; border-bottom: 1px dashed var(--st-border); text-align: left; font-size: 14px; color: var(--st-text); }
+th { border-bottom: 2px solid var(--st-text); color: var(--st-text); font-weight: 700; }
+tbody tr:last-child td { border-bottom: 0; }
+tr:hover td { background: var(--st-bg); }
+.content-cell { max-width: 260px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.stars { color: var(--st-yellow); letter-spacing: 1px; }
+.stars .off { color: var(--st-border); }
+.empty { text-align: center; color: var(--st-muted); padding: 40px; }
+.actions { display: flex; gap: 6px; }
+
+/* 分頁 */
+.pagination { display: flex; justify-content: center; gap: 6px; margin: 0; }
+.pagination a, .pagination span { padding: 6px 12px; border: 1px solid var(--st-border); border-radius: 8px;
+                                  text-decoration: none; color: var(--st-text); background: var(--st-card); font-size: 14px; }
+.pagination a:hover { background: var(--st-soft); }
+.pagination .active { background: var(--st-red); color: #fff; border-color: var(--st-red); }
+
+/* 訊息（鼠尾草綠：完成） */
+.alert { padding: 10px 14px; border-radius: 8px; background: #eef1e6; color: #5f6b40; border: 1px solid var(--st-green); }
+
+/* 詳細內容彈窗（框線參照 checkout 的 .staff-card 和 .receipt-table） */
+/* staff.css 用 * { margin: 0 } 清掉了 dialog 預設的 margin: auto，要補回來才會置中 */
+dialog { margin: auto; padding: 22px 24px; width: min(520px, 92vw);
+         background: var(--st-card); color: var(--st-text);
+         border: 1px solid var(--st-border); border-radius: var(--st-radius); box-shadow: var(--st-shadow); }
+dialog::backdrop { background: rgba(59, 47, 42, .45); }
+.dlg-head { padding-bottom: 10px; border-bottom: 2px solid var(--st-text);
+            font-size: 18px; font-weight: 700; }
+.dlg-body { padding: 4px 0; }
+.dlg-body dl { display: grid; grid-template-columns: 110px 1fr; margin: 0; }
+.dlg-body dt, .dlg-body dd { padding: 10px 6px; border-bottom: 1px dashed var(--st-border); }
+.dlg-body dt { color: var(--st-muted); }
+.dlg-body dd { margin: 0; white-space: pre-wrap; word-break: break-word; }
+.dlg-foot { padding-top: 14px; text-align: right; }

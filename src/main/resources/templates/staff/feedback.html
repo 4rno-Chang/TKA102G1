@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="zh-Hant" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bistroops 後台｜回饋管理</title>
+  <link rel="icon" th:href="@{/images/logo-mark.svg}" type="image/svg+xml">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;700&display=swap">
+  <!-- staff.css：後台共用；feedback.css：這一頁自己的樣式（要寫在 staff.css 後面） -->
+  <link rel="stylesheet" th:href="@{/css/staff/staff.css}" />
+  <link rel="stylesheet" th:href="@{/css/staff/feedback.css}" />
+  <script th:src="@{/js/staff/staff.js}" defer></script>
+  <script th:src="@{/js/staff/feedback.js}" defer></script>
+</head>
+
+<body class="staff-layout">
+  <nav th:replace="~{staff/staff_sidebar :: sidebar('feedback')}"></nav>
+
+  <main class="staff-main">
+    <header class="staff-header">
+      <div>
+        <p class="staff-eyebrow">Feedback</p>
+        <h1 class="staff-title">回饋管理</h1>
+      </div>
+      <p class="staff-clock" id="staffClock"></p>
+    </header>
+
+    <div class="feedback">
+
+    <!-- 操作成功訊息（Controller 用 RedirectAttributes 傳 successMsg） -->
+    <div class="alert" th:if="${successMsg}" th:text="${successMsg}"></div>
+
+    <!-- 統計 -->
+    <div class="stats">
+        <div class="stat">
+            <div class="label">回饋總數</div>
+            <div class="value" th:text="${totalCount}">0</div>
+        </div>
+        <div class="stat">
+            <div class="label">平均評分</div>
+            <div class="value" th:text="${#numbers.formatDecimal(avgRating, 1, 1)}">0.0</div>
+        </div>
+    </div>
+
+    <!-- 查詢條件 -->
+    <form class="search" th:action="@{/staff/feedback}" method="get">
+        <label>訂單編號
+            <input type="number" name="orders" th:value="${param.orders}" placeholder="輸入訂單編號">
+        </label>
+        <label>手機號碼
+            <input type="tel" name="tel" th:value="${param.tel}" placeholder="09xxxxxxxx" maxlength="10">
+        </label>
+        <label>回饋日期（起）
+            <input type="date" name="startDate" th:value="${param.startDate}">
+        </label>
+        <label>回饋日期（迄）
+            <input type="date" name="endDate" th:value="${param.endDate}">
+        </label>
+        <label>評分
+            <select name="rating">
+                <option value="">全部</option>
+                <option th:each="r : ${#numbers.sequence(5, 1)}"
+                        th:value="${r}"
+                        th:text="${r} + ' 星'"
+                        th:selected="${param.rating != null and param.rating[0] == r.toString()}"></option>
+            </select>
+        </label>
+        <button type="submit" class="btn btn-primary">查詢</button>
+        <a th:href="@{/staff/feedback}" class="btn btn-light">清除</a>
+    </form>
+
+    <!-- 列表 -->
+    <div class="table-wrap">
+        <table>
+            <thead>
+            <tr>
+                <th>回饋編號</th>
+                <th>訂單編號</th>
+                <th>回饋人</th>
+                <th>電話</th>
+                <th>用餐時間</th>
+                <th>回饋時間</th>
+                <th>評分</th>
+                <th>回饋內容</th>
+                <th>操作</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:if="${#lists.isEmpty(feedbackList)}">
+                <td colspan="9" class="empty">目前沒有回饋資料</td>
+            </tr>
+            <tr th:each="fb : ${feedbackList}">
+                <td th:text="${fb.feedbackNo}">1</td>
+                <td th:text="${fb.orders.orders}">1001</td>
+                <td th:text="${fb.feeCustomer}">王小明</td>
+                <td th:text="${fb.feeCustomerTel}">0912345678</td>
+                <td th:text="${#temporals.format(fb.orders.ordersTime, 'yyyy-MM-dd HH:mm')}">2026-10-15 18:30</td>
+                <td th:text="${#temporals.format(fb.feeTime, 'yyyy-MM-dd HH:mm')}">2026-10-15 20:00</td>
+                <td>
+                    <span class="stars">
+                        <span th:each="i : ${#numbers.sequence(1, 5)}"
+                              th:text="'★'"
+                              th:classappend="${i > fb.feeRating} ? 'off'"></span>
+                    </span>
+                </td>
+                <td class="content-cell" th:text="${fb.feeContent}">餐點很好吃</td>
+                <td>
+                    <div class="actions">
+                        <!-- 用 data-* 把資料塞給按鈕，JS 讀出來放進彈窗 -->
+                        <button type="button" class="btn btn-light btn-sm btn-view"
+                                th:data-no="${fb.feedbackNo}"
+                                th:data-order="${fb.orders.orders}"
+                                th:data-customer="${fb.feeCustomer}"
+                                th:data-tel="${fb.feeCustomerTel}"
+                                th:data-dine="${#temporals.format(fb.orders.ordersTime, 'yyyy-MM-dd HH:mm')}"
+                                th:data-time="${#temporals.format(fb.feeTime, 'yyyy-MM-dd HH:mm')}"
+                                th:data-rating="${fb.feeRating}"
+                                th:data-content="${fb.feeContent}">查看</button>
+
+                        <form th:action="@{/staff/feedback/delete}" method="post"
+                              onsubmit="return confirm('確定要刪除這筆回饋嗎？');">
+                            <input type="hidden" name="feedbackNo" th:value="${fb.feedbackNo}">
+                            <button type="submit" class="btn btn-danger btn-sm">刪除</button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- 分頁（Controller 傳 currentPage、totalPages） -->
+    <div class="pagination" th:if="${totalPages > 1}">
+        <a th:if="${currentPage > 1}"
+           th:href="@{/staff/feedback(page=${currentPage - 1}, orders=${param.orders}, tel=${param.tel}, startDate=${param.startDate}, endDate=${param.endDate}, rating=${param.rating})}">上一頁</a>
+
+        <th:block th:each="p : ${#numbers.sequence(1, totalPages)}">
+            <span th:if="${p == currentPage}" class="active" th:text="${p}">1</span>
+            <a th:unless="${p == currentPage}" th:text="${p}"
+               th:href="@{/staff/feedback(page=${p}, orders=${param.orders}, tel=${param.tel}, startDate=${param.startDate}, endDate=${param.endDate}, rating=${param.rating})}">2</a>
+        </th:block>
+
+        <a th:if="${currentPage < totalPages}"
+           th:href="@{/staff/feedback(page=${currentPage + 1}, orders=${param.orders}, tel=${param.tel}, startDate=${param.startDate}, endDate=${param.endDate}, rating=${param.rating})}">下一頁</a>
+    </div>
+    </div><!-- /.feedback -->
+
+    <!-- 詳細內容彈窗（id 要和 static/js/staff/feedback.js 裡的一致） -->
+    <dialog id="detailDialog">
+        <div class="dlg-head">回饋詳細內容</div>
+        <div class="dlg-body">
+            <dl>
+                <dt>回饋編號</dt><dd id="d-no"></dd>
+                <dt>訂單編號</dt><dd id="d-order"></dd>
+                <dt>回饋人</dt><dd id="d-customer"></dd>
+                <dt>電話</dt><dd id="d-tel"></dd>
+                <dt>用餐時間</dt><dd id="d-dine"></dd>
+                <dt>回饋時間</dt><dd id="d-time"></dd>
+                <dt>評分</dt><dd id="d-rating" class="stars"></dd>
+                <dt>回饋內容</dt><dd id="d-content"></dd>
+            </dl>
+        </div>
+        <div class="dlg-foot">
+            <button type="button" class="btn btn-light" id="btnCloseDialog">關閉</button>
+        </div>
+    </dialog>
+  </main>
+
+  <div class="staff-toast" id="staffToast" role="status" aria-live="polite"></div>
+</body>
+</html>
