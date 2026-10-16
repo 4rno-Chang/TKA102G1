@@ -42,8 +42,14 @@
 			<div class="employee-list-header">
 				<h2 class="staff-card-title">員工列表</h2>
 
-				<button type="button" class="employee-primary-btn"
-					id="addEmployeeBtn">＋ 新增員工</button>
+				<div class="employee-list-actions">
+					<button type="button" class="employee-primary-btn"
+						id="resetEmployeeSearchBtn">顯示全部</button>
+					<button type="button" class="employee-primary-btn"
+						id="searchEmployeeBtn">查詢員工</button>
+					<button type="button" class="employee-primary-btn"
+						id="addEmployeeBtn">＋ 新增員工</button>
+				</div>
 			</div>
 
 			<div style="overflow-x: auto;">
@@ -70,6 +76,33 @@
 
 	</main>
 
+
+	<!-- 查詢員工視窗 -->
+	<div id="employeeSearchModal" class="employee-modal" hidden>
+		<div class="employee-modal-content" role="dialog" aria-modal="true"
+			aria-labelledby="employeeSearchTitle" aria-describedby="employeeSearchHelp">
+			<div class="employee-modal-header">
+				<h2 id="employeeSearchTitle">查詢員工</h2>
+				<button type="button" id="closeEmployeeSearchModal"
+					class="employee-close-btn" aria-label="關閉查詢員工">×</button>
+			</div>
+			<p id="employeeSearchHelp">單一查詢：填寫姓名或編號。複合查詢：同時填寫兩項，查詢符合所有條件的員工。</p>
+			<form id="employeeSearchForm">
+				<div class="employee-form-group">
+					<label for="searchEmpName">員工姓名（可輸入部分姓名）</label>
+					<input type="text" id="searchEmpName" name="empName" maxlength="30">
+				</div>
+				<div class="employee-form-group">
+					<label for="searchEmpNo">員工編號（完整編號）</label>
+					<input type="text" id="searchEmpNo" name="empNo" inputmode="numeric" pattern="[0-9]+" title="請輸入數字員工編號">
+				</div>
+				<div class="employee-form-actions">
+					<button type="button" id="cancelEmployeeSearchBtn">取消</button>
+					<button type="submit" class="employee-primary-btn">查詢</button>
+				</div>
+			</form>
+		</div>
+	</div>
 
 	<!-- 新增員工視窗 -->
 	<div id="employeeModal" class="employee-modal" hidden>

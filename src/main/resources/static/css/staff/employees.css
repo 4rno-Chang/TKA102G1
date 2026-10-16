@@ -7,6 +7,16 @@
 	margin-bottom: 20px;
 }
 
+.employee-list-actions {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+}
+
+.employee-list-actions .employee-primary-btn {
+	white-space: nowrap;
+}
+
 .employee-primary-btn {
 	background: #a52a2a;
 	color: white;
