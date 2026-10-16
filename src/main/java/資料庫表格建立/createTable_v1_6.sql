@@ -384,12 +384,11 @@ INSERT INTO member (
 ); 
 
 -- 6. 插入義餐訂單主檔 (orders)
--- 05 修正：已結帳的單，明細要全部已送達／已取消（不然畫面顯示「用餐中」）；金額＝明細加總（不算已取消）；
---         日期改到 10-01，才在中秋節活動（09-20～10-06）期間內，也和明細的送達時間同一天
+
 INSERT INTO orders (seat_no, member_no, orders_time, orders_total, orders_discount_total, orders_actual_price, orders_pay) VALUES
-('A01', 1, '2026-10-01 18:30:00', 700, 40, 660, '刷卡'),
-('B01', 2, '2026-10-01 19:15:00', 980, 50, 930, '刷卡'),
-('C01', 3, '2026-10-01 19:40:00', 400, 0, 400, '現金');
+('A01', 1, '2026-10-16 18:30:00', 700, 40, 660, '刷卡'),
+('B01', 2, '2026-10-16 19:15:00', 980, 50, 930, '刷卡'),
+('C01', 3, '2026-10-16 19:40:00', 400, 0, 400, '現金');
 
 -- 7. 活動 (promote)
 INSERT INTO promote (promote_name, promote_begin, promote_end, promote_content) VALUES
