@@ -136,8 +136,10 @@ public class EmployeePermissionAuthorizationManager
                     employeeService.hasPermission(empNo, 3));
         }
         
-        // 8. 訂候位管理：權限 4
-        if (path.equals("/staff/reservations")
+     // 8. 訂候位管理：權限 4。
+        if (path.equals("/staff/booking")
+                || path.startsWith("/staff/booking/")
+                || path.equals("/staff/reservations")
                 || path.startsWith("/staff/reservations/")
                 || path.equals("/bistroops/waiting/manage")
                 || path.startsWith("/bistroops/waiting/manage/")) {

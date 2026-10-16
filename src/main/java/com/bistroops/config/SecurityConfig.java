@@ -42,8 +42,10 @@ public class SecurityConfig {
                     "/staff/seating/**"
                 ).access(permissionManager)
                 
-                // 權限 4：訂候位管理及所有操作
+             // 權限 4：新舊訂候位管理頁及所有操作。
                 .requestMatchers(
+                    "/staff/booking",
+                    "/staff/booking/**",
                     "/staff/reservations",
                     "/staff/reservations/**",
                     "/bistroops/waiting/manage",
