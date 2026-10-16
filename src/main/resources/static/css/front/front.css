@@ -377,6 +377,10 @@ img { display: block; width: 100%; height: 100%; object-fit: cover; }
     width: 100%;
 }
 
+.footer-teachers { 
+	display: inline-block; 
+	vertical-align: top; 
+}
 
 /* ========== 8. 平板（1024px 以下） ========== */
 @media (max-width: 1024px) {
