@@ -454,7 +454,7 @@
 						</div>
 					</form>
 
-					<a class="staff-btn" th:href="@{/bistroops/waiting/manage}">
+					<a class="staff-btn" th:href="@{/staff/booking(tab='waiting')}">
 						前往候位管理 </a>
 				</details>
 
@@ -462,7 +462,8 @@
 					候位資料暫時無法讀取，請勿將其視為沒有候位。</p>
 				<!-- Redis 連不上時不顯示（0）：那時是「不知道有幾組」，不是 0 組 -->
 				<button type="button" class="staff-btn btn-pay"
-					th:if="${page.waitingAvailable and #lists.isEmpty(panel.waiting)}" disabled>候位入座（0）</button>
+					th:if="${page.waitingAvailable and #lists.isEmpty(panel.waiting)}"
+					disabled>候位入座（0）</button>
 
 				<form th:action="@{/staff/seating/walk-in}" method="post"
 					th:data-confirm="${panel.walkConfirm}">

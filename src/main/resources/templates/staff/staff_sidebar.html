@@ -34,7 +34,7 @@
 				<svg viewBox="0 0 24 24" aria-hidden="true">
 					<path d="M3 9h18M6 9v10M18 9v10M9 9v5h6V9" /></svg> <span>入座管理</span>
 			</a> <a class="staff-menu-item"
-				th:href="${hasBooking == true} ? @{/staff/reservations} : null"
+				th:href="${hasBooking == true} ? @{/staff/booking} : null"
 				th:classappend="${active == 'booking'} ? 'active' : (${hasBooking == true} ? '' : 'no-permission')"
 				th:attr="aria-disabled=${hasBooking != true}" data-permission-link>
 				<svg viewBox="0 0 24 24" aria-hidden="true">
