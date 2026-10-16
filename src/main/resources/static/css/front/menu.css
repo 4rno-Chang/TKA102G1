@@ -1,0 +1,142 @@
+/* =========================================================
+   Bistroops 前台：菜單（front/menu/menu.html）
+   需要先載入 /css/front/front.css：使用它的變數（--color-*、--lux-*、--font-*），
+   以及 .container、.section、.eyebrow、.section-title、.btn-outline、header、footer 的樣式。
+   ========================================================= */
+
+
+/* ========== 1. 共用 ========== */
+/* 目前所在頁面的選單：金色字、底線常駐（和最新消息、常見問題頁相同） */
+.nav-list a.active { color: var(--color-primary); }
+.nav-list a.active::after { width: 100%; }
+
+/* 內頁的上方留白比首頁區塊少一些 */
+.menu-page { padding-top: 80px; }
+
+
+/* ========== 2. 類別的捷徑 ==========
+   黏在 header 下面，捲動時一直看得到；類別多的時候在手機上可以左右滑 */
+.menu-cats {
+  position: sticky; top: var(--header-h); z-index: 20;
+  display: flex; justify-content: center; gap: 10px;
+  margin: 0 auto 10px;
+  padding: 14px 0;
+  background: var(--color-bg);
+  border-bottom: 1px solid var(--color-border);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.menu-cats::-webkit-scrollbar { display: none; }
+.menu-cats a {
+  flex: none;
+  padding: 6px 18px;
+  border: 1px solid var(--color-border); border-radius: 999px;
+  color: var(--color-text-light);
+  font-size: 14px; letter-spacing: 1px;
+  white-space: nowrap;
+  transition: color var(--transition), border-color var(--transition), background var(--transition);
+}
+.menu-cats a:hover,
+.menu-cats a.active { border-color: var(--color-gold); color: var(--color-primary); background: var(--color-white); }
+
+
+/* ========== 3. 每個類別 ========== */
+/* 按捷徑跳過來時，標題不要被黏住的 header 和捷徑擋住 */
+.menu-cat { padding-top: 70px; scroll-margin-top: calc(var(--header-h) + 50px); }
+
+.menu-cat-title {
+  display: flex; align-items: center; justify-content: center; gap: 18px;
+  color: var(--color-text);
+  font-family: var(--font-serif);
+  font-size: 30px; font-weight: 600;
+  letter-spacing: 4px;
+  text-align: center;
+}
+/* 標題兩側的金色細線 */
+.menu-cat-title::before,
+.menu-cat-title::after { content: ""; width: 48px; height: 1px; background: var(--color-gold); }
+
+/* 類別代表圖：畫面寬度的 70%、置中（但不超過內容區）；螢幕越窄越接近全寬，圖才不會太小
+   最多 1000px 寬：代表圖大多是 1000px 寬，大螢幕上不要再放大，才不會變模糊 */
+.menu-cat-photo {
+  width: min(70vw, 100%);
+  max-width: 1000px;
+  margin: 28px auto 46px;
+  overflow: hidden;
+  background: var(--lux-champagne);
+  box-shadow: 0 18px 40px rgba(90, 70, 30, .12);
+}
+/* 上傳的圖片：寬度撐滿代表圖的範圍，高度照原本的比例跟著放大縮小（不裁切、不變形；小張的圖也會放大到這個寬度） */
+.menu-cat-photo img { display: block; width: 100%; height: auto; }
+/* 沒有上傳圖片時用插圖：固定 21:9 的框，插圖整張放得下 */
+.menu-cat-photo.is-art { aspect-ratio: 21 / 9; }
+.menu-cat-photo.is-art img { height: 100%; object-fit: contain; padding: 18px; }
+
+@media (max-width: 1100px) { .menu-cat-photo { width: min(85vw, 100%); } }
+@media (max-width: 760px)  { .menu-cat-photo { width: 100%; margin-bottom: 34px; } .menu-cat-photo.is-art { aspect-ratio: 16 / 9; } }
+
+
+/* ========== 4. 菜單項目 ==========
+   電腦兩欄、手機一欄；菜名和價錢同一行，中間用細點線連起來，說明在下一行 */
+.menu-items {
+  display: grid; grid-template-columns: repeat(2, 1fr);
+  gap: 30px 64px;
+  max-width: 1000px; margin: 0 auto;
+}
+@media (max-width: 760px) { .menu-items { grid-template-columns: 1fr; gap: 24px; } }
+
+.menu-item-head { display: flex; align-items: baseline; gap: 10px; }
+.menu-item-name {
+  color: var(--color-text);
+  font-family: var(--font-serif);
+  font-size: 19px; font-weight: 600;
+  letter-spacing: 1px;
+}
+.menu-item-leader {
+  flex: 1; min-width: 20px;
+  border-bottom: 1px dotted var(--color-gold);
+  transform: translateY(-5px);
+}
+.menu-item-price {
+  flex: none;
+  color: var(--color-primary);
+  font-size: 16px; font-weight: 500;
+  letter-spacing: .5px;
+  white-space: nowrap;
+}
+/* 活動價時的原價：小字、淡色、劃線，不特別強調 */
+.menu-item-was {
+  margin-right: 6px;
+  color: var(--color-text-light);
+  font-size: 12px; font-weight: 400;
+  opacity: .75;
+}
+.menu-item-desc {
+  margin-top: 6px;
+  color: var(--color-text-light);
+  font-size: 14px; line-height: 1.75;
+}
+
+
+/* ========== 5. 頁面最下面 ========== */
+.menu-empty { margin-top: 40px; text-align: center; color: var(--color-text-light); }
+.menu-note {
+  margin-top: 80px;
+  color: var(--color-text-light);
+  font-size: 13px; text-align: center; letter-spacing: 1px;
+}
+.menu-actions { margin-top: 30px; text-align: center; }
+/* 「立即訂位」：和首頁 Hero 的「立即訂位」同一種外觀（frontend_index.css 的 .hero-text .btn-outline）
+   金色漸層底 + 深色字，滑過變深墨色 */
+.menu-actions .btn-outline {
+  background: var(--lux-gold-gradient);
+  border-color: var(--color-gold);
+  color: var(--lux-ink);
+  font-weight: 500;
+  box-shadow: 0 10px 28px rgba(154, 122, 60, .28);
+}
+.menu-actions .btn-outline:hover {
+  background: var(--lux-ink);
+  border-color: var(--lux-ink);
+  color: var(--lux-gold-light);
+}

@@ -114,7 +114,7 @@
             <div class="order-stepper">
               <button type="submit" name="num" th:value="${c.num - 1}" aria-label="減少一份">−</button>
               <span class="order-stepper-num" th:text="${c.num}">2</span>
-              <button type="submit" name="num" th:value="${c.num + 1}" th:disabled="${c.num >= 20}" aria-label="增加一份">＋</button>
+              <button type="submit" name="num" th:value="${c.num + 1}" th:disabled="${c.num >= 10}" aria-label="增加一份">＋</button>
             </div>
             <b class="order-cart-sub">NT$ <span th:text="${c.subtotal}">380</span></b>
           </div>
@@ -128,15 +128,20 @@
 
       <footer class="order-sheet-foot">
         <p class="order-total">合計<b>NT$ <span th:text="${cartTotal}">880</span></b></p>
-        <div class="order-foot-actions" th:unless="${#lists.isEmpty(cartItems)}">
-          <form th:action="@{/bistroops/order/cart/clear}" method="post" data-confirm="確定要清空購物車嗎？">
-            <button type="submit" class="order-btn order-btn-ghost">清空</button>
-          </form>
-          <form class="order-foot-main" th:action="@{/bistroops/order/submit}" method="post"
-                data-confirm="確定要送出訂單嗎？送出後餐點就會開始製作，無法自行取消。">
-            <button type="submit" class="order-btn order-btn-main">送出訂單</button>
-          </form>
-        </div>
+        <!-- 只有 0 元（贈送）的餐點不能送出：這桌至少要有一樣有價格的餐點（購物車或已經送出的都算），
+             否則整張單是 0 元，結帳時不能刷卡。onlyFree 是 true 時顯示提醒、「送出訂單」不能按 -->
+        <th:block th:unless="${#lists.isEmpty(cartItems)}" th:with="onlyFree=${cartTotal == 0 and orderedTotal == 0}">
+          <p class="order-foot-warn" th:if="${onlyFree}">購物車裡只有 0 元的餐點，請至少加點一樣有價格的餐點再送出訂單。</p>
+          <div class="order-foot-actions">
+            <form th:action="@{/bistroops/order/cart/clear}" method="post" data-confirm="確定要清空購物車嗎？">
+              <button type="submit" class="order-btn order-btn-ghost">清空</button>
+            </form>
+            <form class="order-foot-main" th:action="@{/bistroops/order/submit}" method="post"
+                  data-confirm="確定要送出訂單嗎？送出後餐點就會開始製作，無法自行取消。">
+              <button type="submit" class="order-btn order-btn-main" th:disabled="${onlyFree}">送出訂單</button>
+            </form>
+          </div>
+        </th:block>
       </footer>
     </section>
   </div>
@@ -196,7 +201,7 @@
             <span class="order-item-label">數量</span>
             <div class="order-stepper" data-stepper>
               <button type="button" data-step="-1" aria-label="減少一份">−</button>
-              <input type="number" name="num" data-item-input="num" value="1" min="1" max="20" inputmode="numeric" aria-label="數量">
+              <input type="number" name="num" data-item-input="num" value="1" min="1" max="10" inputmode="numeric" aria-label="數量">
               <button type="button" data-step="1" aria-label="增加一份">＋</button>
             </div>
           </div>
