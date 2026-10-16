@@ -1,4 +1,4 @@
-package com.bistroops.frontorder.model;
+package com.bistroops.orders.model;
 
 public class OrderedItemDTO {
 	private String mealName;

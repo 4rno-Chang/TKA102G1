@@ -1,4 +1,4 @@
-package com.bistroops.frontorder.controller;
+package com.bistroops.orders.controller;
 
 import java.util.List;
 import java.util.Map;
@@ -16,13 +16,16 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
-import com.bistroops.frontorder.model.CartItemDTO;
-import com.bistroops.frontorder.model.CartRedisService;
-import com.bistroops.frontorder.model.FrontOrderService;
-import com.bistroops.frontorder.model.FrontSeatService;
-import com.bistroops.frontorder.model.OrderedItemDTO;
 import com.bistroops.meal.model.MenuMealCardDTO;
+import com.bistroops.meal.model.MenuService;
+import com.bistroops.member.model.MemberService;
 import com.bistroops.member.model.MemberVO;
+import com.bistroops.orders.model.FrontOrderService;
+import com.bistroops.orders.model.FrontSeatService;
+import com.bistroops.orders.model.OrderedItemDTO;
+import com.bistroops.orderscart.controller.CartWebSocketHandler;
+import com.bistroops.orderscart.model.CartItemDTO;
+import com.bistroops.orderscart.model.CartRedisService;
 import com.bistroops.promote.model.PromoteService;
 import com.bistroops.seat.model.SeatVO;
 
@@ -31,17 +34,21 @@ import jakarta.servlet.http.HttpSession;
 @Controller
 @RequestMapping("/bistroops")
 public class FrontOrderController {
-
+	
 	@Autowired
     private FrontSeatService frontSeatService;     // 桌位檢查
-    @Autowired
-    private FrontOrderService frontOrderService;   // 菜單、購物車內容
+	@Autowired
+	private MenuService menuService;   // 菜單、購物車內容
+	@Autowired
+	private FrontOrderService frontOrderService;
     @Autowired
     private CartRedisService cartRedisService;     // 購物車
     @Autowired
     private PromoteService promoteService;         // 活動價
     @Autowired
     private CartWebSocketHandler cartWebSocketHandler; // 連動同桌其他手機
+    @Autowired 
+    private MemberService memberService;
 
 
     private static final String SEAT_NO = "orderSeatNo";          // session 裡桌號的名字
@@ -86,9 +93,9 @@ public class FrontOrderController {
 	    }
 
 	    //菜單(活動價只查一次，菜單和購物車共用)
-	    List<MenuMealCardDTO> cards = frontOrderService.getMenuCards(promoteService.getActivePrices());
-	    model.addAttribute("menuSections", frontOrderService.getMenuSections(cards));
-	    model.addAttribute("promoMeals", frontOrderService.getPromoMeals(cards));
+	    List<MenuMealCardDTO> cards = menuService.getMenuCards(promoteService.getActivePrices());
+	    model.addAttribute("menuSections", menuService.getMenuSections(cards));
+	    model.addAttribute("promoMeals", menuService.getPromoMeals(cards));
 
 	    // 加入購物車
 	    List<CartItemDTO> cartItems = frontOrderService.getCartItems(frontSeatService.getSeatingKey(s), cards);
@@ -117,7 +124,7 @@ public class FrontOrderController {
 	    if (seat == null) {
 	        return BACK;
 	    }
-	    // 數量要是 1～20(設定上超過20要去跟客人確認是否重複下單，如果客人必須要，那就改備註再繼續點)
+	    // 數量要是 1～10(設定上超過10要去跟客人確認是否重複下單，如果客人必須要，那就改備註再繼續點)
 	    if (num == null || num < 1 || num > CartRedisService.MAX_NUM) {
 	        ra.addFlashAttribute("message", "數量要是 1～" + CartRedisService.MAX_NUM + " 份。");
 	        return BACK;
@@ -147,7 +154,7 @@ public class FrontOrderController {
 	        return BACK;
 	    }
 	    if (mealNo != null && num != null) {
-	        // num 是 0 以下 → 移除；超過 20 → 20（都在 CartRedisService.update 裡處理）
+	        // num 是 0 以下 → 移除；超過 10 → 10（都在 CartRedisService.update 裡處理）
 	        cartRedisService.update(frontSeatService.getSeatingKey(seat), mealNo,
 	                                cleanComment(oldComment), num, cleanComment(comment));
 	        cartWebSocketHandler.notifyCartChanged(frontSeatService.getSeatingKey(seat));
@@ -190,7 +197,10 @@ public class FrontOrderController {
 	    if (seat == null) {
 	        return BACK;
 	    }
-	    MemberVO member = (MemberVO) session.getAttribute("member");   // 沒有登入是 null
+	    // 【待修正】session 裡沒有 "member"（會員登入存的是 "memberNo"），所以這裡永遠是 null，訂單不會記到會員。
+	    //           改法寫在這個檔案上面「步驟 4：送出訂單」的說明。
+	    Integer memNo = (Integer) session.getAttribute("memberNo");    // 沒有登入是 null
+	    MemberVO member = (memNo == null) ? null : memberService.getMemNoQuery(memNo);
 	    String error = frontOrderService.submitOrder(seat, member);
 	    if (error != null) {
 	        ra.addFlashAttribute("message", error);
@@ -205,7 +215,7 @@ public class FrontOrderController {
 	//單獨讀出圖片
 	@GetMapping("/order/mealImg")
 	public ResponseEntity<byte[]> mealImg(@RequestParam(required = false) Integer mealNo) {
-	    byte[] img = (mealNo != null) ? frontOrderService.getMealImg(mealNo) : null;
+	    byte[] img = (mealNo != null) ? menuService.getMealImg(mealNo) : null;
 	    if (img == null || img.length == 0) {
 	        return ResponseEntity.notFound().build();                   // 404：頁面會改顯示預設插圖
 	    }
@@ -257,7 +267,7 @@ public class FrontOrderController {
 	    if (mealNo == null) {
 	        return null;
 	    }
-	    return frontOrderService.getMenuCards(Map.of()).stream()
+	    return menuService.getMenuCards(Map.of()).stream()
 	            .filter(c -> c.getMealNo().equals(mealNo))
 	            .findFirst()
 	            .orElse(null);

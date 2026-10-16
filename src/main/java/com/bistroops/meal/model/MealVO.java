@@ -1,6 +1,5 @@
 package com.bistroops.meal.model;
 
-import java.util.Arrays;
 import java.util.Set;
 
 import com.bistroops.mealtype.model.MealtypeVO;
@@ -19,6 +18,7 @@ import jakarta.persistence.OneToMany;
 import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Size;
 
 @Entity
 @Table(name = "meal")
@@ -34,6 +34,7 @@ public class MealVO  {
 	private MealtypeVO mealType;
 	
 	@Column(name = "meal_name",nullable = false)
+	@Size(max=20, message="菜品名稱不得超過20個字元(含符號)")
 	private String mealName;
 	
 	@Column(name = "meal_img", columnDefinition = "mediumblob")

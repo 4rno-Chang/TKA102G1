@@ -1,8 +1,7 @@
-package com.bistroops.frontorder.model;
+package com.bistroops.orders.model;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -12,14 +11,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.bistroops.meal.model.MealEnum;
 import com.bistroops.meal.model.MenuMealCardDTO;
 import com.bistroops.meal.model.MenuRepository;
-import com.bistroops.meal.model.MenuSectionDTO;
+import com.bistroops.meal.model.MenuService;
 import com.bistroops.member.model.MemberVO;
-import com.bistroops.orders.model.OrdersRepository;
-import com.bistroops.orders.model.OrdersService;
-import com.bistroops.orders.model.OrdersVO;
+import com.bistroops.orderscart.model.CartItemDTO;
+import com.bistroops.orderscart.model.CartLineDTO;
+import com.bistroops.orderscart.model.CartRedisService;
 import com.bistroops.ordersdetails.model.OrdersDetailsRepository;
 import com.bistroops.ordersdetails.model.OrdersDetailsVO;
 import com.bistroops.promote.model.PromoPriceDTO;
@@ -30,64 +28,28 @@ import com.bistroops.seat.model.SeatVO;
 public class FrontOrderService {
 
 	@Autowired
-	MenuRepository menuRepository;
+	private OrderedItemRepository orderedItemRepository;
 	@Autowired
-	OrderedItemRepository orderedItemRepository;
+	private OrdersRepository ordersRepository;
 	@Autowired
-	OrdersRepository ordersRepository;
+	private OrdersDetailsRepository ordersDetailsRepository;
 	@Autowired
-	OrdersDetailsRepository ordersDetailsRepository;
+	private MenuRepository menuRepository;
 	@Autowired
-	OrdersService ordersSve;
+	private OrdersService ordersSve;
 	@Autowired
-	CartRedisService cartRedisSve;
+	private CartRedisService cartRedisSve;
 	@Autowired
-	PromoteService promoteSve;
+	private PromoteService promoteSve;
 	@Autowired
-	FrontSeatService frontSeatService;
+	private FrontSeatService frontSeatService;
+	@Autowired
+	private MenuService menuSve;
 	
 	// 卡片清單
 	private Map<Integer, MenuMealCardDTO> toCardMap(List<MenuMealCardDTO> cards) {
 	    return cards.stream()
 	                .collect(Collectors.toMap(MenuMealCardDTO::getMealNo, Function.identity()));
-	}
-
-	//所有上架的菜，套上活動價
-	@Transactional(readOnly = true)
-	public List<MenuMealCardDTO> getMenuCards(Map<Integer, PromoPriceDTO> activePrices){
-		List <MenuMealCardDTO> cards = menuRepository.findMenuCards(MealEnum.ONSALE);
-		for (MenuMealCardDTO c : cards) {
-			PromoPriceDTO p = activePrices.get(c.getMealNo());
-			if (p != null) c.applyPromo(p);      // 有活動的菜換成活動價、記下活動名稱
-		}
-  
-		return cards;
-	}
-	
-	//依類別分組
-	public List<MenuSectionDTO> getMenuSections(List<MenuMealCardDTO> cards) {
-	    List<MenuSectionDTO> sections = new ArrayList<>();
-	    MenuSectionDTO current = null;
-	    
-	    for (MenuMealCardDTO c : cards) {
-	        if (current == null || !current.getMealtypeNo().equals(c.getMealtypeNo())) {
-	            current = new MenuSectionDTO(c.getMealtypeNo(), c.getMealtypeName());
-	            sections.add(current);
-	        }
-	        current.getMeals().add(c);
-	    }
-	    return sections;
-	}
-	
-	//挑出有活動的菜品
-	public List<MenuMealCardDTO> getPromoMeals(List<MenuMealCardDTO> cards) {
-	    if (cards == null) {
-	        return Collections.emptyList();
-	    }
-
-	    return cards.stream()
-	    			.filter(c -> c.getPromoName() != null)
-	    			.collect(Collectors.toList());
 	}
 	
 	public List<CartItemDTO> getCartItems(String seatingKey, List<MenuMealCardDTO> cards) {
@@ -120,7 +82,7 @@ public class FrontOrderService {
 
 	    //查「這一刻」的活動價和菜單卡片
 	    Map<Integer, PromoPriceDTO> activePrices = promoteSve.getActivePrices();
-	    Map<Integer, MenuMealCardDTO> cardMap = toCardMap(getMenuCards(activePrices));
+	    Map<Integer, MenuMealCardDTO> cardMap = toCardMap(menuSve.getMenuCards(activePrices));
 
 	    //先檢查：購物車裡有沒有已經下架的菜（有的話整張都不送，什麼都不寫進資料庫）
 	    boolean hasSoldOut = lines.stream()
@@ -131,6 +93,16 @@ public class FrontOrderService {
 
 	    //找這一組還沒結帳的訂單；沒有就新增一張
 	    Integer orderNo = frontSeatService.getUnpaidOrderNo(seat);
+
+	    int cartTotal = lines.stream()
+                        .mapToInt(line -> cardMap.get(line.getMealNo()).getPrice() * line.getNum())
+                        .sum();
+	    int orderedTotal = (orderNo == null) ? 0
+	    					: ordersRepository.findById(orderNo).orElseThrow().getOrdersActualPrice();   // 已取消的不算
+	    if (cartTotal == 0 && orderedTotal == 0) {
+	    	return "購物車裡只有 0 元的餐點，請至少加點一樣有價格的餐點再送出訂單。";
+	    }
+
 	    OrdersVO order;
 	    if (orderNo == null) {
 	        order = new OrdersVO();

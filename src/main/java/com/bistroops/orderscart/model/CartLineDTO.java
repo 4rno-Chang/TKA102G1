@@ -1,4 +1,4 @@
-package com.bistroops.frontorder.model;
+package com.bistroops.orderscart.model;
 
 public class CartLineDTO {
 

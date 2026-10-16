@@ -8,12 +8,11 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 
 import com.bistroops.IndexController_inSpringBoot;
 import com.bistroops.announcement.controller.FrontAnnouncementController;
-import com.bistroops.frontorder.controller.FrontOrderController;
-import com.bistroops.promote.controller.FrontPromoteController;
 import com.bistroops.member.model.MemberService;
 import com.bistroops.member.model.MemberVO;
 import com.bistroops.orders.model.OrdersService;
 import com.bistroops.orders.model.OrdersVO;
+import com.bistroops.promote.controller.FrontPromoteController;
 import com.bistroops.qa.controller.FrontQaController;
 import com.bistroops.reservation.controller.ReservationFrontController;
 import com.bistroops.waiting.controller.WaitingController;

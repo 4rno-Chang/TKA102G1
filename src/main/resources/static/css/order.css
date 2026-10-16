@@ -1,0 +1,538 @@
+/* =========================================================
+   Bistroops 前台：線上點餐（templates/front/order/order.html）
+   需要先載入 front.css（使用它的顏色、字型變數，以及 .eyebrow、.btn-outline）
+   這一頁主要是給手機看的（客人掃桌上的 QR code 進來），所以樣式是「先照手機寫」，最後第 9 區才是畫面比較寬時的調整。
+   內容：1. 整頁與頁首（前台共用的精簡頁首）　2. 說明與訊息　3. 一排類別　4. 菜單（卡片排成格子）　5. 數量與按鈕
+         6. 右下角浮著的按鈕（已點餐點、購物車）　7. 從右邊滑出來的面板（購物車、已點餐點）
+         8. 菜品的對話框（點卡片、按「編輯」時出現）　9. 比較寬的畫面　10.「資料庫／假資料」的小標籤
+   資料庫的版本和假資料的版本用的是同一組 class，所以刪掉假資料之後這個檔案不用改（第 10 區的小標籤可以一起刪）。
+   ========================================================= */
+
+
+/* ========== 1. 整頁與頁首 ========== */
+/* 有 hidden 屬性的元素一律不顯示（避免被下面的 display: flex 等設定蓋掉） */
+[hidden] { display: none !important; }
+
+.order-page {
+  /* 字型：這一頁的英文和數字不用前台標題的襯線字（Cormorant Garamond），全部改成和菜名一樣的黑體（Noto Sans TC）。
+     front.css 的標題、價錢都是用 --font-serif 這個變數，所以在這一頁把它「重新指定」成黑體，整頁就統一了；
+     其他前台頁面不受影響。想改回襯線字，把下面這一行刪掉就可以。 */
+  --font-serif: var(--font-sans);
+
+  --order-head-h: var(--header-h);   /* 頁首的高度：用前台共用頁首的高度（front.css 的 --header-h，電腦 90px、手機 72px） */
+  --order-cats-h: 58px;      /* 那一排類別的高度（跳到某個類別時，要留這麼多空間才不會被蓋住） */
+  --order-red: #b0452f;      /* 提醒用的紅色：從購物車移除、備註放不下的提示 */
+}
+/* 面板打開的時候，後面的頁面不要跟著捲動（order.js 的 A-1 會加上這個 class） */
+.order-page.order-lock { overflow: hidden; }
+
+/* 頁首：前台共用的精簡頁首（front_layout.html 的 simpleHeader），樣式大部分沿用 front.css 的 .site-header。
+   這裡只補「精簡頁首」需要的調整：
+     ・front.css 在平板和手機上會替 .btn-login 加上很大的 margin（因為它原本在可以展開的選單裡），這裡改回來，讓它好好地待在右上角
+     ・logo 不是連結，滑鼠移上去不要出現手指的游標 */
+.site-header-simple .logo { cursor: default; }
+.site-header-simple .header-member { display: flex; align-items: center; }
+.site-header-simple .btn-login { margin: 0; padding: 9px 18px; }
+
+/* 購物車標題後面的桌號 */
+.order-sheet-seat {
+  margin-left: 12px; padding: 2px 10px;
+  background: var(--lux-champagne);
+  border: 1px solid var(--color-gold);
+  border-radius: 999px;
+  color: var(--color-primary-dark);
+  font-size: 14px; font-weight: 500; letter-spacing: 1px;
+  vertical-align: middle; white-space: nowrap;
+}
+
+/* 內容：手機上左右各留 16px；電腦上最寬 1180px、置中。下面留空間給右下角浮著的按鈕 */
+.order-main {
+  width: min(100% - 32px, 1180px);
+  margin-inline: auto;
+  padding: 24px 0 150px;
+}
+
+
+/* ========== 2. 說明與訊息 ========== */
+/* 標題靠左、和小英文字排在同一行，下面一條金線 */
+.order-intro {
+  display: flex; align-items: baseline; gap: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--lux-line);
+}
+.order-intro .eyebrow { order: 2; margin-bottom: 0; font-size: 13px; letter-spacing: 4px; }   /* order: 2 → 排到標題的後面 */
+.order-title { font-size: 26px; font-weight: 500; line-height: 1.3; letter-spacing: 4px; }
+
+/* 操作完成的訊息 */
+.order-alert {
+  margin-top: 16px;
+  padding: 10px 14px;
+  background: var(--lux-champagne);
+  border-left: 3px solid var(--color-gold);
+  color: var(--color-primary-dark);
+  font-size: 14px;
+}
+
+/* 不能點餐時的說明（沒有桌號、時間到了） */
+.order-notice { padding: 56px 8px; text-align: center; }
+.order-notice-title { margin-bottom: 14px; font-size: 24px; font-weight: 500; letter-spacing: 4px; }
+.order-notice p { color: var(--color-text-light); font-size: 15px; }
+.order-notice .btn-outline { margin-top: 26px; }
+
+
+/* ========== 3. 一排類別 ==========
+   .order-body 包著「一排類別」和「菜單」。手機上是上下排；畫面夠寬時（第 9 區）類別會移到左邊變成直的一欄。
+   類別黏在頁首的下面（top 是頁首的高度）。左右用負的 margin 延伸到畫面邊緣，背景才會蓋滿整個寬度 */
+.order-body { display: block; }
+.order-cats-wrap {
+  position: sticky; top: var(--order-head-h); z-index: 700;
+  margin: 18px -16px 0;
+  padding: 8px 16px;
+  background: rgba(251, 248, 242, .97);
+  border-bottom: 1px solid var(--color-border);
+}
+/* 類別放不下的時候可以左右滑；把捲軸藏起來比較好看 */
+.order-cats {
+  display: flex; align-items: center; gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.order-cats::-webkit-scrollbar { display: none; }
+.order-cats + .order-cats { margin-top: 8px; }   /* 資料庫和假資料兩排同時出現時，中間留一點距離 */
+.order-cat {
+  flex: none;
+  display: inline-flex; align-items: center;
+  min-height: 40px; padding: 0 16px;
+  background: var(--color-bg-light);
+  border: 1px solid var(--color-gold);
+  border-radius: 999px;
+  color: var(--color-primary);
+  font-size: 14px; letter-spacing: 2px; white-space: nowrap;
+  transition: background-color var(--transition), color var(--transition);
+}
+.order-cat:hover, .order-cat:active { background: var(--lux-ink); border-color: var(--lux-ink); color: var(--lux-gold-light); }
+/* 最前面的「活動商品」：金色的底，和一般的類別分開 */
+.order-cat-promo { background: var(--lux-gold-gradient); border-color: transparent; color: var(--lux-ink); font-weight: 500; }
+
+
+/* ========== 4. 菜單：直式卡片排成格子 ========== */
+/* scroll-margin-top：按類別跳過來、或加入購物車之後回到這道菜時，上面要留「頁首＋類別」的高度，才不會被它們蓋住 */
+.order-type,
+.order-meal { scroll-margin-top: calc(var(--order-head-h) + var(--order-cats-h) + 12px); }
+/* 一個類別：標題佔滿一整列，下面的菜排成 2 欄。
+   repeat(2, minmax(0, 1fr))：兩欄一樣寬；minmax(0, …) 讓欄位可以縮到比內容還窄，菜名太長時才不會把格子撐破 */
+.order-type {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px;
+  margin-top: 30px;
+}
+/* 類別的標題：文字後面接一條金色細線 */
+.order-type-title {
+  grid-column: 1 / -1;   /* 從第一條格線到最後一條 ＝ 佔滿一整列 */
+  display: flex; align-items: center; gap: 14px;
+  font-size: 20px; font-weight: 500; letter-spacing: 4px;
+}
+.order-type-title::after { content: ""; flex: 1; height: 1px; background: var(--lux-line); }
+.order-type-promo .order-type-title { color: var(--color-primary); }   /* 「活動商品」的標題用金色 */
+
+/* 一道菜：上面照片、下面文字的卡片。整張卡片都可以按，按了會跳出菜品的對話框（order.js 的 A-4） */
+.order-meal {
+  position: relative;
+  display: flex; flex-direction: column;
+  background: var(--color-bg-light);
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  box-shadow: 0 6px 18px rgba(90, 70, 30, .08);
+  overflow: hidden;   /* 照片的四個角跟著卡片變圓 */
+  cursor: pointer;
+  transition: transform var(--transition), box-shadow var(--transition);
+}
+.order-meal:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(90, 70, 30, .16); }
+.order-meal:active { transform: scale(.98); }
+.order-meal:focus-visible { outline: 2px solid var(--color-gold); outline-offset: 2px; }   /* 用鍵盤選到這張卡片時的外框 */
+/* 照片：寬度和卡片一樣，高度依 4:3 的比例自動算 */
+.order-meal-img { width: 100%; aspect-ratio: 4 / 3; background: var(--color-placeholder); overflow: hidden; }
+.order-meal-body { flex: 1; display: flex; flex-direction: column; min-width: 0; padding: 10px 12px 12px; }
+.order-meal-name { font-size: 15px; font-weight: 500; line-height: 1.5; }
+/* 活動的小標籤：金色的膠囊，放在照片的左上角 */
+.order-promo-tag {
+  display: inline-block;
+  padding: 0 10px;
+  background: var(--lux-gold-gradient);
+  border-radius: 999px;
+  color: var(--lux-ink);
+  font-size: 12px; font-weight: 500; line-height: 1.8;
+  white-space: nowrap;
+}
+.order-meal .order-promo-tag { position: absolute; top: 8px; left: 8px; }
+/* 說明：最多兩行，超過的部分顯示「…」（完整的內容在對話框裡看得到） */
+.order-meal-exp {
+  margin-top: 2px;
+  color: var(--color-text-light);
+  font-size: 13px; line-height: 1.6;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2;
+  overflow: hidden;
+}
+/* 最下面一列：左邊價錢，右邊一個「＋」的圓圈（提示可以按）。margin-top: auto 把它推到卡片的最下面 */
+.order-meal-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: auto; padding-top: 10px; }
+.order-price { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; }
+.order-price b { font-size: 19px; font-weight: 700; line-height: 1.2; white-space: nowrap; }
+.order-price s { color: var(--color-text-light); font-size: 13px; white-space: nowrap; }   /* 有活動時的原價（畫刪除線） */
+.order-meal-more {
+  flex: none;
+  display: grid; place-items: center;
+  width: 32px; height: 32px;
+  background: var(--lux-ink);
+  border-radius: 50%;
+  color: var(--lux-gold-light);
+  font-size: 18px; line-height: 1;
+}
+
+
+/* ========== 5. 數量與按鈕 ========== */
+/* 數量：− 數字 ＋ 連在一起的一組 */
+.order-stepper {
+  display: inline-flex; align-items: center;
+  background: var(--color-bg-light);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.order-stepper button {
+  width: 38px; height: 38px;
+  background: none; border: 0;
+  color: var(--color-primary);
+  font-size: 18px; line-height: 1;
+  cursor: pointer;
+}
+.order-stepper button:hover { background: var(--lux-champagne); }
+.order-stepper button:disabled { color: var(--color-border); cursor: not-allowed; background: none; }
+.order-stepper input,
+.order-stepper-num {
+  width: 34px; height: 38px;
+  border: 0; background: none;
+  color: var(--color-text);
+  font: inherit; font-size: 15px; line-height: 38px; text-align: center;
+}
+/* 把數字欄位右邊內建的小箭頭藏起來（已經有自己的 −、＋） */
+.order-stepper input { -moz-appearance: textfield; appearance: textfield; }
+.order-stepper input::-webkit-outer-spin-button,
+.order-stepper input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+/* 按鈕：預設是深墨色底、淺金色字（目前只當作下面兩種按鈕的基礎） */
+.order-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-height: 38px; padding: 0 16px;
+  background: var(--lux-ink);
+  border: 1px solid var(--lux-ink);
+  border-radius: 999px;
+  color: var(--lux-gold-light);
+  font-size: 14px; letter-spacing: 2px; white-space: nowrap;
+  cursor: pointer;
+  transition: opacity var(--transition);
+}
+.order-btn:hover { opacity: .85; }
+/* 外框的按鈕（「清空」） */
+.order-btn-ghost { background: none; border-color: var(--color-gold); color: var(--color-primary); min-height: 50px; }
+/* 主要的按鈕（「送出訂單」「加入購物車」）：樣式和動畫跟會員登入的「登入」按鈕（member.css 的 .btn-solid）相同。
+   平常：白底、金色外框，裡面內縮一圈細金線（outline），深墨色的字。
+   滑過／按下：深墨色的背景由左往右填滿，字變成淺金色，按鈕微微浮起來。
+   做法：背景有兩層，上層是深墨色、一開始寬度 0%（看不到），下層是白色；滑過時把上層的寬度變成 100%，
+         transition 讓這個變化用 0.5 秒慢慢完成，看起來就像由左往右填滿。
+   這一頁沒有載入 member.css，所以樣式寫在這裡；想改顏色或速度，改這一段就可以（不會影響登入的按鈕）。 */
+.order-btn-main {
+  width: 100%; min-height: 50px;
+  padding: 0 24px;
+  background:
+    linear-gradient(var(--lux-ink), var(--lux-ink)) left / 0% 100% no-repeat,
+    var(--color-white);
+  border: 1px solid var(--color-gold);
+  border-radius: 8px;                       /* 圓角：比其他按鈕（999px 的膠囊形）小很多，只是把四個角修圓一點 */
+  outline: 1px solid var(--lux-line);       /* 內縮的第二圈細金線，和外框組成雙層框 */
+  outline-offset: -5px;
+  color: var(--lux-ink);
+  font-size: 15px; font-weight: 500; letter-spacing: 4px;
+  box-shadow: 0 8px 22px rgba(90, 70, 30, .10);
+  transition: background-size .5s cubic-bezier(.2, .7, .2, 1), color var(--transition),
+              border-color var(--transition), outline-color var(--transition),
+              transform var(--transition), box-shadow var(--transition);
+}
+.order-btn-main:hover,
+.order-btn-main:active {
+  background:
+    linear-gradient(var(--lux-ink), var(--lux-ink)) left / 100% 100% no-repeat,
+    var(--color-white);
+  border-color: var(--lux-ink);
+  outline-color: rgba(230, 207, 156, .6);
+  color: var(--lux-gold-light);
+  opacity: 1;                               /* 蓋掉 .order-btn:hover 的變淡 */
+  transform: translateY(-2px);
+  box-shadow: 0 14px 32px rgba(35, 32, 28, .24);
+}
+/* 像連結的小按鈕（「編輯」「從購物車移除」） */
+.order-link {
+  padding: 4px 0;
+  background: none; border: 0;
+  color: var(--color-primary);
+  font-size: 14px; text-decoration: underline; text-underline-offset: 3px; white-space: nowrap;
+  cursor: pointer;
+}
+.order-link-danger { color: var(--order-red); }
+/* 輸入框（備註） */
+.order-input {
+  width: 100%; min-width: 0;
+  height: 44px; padding: 0 12px;
+  background: var(--color-bg-light);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  color: var(--color-text);
+  font: inherit; font-size: 15px;
+}
+.order-input:focus { outline: 1px solid var(--color-gold); border-color: var(--color-gold); }
+
+
+/* ========== 6. 右下角浮著的按鈕（已點餐點、購物車） ==========
+   env(safe-area-inset-bottom)：有些手機最下面有一條橫線（回到主畫面用的），這個值就是它佔的高度，多留這一段按鈕才不會被擋到 */
+.order-bar {
+  position: fixed; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom)); z-index: 900;
+}
+.order-bar-row { display: flex; justify-content: flex-end; gap: 10px; }
+.order-bar-row + .order-bar-row { margin-top: 8px; }   /* 資料庫和假資料兩列同時出現時 */
+.order-bar-side,
+.order-bar-cart {
+  flex: none;
+  min-height: 50px;
+  border-radius: 999px;
+  box-shadow: 0 10px 26px rgba(35, 32, 28, .28);
+  font-size: 14px; letter-spacing: 1px; white-space: nowrap;
+  cursor: pointer;
+}
+/* 「已點餐點」：白底金框 */
+.order-bar-side {
+  padding: 0 16px;
+  background: var(--color-bg-light);
+  border: 1px solid var(--color-gold);
+  color: var(--color-primary);
+}
+/* 「購物車」：深墨色；左邊幾份、右邊合計 */
+.order-bar-cart {
+  display: flex; align-items: center; gap: 14px;
+  padding: 0 20px;
+  background: var(--lux-ink);
+  border: 1px solid var(--lux-ink);
+  color: var(--lux-gold-light);
+}
+.order-bar-cart b { font-size: 18px; font-weight: 700; }
+.order-bar-total { flex: none; }
+
+
+/* ========== 7. 從右邊滑出來的面板（購物車、已點餐點） ==========
+   .order-sheet 蓋住整個畫面：後面是半透明的背景，面板貼在畫面的右邊、和畫面一樣高（手機上就是整個畫面） */
+.order-sheet {
+  position: fixed; inset: 0; z-index: 1100;
+  display: flex; align-items: stretch; justify-content: flex-end;
+}
+.order-sheet-backdrop { position: absolute; inset: 0; background: rgba(35, 32, 28, .55); }
+/* 面板：上面標題、中間內容（太長時只有中間會捲動）、下面合計和按鈕 */
+.order-sheet-panel {
+  position: relative;
+  display: flex; flex-direction: column;
+  width: min(100%, 440px); height: 100%;
+  background: var(--color-bg-light);
+  border-left: 3px solid var(--color-gold);
+  box-shadow: -20px 0 60px rgba(35, 32, 28, .3);
+  animation: order-sheet-left .28s cubic-bezier(.2, .7, .2, 1);   /* 打開時從右邊滑進來 */
+}
+@keyframes order-sheet-left {
+  from { transform: translateX(40px); opacity: 0; }
+  to   { transform: none; opacity: 1; }
+}
+.order-sheet-head {
+  flex: none;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 10px 10px 10px 18px;
+  border-bottom: 1px solid var(--color-border);
+}
+.order-sheet-title { font-size: 20px; font-weight: 500; letter-spacing: 4px; }
+.order-sheet-close {
+  width: 44px; height: 44px;
+  background: none; border: 0;
+  color: var(--color-text);
+  font-size: 30px; line-height: 1;
+  cursor: pointer;
+}
+.order-sheet-body { flex: 1; min-height: 0; padding: 0 18px; overflow-y: auto; overscroll-behavior: contain; }
+.order-sheet-foot {
+  flex: none;
+  padding: 14px 18px calc(14px + env(safe-area-inset-bottom));
+  background: var(--lux-champagne);
+  border-top: 1px solid var(--lux-line);
+}
+.order-empty { padding: 44px 0; color: var(--color-text-light); text-align: center; }
+
+/* 購物車的一項。上面一列：菜名、單價和備註／數量／小計；下面一列：「編輯」 */
+.order-cart-item { padding: 14px 0; border-bottom: 1px solid var(--color-border); }
+.order-cart-item:last-child { border-bottom: 0; }
+.order-cart-top { display: flex; align-items: center; gap: 10px; }
+.order-cart-info { flex: 1; min-width: 0; }
+.order-cart-name { font-size: 15px; font-weight: 500; line-height: 1.5; }
+.order-cart-name small { color: var(--color-text-light); font-size: 14px; font-weight: 400; white-space: nowrap; }
+.order-cart-price { color: var(--color-text-light); font-size: 13px; }
+/* 備註（只顯示，不能直接改；要改請按「編輯」） */
+.order-cart-note { color: var(--color-primary-dark); font-size: 13px; overflow-wrap: anywhere; }
+.order-cart-note::before { content: "備註："; color: var(--color-text-light); }
+.order-cart-sub { flex: none; min-width: 72px; font-size: 16px; font-weight: 700; text-align: right; white-space: nowrap; }
+.order-cart-bottom { display: flex; justify-content: flex-end; margin-top: 6px; }
+
+/* 合計 */
+.order-total { display: flex; align-items: baseline; justify-content: space-between; font-size: 15px; letter-spacing: 2px; }
+.order-total b { font-size: 24px; font-weight: 700; letter-spacing: 0; }
+.order-foot-actions { display: flex; gap: 10px; margin-top: 12px; }
+.order-foot-actions form { display: flex; }      /* 資料庫的版本按鈕包在表單裡 */
+.order-foot-main { flex: 1; }                    /* 「送出訂單」佔掉剩下的寬度 */
+.order-foot-note { margin-top: 8px; color: var(--color-text-light); font-size: 13px; line-height: 1.7; }
+/* 購物車只有 0 元餐點時的提醒，「送出訂單」變淡、不能按 */
+.order-foot-warn { margin-top: 10px; color: var(--color-primary-dark); font-size: 13px; line-height: 1.7; }
+.order-btn-main:disabled { opacity: .45; cursor: not-allowed; }
+
+/* 已點餐點的一項：菜名和備註、狀態、小計 */
+.order-ordered-item { display: flex; align-items: center; gap: 10px; padding: 12px 0; border-bottom: 1px solid var(--color-border); }
+.order-ordered-item:last-child { border-bottom: 0; }
+.order-ordered-main { flex: 1; min-width: 0; }
+.order-ordered-note { color: var(--color-text-light); font-size: 13px; }
+/* 狀態的小標籤：製作中＝黃、等待送餐＝金框、已送達＝綠、已取消＝灰 */
+.order-status { flex: none; padding: 1px 10px; border: 1px solid transparent; border-radius: 999px; font-size: 12px; white-space: nowrap; }
+.order-status.is-off     { background: #ece8e1; color: var(--color-text-light); }
+/* 已取消的那一項：菜名和小計變淡、畫刪除線 */
+.order-ordered-item.is-cancelled .order-cart-name span,
+.order-ordered-item.is-cancelled .order-cart-sub { color: var(--color-text-light); text-decoration: line-through; }
+
+/* 「同桌的人更新了購物車，點這裡更新」：WebSocket（order.js 的 A-7）收到通知、但客人正在填菜品的對話框時才會出現。
+   固定在頁首的下面、置中；A-7 還沒啟用之前不會出現 */
+.order-changed-bar {
+  position: fixed; top: calc(var(--order-head-h) + 10px); left: 50%; z-index: 1300;
+  max-width: calc(100% - 32px);
+  padding: 10px 18px;
+  background: var(--lux-gold-gradient);
+  border: 0; border-radius: 999px;
+  box-shadow: 0 10px 26px rgba(35, 32, 28, .28);
+  color: var(--lux-ink);
+  font-size: 14px; font-weight: 500;
+  transform: translateX(-50%);
+  cursor: pointer;
+}
+/* 畫面下方跳出來的提示（假資料用）：平常透明，加上 show 才看得到 */
+.order-toast {
+  position: fixed; left: 50%; bottom: 96px; z-index: 1200;
+  max-width: calc(100% - 32px);
+  padding: 10px 20px;
+  background: var(--lux-ink);
+  border-radius: 999px;
+  color: var(--lux-gold-light);
+  font-size: 14px; text-align: center;
+  transform: translateX(-50%);
+  opacity: 0; pointer-events: none;
+  transition: opacity .3s;
+}
+.order-toast.show { opacity: 1; }
+
+
+/* ========== 8. 菜品的對話框（點菜單上的卡片、或按購物車的「編輯」時出現） ==========
+   它也是 .order-sheet，多一個 .order-sheet-item：不是貼在右邊，而是手機上貼在下面、平板以上浮在畫面中間。
+   由上到下：照片、菜名和說明、價錢、數量、備註，最下面是「加入購物車」。內容太長時只有中間那一段會捲動。 */
+.order-sheet-item { align-items: flex-end; justify-content: center; }
+.order-sheet-item .order-sheet-panel {
+  width: min(100%, 520px); height: auto; max-height: 92vh;
+  border-left: 0;
+  border-radius: 18px 18px 0 0;
+  box-shadow: 0 -20px 60px rgba(35, 32, 28, .3);
+  overflow: hidden;
+  animation-name: order-sheet-up;   /* 從下面滑上來 */
+}
+@keyframes order-sheet-up {
+  from { transform: translateY(40px); opacity: 0; }
+  to   { transform: none; opacity: 1; }
+}
+/* 右上角的 ×：疊在照片上面的白色圓圈 */
+.order-item-close {
+  position: absolute; top: 10px; right: 10px; z-index: 1;
+  width: 40px; height: 40px;
+  background: rgba(255, 255, 255, .92);
+  border: 0; border-radius: 50%;
+  box-shadow: 0 4px 12px rgba(35, 32, 28, .2);
+  color: var(--color-text);
+  font-size: 26px; line-height: 1;
+  cursor: pointer;
+}
+.order-item-photo { flex: none; width: 100%; aspect-ratio: 16 / 10; max-height: 36vh; background: var(--color-placeholder); overflow: hidden; }
+/* 表單：中間的內容可以捲動，下面的按鈕固定 */
+.order-item-form { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.order-item-body { flex: 1; min-height: 0; display: grid; gap: 12px; align-content: start; padding: 16px 18px; overflow-y: auto; overscroll-behavior: contain; }
+.order-item-name { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: 20px; font-weight: 500; line-height: 1.4; }
+.order-item-exp { color: var(--color-text-light); font-size: 14px; line-height: 1.8; }   /* 完整的說明，不省略 */
+.order-item-body .order-price b { font-size: 22px; }
+/* 一列：左邊標題（數量）、右邊欄位。加上 order-item-col 變成上下排（備註） */
+.order-item-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 12px; border-top: 1px solid var(--color-border); }
+.order-item-row.order-item-col { flex-direction: column; align-items: stretch; gap: 6px; }
+.order-item-label { font-size: 15px; font-weight: 500; }
+.order-item-label small { margin-left: 8px; color: var(--color-text-light); font-size: 12px; font-weight: 400; }
+/* 常用備註：一排可以按的標籤，放不下會自動換行。按了會把文字加進下面的備註（order.js 的 A-5） */
+.order-tags { display: flex; flex-wrap: wrap; gap: 8px; }
+.order-tag {
+  min-height: 36px; padding: 0 14px;
+  background: var(--color-bg-light);
+  border: 1px solid var(--color-gold);
+  border-radius: 999px;
+  color: var(--color-primary);
+  font-size: 14px; white-space: nowrap;
+  cursor: pointer;
+  transition: background-color var(--transition), color var(--transition);
+}
+.order-tag:hover, .order-tag:active { background: var(--lux-ink); border-color: var(--lux-ink); color: var(--lux-gold-light); }
+/* 備註放不下的時候出現的提示 */
+.order-tags-hint { color: var(--order-red); font-size: 12px; }
+/* 最下面一列（由左到右）：「從購物車移除」（編輯的時候才有）、小計、「加入購物車」。加入購物車在右下角，小計緊貼在它的左邊。
+   row-reverse：由右往左排，所以 HTML 裡寫在前面的「加入購物車」會在最右邊。為什麼 HTML 要這樣寫，原因在 order.html 對話框的說明（和按 Enter 有關） */
+.order-item-foot {
+  flex: none;
+  display: flex; flex-direction: row-reverse; align-items: center; gap: 14px;
+  padding: 12px 18px calc(12px + env(safe-area-inset-bottom));
+  background: var(--lux-champagne);
+  border-top: 1px solid var(--lux-line);
+}
+/* 「加入購物車」：不拉滿整列，寬度照文字的長度（最少 160px），靠在右邊 */
+.order-item-foot .order-btn-main { flex: none; width: auto; min-width: 160px; }
+/* 小計：在按鈕的左邊，不放在按鈕裡。「小計」兩個字在金額的左邊，排成同一行
+   align-items: baseline 讓小字和大的金額「底部對齊」，看起來才會在同一條線上 */
+.order-item-total { display: flex; align-items: baseline; gap: 8px; color: var(--color-text-light); font-size: 13px; line-height: 1.4; white-space: nowrap; }
+.order-item-total b { color: var(--color-text); font-size: 20px; font-weight: 700; }
+/* 「從購物車移除」：margin-right: auto 把它和按鈕中間的空白全部吃掉，所以它會被推到最左邊 */
+.order-item-foot .order-link { margin-right: auto; }
+
+
+/* ========== 9. 比較寬的畫面 ========== */
+/* 平板（700px 以上）：菜單 3 欄；菜品的對話框浮在畫面中間、四個角都是圓的 */
+@media (min-width: 700px) {
+  .order-type { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+  .order-meal-name { font-size: 16px; }
+  .order-sheet-item { align-items: center; padding: 24px; }
+  .order-sheet-item .order-sheet-panel { max-height: 100%; border-radius: 18px; box-shadow: 0 30px 80px rgba(35, 32, 28, .35); }
+}
+/* 電腦、橫放的平板（1000px 以上）：類別移到左邊。.order-body 分成兩欄：左邊 180px 放類別，右邊放菜單 */
+@media (min-width: 1000px) {
+  .order-page { --order-cats-h: 0px; }   /* 類別不在上面了，跳到某個類別時不用再留它的高度 */
+  .order-body {
+    display: grid; grid-template-columns: 180px minmax(0, 1fr); gap: 0 32px;
+    align-items: start;
+  }
+  /* 類別：黏在左邊，往下捲的時候不會跟著捲走。grid-row: 1 / span 3 讓它佔住左邊這一欄，右邊的菜單才會全部排在第二欄 */
+  .order-cats-wrap {
+    top: calc(var(--order-head-h) + 20px);
+    grid-column: 1; grid-row: 1 / span 3;
+    margin: 30px 0 0; padding: 0;
+    background: none; border: 0;
+  }
+  /* 類別改成直的排，每一顆和這一欄一樣寬 */
+  .order-cats { flex-direction: column; align-items: stretch; overflow: visible; }
+  .order-cat { justify-content: flex-start; border-radius: 10px; }
+  .order-body > .source-block { grid-column: 2; }
+}
