@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="zh-Hant" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bistroops｜菜單</title>
+  <link rel="icon" th:href="@{/images/logo-mark.svg}" type="image/svg+xml">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Noto+Sans+TC:wght@300;400;500;700&family=Noto+Serif+TC:wght@500;600&display=swap">
+  <!-- front.css：顏色、字型變數與前台共用的 header、footer；menu.css：菜單頁自己的版面 -->
+  <link rel="stylesheet" th:href="@{/css/front/front.css}" />
+  <link rel="stylesheet" th:href="@{/css/front/member.css}" />
+  <link rel="stylesheet" th:href="@{/css/front/menu.css}" />
+  <!-- announcement.js：漢堡選單、header 陰影、回到頂端、頁尾年份（前台內頁共用）；menu.js：菜單頁自己的程式 -->
+  <script th:src="@{/js/front/member.js}" defer></script>
+  <script th:src="@{/js/front/announcement.js}" defer></script>
+  <script th:src="@{/js/front/menu.js}" defer></script>
+</head>
+
+<body>
+  <div th:replace="~{front/member/member_modals :: modals}"></div>
+
+  <!-- ========== Header（共用 front_layout.html，括號內的 menu 讓「瀏覽菜單」顯示為選取中） ========== -->
+  <header th:replace="~{front/front_layout :: header('menu')}"></header>
+
+  <main class="menu-page section">
+    <div class="container">
+      <p class="eyebrow">Our Menu</p>
+      <h1 class="section-title">菜單</h1>
+
+      <th:block th:if="${menuSections != null}">
+
+        <!-- 類別的捷徑：按了跳到下面那個類別；捲動時目前看到的類別會變成選取中（menu.js） -->
+        <nav class="menu-cats" aria-label="菜品類別" th:unless="${#lists.isEmpty(menuSections)}">
+          <a th:each="s : ${menuSections}" th:href="|#cat-${s.mealtypeNo}|" th:text="${s.mealtypeName}">開胃菜</a>
+        </nav>
+
+        <!-- 每個類別一區。
+             pick：後台「設為類別代表」選的菜品編號（Controller 從 Redis 讀出來放進 menuCovers；沒有設定、或還沒放 menuCovers 是 null）
+             art ：沒有圖片時用的插圖 -->
+        <section class="menu-cat" th:each="s : ${menuSections}" th:id="|cat-${s.mealtypeNo}|"
+          th:with="pick=${menuCovers != null ? menuCovers[s.mealtypeNo] : null},
+                   tag=${s.meals[0].tagCode},
+                   art=${tag == '前菜' ? 'dish-appetizer.svg' : (tag == '甜點' ? 'dish-dessert.svg' : 'dish-main.svg')}">
+          <h2 class="menu-cat-title" th:text="${s.mealtypeName}">開胃菜</h2>
+
+          <!-- cover：代表圖用的菜
+               ① 後台設定的那道菜（要在這個類別裡、還在上架、而且有圖片才算；不符合就當作沒設定）
+               ② 沒有設定 → 這個類別第一道有圖片的菜（菜品編號最小的，大約是最早建立的）
+               ③ 都沒有圖片 → null，改用插圖
+               __${pick ?: -1}__ 是先把 pick 的數字填進去再算（沒有設定時填 -1，找不到任何菜） -->
+          <figure class="menu-cat-photo" th:with="cover=${s.meals.^[mealNo == __${pick ?: -1}__ and hasImg] ?: s.meals.^[hasImg]}"
+            th:classappend="${cover == null} ? 'is-art'">
+            <img th:if="${cover != null}" th:src="@{/bistroops/order/mealImg(mealNo=${cover.mealNo})}"
+              th:alt="${cover.mealName}" th:attr="data-fallback=@{/images/{f}(f=${art})}" loading="lazy">
+            <img th:unless="${cover != null}" th:src="@{/images/{f}(f=${art})}" alt="" loading="lazy">
+          </figure>
+
+          <div class="menu-items">
+            <article class="menu-item" th:each="m : ${s.meals}">
+              <div class="menu-item-head">
+                <h3 class="menu-item-name" th:text="${m.mealName}">義式烤麵包</h3>
+                <span class="menu-item-leader" aria-hidden="true"></span>
+                <p class="menu-item-price">
+                  <!-- 活動價：原價用小字劃掉（不特別強調）；價錢和原價一樣（沒有活動、或活動沒填價錢）就只顯示一個 -->
+                  <s class="menu-item-was" th:if="${m.price != m.origPrice}" th:text="${#numbers.formatInteger(m.origPrice, 1, 'COMMA')}">160</s>
+                  <span th:text="|NT$ ${#numbers.formatInteger(m.price, 1, 'COMMA')}|">NT$ 120</span>
+                </p>
+              </div>
+              <p class="menu-item-desc" th:if="${!#strings.isEmpty(m.mealExp)}" th:text="${m.mealExp}">新鮮番茄粒搭配羅勒與初榨橄欖油</p>
+            </article>
+          </div>
+        </section>
+
+        <p class="menu-empty" th:if="${#lists.isEmpty(menuSections)}">菜單整理中，敬請期待。</p>
+      </th:block>
+
+      <p class="menu-note">價格皆為新台幣。劃線的金額為原價，活動期間以活動價供應。</p>
+      <p class="menu-actions">
+        <a class="btn-outline" th:href="@{/bistroops/reservation}">立即訂位</a>
+      </p>
+    </div>
+  </main>
+
+  <!-- ========== Footer（共用 front_layout.html） ========== -->
+  <footer th:replace="~{front/front_layout :: footer}"></footer>
+
+  <button th:replace="~{front/front_layout :: backToTop}"></button>
+</body>
+
+</html>

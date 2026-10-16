@@ -20,8 +20,8 @@ import com.bistroops.frontorder.model.CartItemDTO;
 import com.bistroops.frontorder.model.CartRedisService;
 import com.bistroops.frontorder.model.FrontOrderService;
 import com.bistroops.frontorder.model.FrontSeatService;
-import com.bistroops.frontorder.model.MenuMealCardDTO;
 import com.bistroops.frontorder.model.OrderedItemDTO;
+import com.bistroops.meal.model.MenuMealCardDTO;
 import com.bistroops.member.model.MemberVO;
 import com.bistroops.promote.model.PromoteService;
 import com.bistroops.seat.model.SeatVO;
@@ -32,73 +32,6 @@ import jakarta.servlet.http.HttpSession;
 @RequestMapping("/bistroops")
 public class FrontOrderController {
 
-	// ══════════════════════════════════════════════════════════════════════════════
-	// 前台「線上點餐」（桌邊點餐）：客人用手機掃桌上的 QR code 進來點餐的頁面
-	//   頁面：templates/front/order/order.html　　CSS：static/css/front/order.css　　JS：static/js/front/order.js
-	//   網址：/bistroops/order?seat=A01      ← QR code 裡放的網址，seat 是桌號
-	//   已經寫好、測試過：步驟 1～6 全部（打開頁面、四個改購物車的方法、送出訂單、菜的圖片、小幫手）。
-	// ══════════════════════════════════════════════════════════════════════════════
-	//
-	// ══ ★ 還沒做的清單 ══
-	//   [✓] 8. 這個檔案：步驟 4 submit（送出訂單）、步驟 6 mealImg（菜的圖片）（已經寫好、測試過了）
-	//   [✓] 9. pom.xml                                 加 spring-boot-starter-websocket（已經加好了）
-	//   [✓] 10. frontorder/config/CartWebSocketConfig.java     WebSocket 的設定（已經寫好、測試過了）
-	//   [✓] 11. frontorder/controller/CartWebSocketHandler.java  WebSocket 的分組和通知（已經寫好、測試過了）
-	//   [✓] 11-1. 這個檔案：注入 CartWebSocketHandler，在 cartAdd、cartUpdate、cartRemove、cartClear、submit
-	//             改完購物車之後呼叫 notifyCartChanged（已經寫好、測試過了：成功才通知，被擋下或失敗不通知）
-	//   [✓] 12. static/js/front/order.js 的 A-7        已經啟用（打開頁面就會連 /bistroops/order/ws）
-	//   [✓] 13. 假資料已經刪掉了（order.html 的 5 段、order.js 的 B 區、小標籤、order.css 的第 10 區、<body> 的桌號屬性）
-	//   ★ FrontSeatService 的 DINING_MINUTES 現在是測試用的 10，正式版改回 90。
-	//   8 做完，點餐就可以用了（只是同桌的手機要重新整理才看得到彼此加的東西）；9～12 是讓同桌的手機購物車互通。
-	//
-	// ══ [✓] 步驟 4：送出訂單（已經寫好、測試過了）══
-	//   @PostMapping("/order/submit")，參數：HttpSession session, RedirectAttributes ra（表單沒有任何欄位）
-	//     SeatVO seat = checkedSeat(session, ra);  是 null → return BACK;
-	//     MemberVO member = (MemberVO) session.getAttribute("member");      ← 沒有登入是 null
-	//     String error = frontOrderService.submitOrder(seat, member);
-	//     有 error → ra.addFlashAttribute("message", error); return BACK + "?open=cart";
-	//     成功    → ra.addFlashAttribute("message", "訂單已送出，餐點製作中"); return BACK + "?open=ordered";
-	//   import：com.bistroops.member.model.MemberVO
-	//
-	// ══ [✓] 步驟 6：菜的圖片（已經寫好、測試過了）══
-	//   @GetMapping("/order/mealImg")，參數：@RequestParam(required = false) Integer mealNo，回傳 ResponseEntity<byte[]>
-	//     byte[] img = (mealNo != null) ? frontOrderService.getMealImg(mealNo) : null;
-	//     img 是 null 或長度 0 → return ResponseEntity.notFound().build();      ← 404，頁面會改顯示預設插圖
-	//     return ResponseEntity.ok()
-	//             .cacheControl(CacheControl.maxAge(1, TimeUnit.HOURS))   // 1 小時內同一張圖不再重新下載
-	//             .contentType(MediaType.IMAGE_JPEG)
-	//             .body(img);
-	//   import：org.springframework.http.CacheControl、MediaType、ResponseEntity、java.util.concurrent.TimeUnit
-	//   這個方法不用檢查桌號（菜的照片不是秘密，菜單頁每張圖都會來要一次）。
-	//
-	// ══ [✓] WebSocket：同桌的手機購物車互通（9～12，已經完成）══
-	//   A 手機加了東西，B 手機要重新整理才看得到；WebSocket 讓伺服器「主動」通知 B 手機。
-	//   做法（不用 JSON）：伺服器只傳一句「cart-changed」給同一組的其他手機，手機收到就重新載入頁面。
-	//     1. pom.xml 加（★ 大家共用的檔案，先跟組員說；加完 Eclipse 對專案按右鍵 → Maven → Update Project）：
-	//          <dependency>
-	//              <groupId>org.springframework.boot</groupId>
-	//              <artifactId>spring-boot-starter-websocket</artifactId>
-	//          </dependency>
-	//     2. config/CartWebSocketConfig.java：「/bistroops/order/ws 是 WebSocket」，並把 HTTP 的 session 帶過去
-	//        （要靠 session 裡的 orderSeatingKey 知道這支手機是哪一組客人）。
-	//     3. controller/CartWebSocketHandler.java：依「這一組的代號」分群組；提供 notifyCartChanged(代號)。
-	//     4. 這個 Controller：@Autowired private CartWebSocketHandler cartWebSocketHandler;
-	//        在 cartAdd、cartUpdate、cartRemove、cartClear、submit 改完購物車之後，
-	//        呼叫 cartWebSocketHandler.notifyCartChanged(frontSeatService.getSeatingKey(seat));
-	//     5. order.js 的 A-7：刪掉兩行註解記號就會啟用（收到 cart-changed 就重新載入；對話框開著時改成顯示提示）。
-	//   ★ 測試：同一台電腦開兩個不同的瀏覽器（例如 Chrome 和 Edge），打開同一桌，一邊加東西，另一邊應該會自己更新。
-	//     用手機測的話用電腦的 IP（命令提示字元打 ipconfig），不要用 localhost。
-	//
-	// ══ [✓] 全部做完之後（已經刪掉假資料）══
-	//   確認資料庫的畫面沒問題後刪掉假資料：
-	//     ・order.html：用 ▼▼▼【假資料・刪除範圍 開始】到 ▲▲▲【假資料・刪除範圍 結束】框起來的 5 段
-	//     ・order.js：「B. 假資料」整區（▼▼▼ 到 ▲▲▲；最後一行的 })(); 要留著）
-	//     ・（可以一起刪）order.html 的小標籤 source-line、source-tag，order.css 的第 10 區（小標籤的樣式），
-	//       以及 <body> 上的 th:attr="data-seat=..."（只有假資料用到）
-	//   ★ order.js 的 A 區（A-1～A-7）不要刪：那是資料庫的版本也會用到的程式。
-
-	// 步驟 1、2、3、5：打開點餐頁
-	
 	@Autowired
     private FrontSeatService frontSeatService;     // 桌位檢查
     @Autowired
