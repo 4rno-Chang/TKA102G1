@@ -1,0 +1,22 @@
+.member-table-scroll {
+    overflow-x: auto;
+}
+
+.member-table {
+    table-layout: fixed;
+    width: 100%;
+    min-width: 900px;
+}
+
+.member-name-col { width: 16%; }
+.member-phone-col { width: 18%; }
+.member-birth-col { width: 16%; }
+.member-mail-col { width: 34%; }
+.member-barcode-col { width: 16%; }
+
+.member-table th,
+.member-table td {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}

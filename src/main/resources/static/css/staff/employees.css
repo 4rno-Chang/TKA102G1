@@ -281,7 +281,10 @@ button[data-action="edit"], button[data-action="permissions"], button[data-actio
 /* 停用員工的編輯、權限按鈕：灰色且不可操作 */
 #employeeTableBody button.employee-action-btn:disabled,
 #employeeTableBody button.employee-action-btn:disabled:hover,
-#employeeTableBody button.employee-action-btn:disabled:active {
+#employeeTableBody button.employee-action-btn:disabled:active,
+#employeeTableBody button.employee-action-btn[aria-disabled="true"],
+#employeeTableBody button.employee-action-btn[aria-disabled="true"]:hover,
+#employeeTableBody button.employee-action-btn[aria-disabled="true"]:active {
     background-color: #e4e4e4;
     color: #929292;
     border: none;

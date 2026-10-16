@@ -18,7 +18,7 @@
     並在 <body> 最前面放會員對話框：<div th:replace="~{front/member/member_modals :: modals}"></div>
 
   【Thymeleaf 串接】這個檔案沒有假資料：
-    登入狀態（顯示「登入 / 註冊」還是會員的名字）已經是讀 session 裡的 member，接上資料庫後不用改。
+    登入狀態讀取 Model 的 member，由後端依 Session 的 memberNo 查詢；沒有姓名時顯示手機號碼。
     「最新消息」連到前台公告列表 /bistroops/announcement（FrontAnnouncementController），頁首和頁尾各有一個。
     「常見問題」：頁首連到首頁下方的常見問題（#faq），頁尾連到前台常見問題頁 /bistroops/qa（FrontQaController）。
 
@@ -49,13 +49,13 @@
       </ul>
 
       <!-- 未登入 -->
-      <button type="button" class="btn-login" data-open-auth th:if="${session.member == null}">
+      <button type="button" class="btn-login" data-open-auth th:if="${member == null}">
         登入 / 註冊
       </button>
 
       <!-- 已登入 -->
-      <button type="button" class="member-menu-toggle" data-member-tab="profile" th:if="${session.member != null}">
-        <span th:text="${session.member.memName != null and !session.member.memName.isBlank() ? session.member.memName : session.member.memTel}">
+      <button type="button" class="member-menu-toggle" data-member-tab="profile" th:if="${member != null}">
+        <span th:text="${member.memName != null and !member.memName.isBlank() ? member.memName : member.memTel}">
           09XXXXXXXX
         </span>
         會員，你好

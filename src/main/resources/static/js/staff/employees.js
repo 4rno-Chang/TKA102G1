@@ -94,6 +94,11 @@ const EMPLOYEE_PERMISSIONS = [
 
 let employeeSearch = { name: "", no: "" };
 
+function isCurrentEmployee(empNo) {
+    const loginEmpNo = document.body.dataset.loginEmpNo;
+    return Boolean(loginEmpNo) && Number(loginEmpNo) === Number(empNo);
+}
+
 function matchesEmployeeSearch(employee, criteria) {
     return (!criteria.name || String(employee.empName ?? "").includes(criteria.name))
         && (!criteria.no || Number(employee.empNo) === Number(criteria.no));
@@ -206,6 +211,12 @@ async function loadEmployees() {
                 // 在職員工維持原本功能
                 disableBtn.textContent = "停用";
                 disableBtn.dataset.action = "disable";
+            }
+
+            if (isCurrentEmployee(emp.empNo)) {
+                permissionBtn.disabled = false;
+                permissionBtn.setAttribute("aria-disabled", "true");
+                disableBtn.setAttribute("aria-disabled", "true");
             }
 
             actionCell.append(editBtn, permissionBtn, disableBtn);
@@ -404,6 +415,10 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         const empNo = Number(permissionBtn.dataset.empNo);
+        if (isCurrentEmployee(empNo)) {
+            staffToast("無法修改自己的權限");
+            return;
+        }
         const permissionModal = document.getElementById("employeePermissionModal");
         const permissionTitle = document.getElementById("employeePermissionTitle");
         const permissionList = document.getElementById("employeePermissionList");
@@ -472,6 +487,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
 		const empNo = Number(disableBtn.dataset.empNo);
+		if (isCurrentEmployee(empNo)) {
+		    staffToast("無法停用自己的帳號");
+		    return;
+		}
 		const empName = disableBtn.dataset.empName;
 
 		if (!await employeeConfirm(
@@ -552,6 +571,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const permissionModal = document.getElementById("employeePermissionModal");
         const empNo = Number(permissionModal.dataset.empNo);
+        if (isCurrentEmployee(empNo)) {
+            staffToast("無法修改自己的權限");
+            return;
+        }
 
         const selectedPermissions = Array.from(
             permissionForm.querySelectorAll('input[name="permissions"]:checked')

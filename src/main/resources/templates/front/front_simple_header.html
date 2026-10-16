@@ -17,13 +17,13 @@
 
     <div class="header-member">
       <!-- 未登入 -->
-      <button type="button" class="btn-login" data-open-auth th:if="${session.member == null}">
+      <button type="button" class="btn-login" data-open-auth th:if="${member == null}">
         登入 / 註冊
       </button>
 
       <!-- 已登入 -->
-      <button type="button" class="member-menu-toggle" data-member-tab="profile" th:if="${session.member != null}">
-        <span th:text="${session.member.memName != null and !session.member.memName.isBlank() ? session.member.memName : session.member.memTel}">
+      <button type="button" class="member-menu-toggle" data-member-tab="profile" th:if="${member != null}">
+        <span th:text="${member.memName != null and !member.memName.isBlank() ? member.memName : member.memTel}">
           09XXXXXXXX
         </span>
         會員，你好
