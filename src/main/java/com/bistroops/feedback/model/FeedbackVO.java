@@ -44,6 +44,10 @@ public class FeedbackVO {
 	@Column(name="fee_rating", columnDefinition = "tinyint")
 	private Integer feeRating;
 	
+	// 用餐後幾天內可以填寫和修改回饋（從訂單的 ordersTime 開始算，填寫和修改是同一個期限）
+	// 判斷寫在 FeedbackService 的 writeDeadline()、isWritable()
+	public static final int FEEDBACK_DAYS = 7;
+
 	public FeedbackVO() {
 	}
 

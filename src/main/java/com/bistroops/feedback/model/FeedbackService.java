@@ -2,17 +2,26 @@ package com.bistroops.feedback.model;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
+import com.bistroops.member.model.MemberVO;
+import com.bistroops.orders.model.OrdersService;
+import com.bistroops.orders.model.OrdersVO;
+
 @Service
 public class FeedbackService {
-	
+
 	@Autowired
 	FeedbackRepository feedbackRepository;
+
+	@Autowired
+	OrdersService ordersService;
 	
 	  public long count(Integer orders, String tel, LocalDate startDate, LocalDate endDate, Integer rating) {
 		  return feedbackRepository.countByCondition(orders, blankToNull(tel),toStart(startDate), toEnd(endDate), rating);
@@ -49,6 +58,85 @@ public class FeedbackService {
 	}
 	public void delete(Integer feedbackNo) {
         feedbackRepository.deleteById(feedbackNo);
+	}
+
+	// 會員中心的歷史訂單用：把這些訂單的回饋整理成「訂單編號 → 回饋」，沒回饋過的訂單不會在裡面
+	public Map<Integer, FeedbackVO> getMapByOrders(List<OrdersVO> orders) {
+		if (orders == null || orders.isEmpty()) {
+			return Map.of();
+		}
+		List<Integer> ordersNos = orders.stream().map(OrdersVO::getOrders).toList();
+		Map<Integer, FeedbackVO> map = new HashMap<>();
+		for (FeedbackVO fb : feedbackRepository.findByOrders_OrdersIn(ordersNos)) {
+			map.put(fb.getOrders().getOrders(), fb);
+		}
+		return map;
+	}
+
+	// 這張訂單最晚可以填寫／修改回饋到什麼時候（用餐後 FeedbackVO.FEEDBACK_DAYS 天）
+	// HTML 也會用到：${@feedbackService.writeDeadline(order)}（@ 開頭是直接呼叫 Spring 的 Bean）
+	public LocalDateTime writeDeadline(OrdersVO order) {
+		return order == null || order.getOrdersTime() == null ? null
+				: order.getOrdersTime().plusDays(FeedbackVO.FEEDBACK_DAYS);
+	}
+
+	// 這張訂單現在還能不能填寫／修改回饋（HTML：${@feedbackService.isWritable(order)}）
+	public boolean isWritable(OrdersVO order) {
+		LocalDateTime deadline = writeDeadline(order);
+		return deadline != null && LocalDateTime.now().isBefore(deadline);
+	}
+
+	// 前台會員從歷史訂單填寫回饋：用餐後 7 天內，沒回饋過就新增、回饋過就修改
+	// 回傳要顯示給會員看的訊息（成功和失敗都是）
+	public String saveFromMember(MemberVO member, Integer ordersNo, Integer rating, String content) {
+		if (member == null) {
+			return "請先登入會員";
+		}
+		if (ordersNo == null) {
+			return "找不到這張訂單";
+		}
+		if (rating == null || rating < 1 || rating > 5) {
+			return "請選擇 1～5 星的評分";
+		}
+		String text = content == null ? "" : content.trim();
+		if (text.isEmpty()) {
+			return "請填寫回饋內容";
+		}
+		if (text.length() > 500) {
+			return "回饋內容最多 500 字";
+		}
+
+		OrdersVO order = ordersService.getOne(ordersNo);
+		// 只能回饋自己的、已經結帳的訂單（訂單編號是從表單送來的，可以被改）
+		if (order == null || order.getMember() == null
+				|| !member.getMemNo().equals(order.getMember().getMemNo()) || !order.isPaid()) {
+			return "找不到這張訂單";
+		}
+		FeedbackVO old = feedbackRepository.findFirstByOrders_Orders(ordersNo);
+		if (!isWritable(order)) {
+			return "用餐超過 " + FeedbackVO.FEEDBACK_DAYS + " 天，已經不能"
+					+ (old == null ? "填寫" : "修改") + "回饋了";
+		}
+		if (old != null) {
+			// 只改評分和內容；feeTime（第一次送出的時間）不動
+			old.setFeeRating(rating);
+			old.setFeeContent(text);
+			feedbackRepository.save(old);
+			return "回饋已更新";
+		}
+
+		FeedbackVO fb = new FeedbackVO();
+		fb.setOrders(order);
+		// 沒填姓名的會員用電話代替，和會員中心的招呼語一樣
+		String name = member.getMemName();
+		fb.setFeeCustomer(name == null || name.isBlank() ? member.getMemTel() : name);
+		fb.setFeeCustomerTel(member.getMemTel());
+		fb.setFeeCustomerTime(order.getOrdersTime());
+		fb.setFeeTime(LocalDateTime.now());
+		fb.setFeeRating(rating);
+		fb.setFeeContent(text);
+		feedbackRepository.save(fb);
+		return "感謝您的回饋！";
 	}
 	
 	
