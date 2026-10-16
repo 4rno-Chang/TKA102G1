@@ -32,9 +32,6 @@ public class FeedbackVO {
 	@Column(name="fee_customer_tel")
 	private String feeCustomerTel;
 	
-	@Column(name="fee_customer_time")
-	private LocalDateTime feeCustomerTime;
-	
 	@Column(name="fee_time", updatable = false)
 	private LocalDateTime feeTime;
 	
