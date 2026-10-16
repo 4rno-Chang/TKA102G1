@@ -151,6 +151,84 @@ document.addEventListener('submit', e => {
     window.open('', 'ecpayWin', 'width=500,height=700');
 });
 
+  document.addEventListener('DOMContentLoaded', () => {
+    const btn = document.getElementById('btnFeedbackQr');
+    const dialog = document.getElementById('qrDialog');
+    if (!btn || !dialog) return;   // 沒選訂單時沒有按鈕
+
+    btn.addEventListener('click', async () => {
+      const res = await fetch(btn.dataset.url, {
+        method: 'POST',
+        body: new URLSearchParams({ order: btn.dataset.order })
+      });
+      const data = await res.json();
+      // 有錯誤（例如找不到訂單）→ 用 msgDialog 對話框顯示，取代原本的 alert
+      if (data.error) {
+        document.getElementById('msgDialogText').textContent = data.error;
+        document.getElementById('msgDialog').showModal();
+        return;
+      }
+
+      document.getElementById('qrOrder').textContent = data.orders;
+      const memberTag = document.getElementById('qrMember');
+      memberTag.textContent = data.member ? `會員：${data.customer}` : '非會員';
+
+      const box = document.getElementById('qrBox');
+      box.innerHTML = '';   // 清掉上一次的 QR
+      new QRCode(box, { text: data.url, width: 220, height: 220 });
+      dialog.showModal();
+    });
+
+    document.getElementById('btnQrClose').addEventListener('click', () => dialog.close());
+
+    // 列印：目前沒有接印表機，按了就當作已經印好，直接關掉 QR 對話框並顯示提示
+    // （之後要真的列印，在 dialog.close() 前面加 window.print(); 即可）
+    document.getElementById('btnQrPrint').addEventListener('click', () => {
+      dialog.close();
+      staffToast('回饋 QR Code 已列印');   // staffToast 在 staff.js
+    });
+    document.getElementById('btnMsgClose').addEventListener('click',
+      () => document.getElementById('msgDialog').close());
+  });
+
+  // 結帳頁「會員」：打開輸入手機號碼的 memberDialog（checkout.html）
+  document.addEventListener('DOMContentLoaded', () => {
+    const btn = document.getElementById('btnMember');
+    const dialog = document.getElementById('memberDialog');
+    if (!btn || !dialog) return;   // 不是結帳頁或沒選訂單時沒有這個按鈕
+
+    const form = document.getElementById('memberForm');
+    const phone = document.getElementById('memberPhone');
+    const error = document.getElementById('memberError');
+
+    btn.addEventListener('click', () => {
+      form.reset();
+      error.hidden = true;
+      dialog.showModal();
+      phone.focus();
+    });
+
+    // × 和「取消」都是關閉
+    document.getElementById('btnMemberClose').addEventListener('click', () => dialog.close());
+    document.getElementById('btnMemberCancel').addEventListener('click', () => dialog.close());
+
+    // 只能輸入數字
+    phone.addEventListener('input', () => {
+      phone.value = phone.value.replace(/\D/g, '');
+      error.hidden = true;
+    });
+
+    // 送出前檢查格式：09 開頭、10 碼（Java 那邊也要再檢查一次）
+    form.addEventListener('submit', e => {
+      if (!/^09\d{8}$/.test(phone.value)) {
+        e.preventDefault();
+        error.hidden = false;
+        phone.focus();
+      }
+    });
+  });
+
+
 
 
 // ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼

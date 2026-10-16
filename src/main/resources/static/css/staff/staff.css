@@ -96,6 +96,7 @@ button { cursor: pointer; }
 .btn-card:hover { background: #7d8a5c; }
 .btn-cash { background: var(--st-yellow); border-color: var(--st-yellow); color: #3b2f2a; }
 .btn-cash:hover { background: #cc912e; }
+
 /* 危險動作的按鈕：外框版（刪除訂單）、實心版（確認刪除） */
 .btn-danger-outline { border-color: var(--st-red); color: var(--st-red); }
 .btn-danger-outline:hover { background: #fbeee9; }

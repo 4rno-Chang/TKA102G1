@@ -15,7 +15,11 @@
   <link rel="stylesheet" th:href="@{/css/staff/staff.css}" />
   <link rel="stylesheet" th:href="@{/css/staff/checkout.css}" />
   <script th:src="@{/js/staff/staff.js}" defer></script>
-  <script th:src="@{/js/staff/checkout.js}" defer></script>
+<!--   <script th:src="@{/js/staff/checkout.js}" defer></script> -->
+    <!-- 產生 QR Code 的套件 -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
+
+  
 </head>
 
 <body class="staff-layout">
@@ -36,7 +40,7 @@
       <div class="checkout-col">
 
         <section class="staff-card checkout-list-card" th:if="${checkoutListout != null}">
-          <h2 class="staff-card-title">未結帳的訂單<span class="source-tag source-db">資料庫</span></h2>
+          <h2 class="staff-card-title">未結帳的訂單</h2>
           <div class="checkout-list">
             <p class="staff-empty" th:if="${#lists.isEmpty(checkoutListout)}">目前沒有未結帳的訂單</p>
 
@@ -59,14 +63,14 @@
       <div class="checkout-col checkout-col-receipt">
 
                 <section class="staff-card receipt" th:if="${checkoutListout != null}" th:classappend="${order != null} ? 'open'">
-          <p class="receipt-empty" th:if="${order == null}">請從左邊選擇要結帳的訂單<span class="source-tag source-db">資料庫</span></p>
+          <p class="receipt-empty" th:if="${order == null}">請從左邊選擇要結帳的訂單</p>
 
           <div class="receipt-body" th:if="${order != null}">
             <a class="receipt-close" th:href="@{/staff/checkout}" aria-label="關閉餐點明細">×</a>
 
             <div class="receipt-top">
               <span class="badge badge-table" th:text="${order.seatNo.seatNo}">A1</span>
-              <h2 class="receipt-title">餐點明細<span class="source-tag source-db">資料庫</span></h2>
+              <h2 class="receipt-title">餐點明細</h2>
             </div>
             <p class="receipt-meta">訂單編號：<span th:text="${#numbers.formatInteger(order.orders,8)}"></span></p>
             <p class="receipt-meta">下單時間：<span th:text="${order.ordersTime}"></span></p>
@@ -99,11 +103,15 @@
             <form class="receipt-actions" th:action="@{/staff/checkout/pay}" method="post"
                   th:attr="data-confirm=|${order.seatNo.seatNo} 桌收款 ${order.ordersActualPrice} 元，確定結帳嗎？|">
               <input type="hidden" name="order" th:value="${order.orders}">
-              <!-- 會員：還沒做，先留按鈕。之後要做會員折扣時，把 data-coming-soon 拿掉，
-                   改成輸入會員手機的小表單送到 Controller，由 Controller 算好折扣後回到這一頁 -->
-              <button type="button" class="staff-btn" data-coming-soon="會員">會員</button>
+              
+              <!-- 會員：打開下面的 memberDialog 輸入手機號碼（type="button"，不會送出結帳表單） -->
+              <button type="button" class="staff-btn" id="btnMember">會員</button>
               <button type="submit" class="staff-btn btn-card" th:formaction="@{/staff/checkout/card}" formtarget="ecpayWin">刷卡</button> 
               <button type="submit" class="staff-btn btn-cash" name="method" value="現金">現金</button>
+               <!-- 回饋 QR：產生這張訂單的回饋 QR Code，給客人掃描 -->
+              <button type="button" class="staff-btn btn-feedback-qr" id="btnFeedbackQr"
+                    th:data-order="${order.orders}"
+                    th:data-url="@{/staff/feedback/qr}">回饋 QR</button>
             </form>
           </div>
         </section>
@@ -111,6 +119,54 @@
       </div>
 
     </div>
+		<dialog id="qrDialog" class="qr-dialog">
+		  <button type="button" class="qr-close no-print" id="btnQrClose" aria-label="關閉">&times;</button>
+		
+		  <h2 class="staff-card-title">掃描填寫回饋</h2>
+		  <p class="qr-meta">訂單編號：<span id="qrOrder"></span></p>
+		  <p class="qr-meta"><span id="qrMember" class="badge"></span></p>
+		  <div id="qrBox" class="qr-box"></div>
+		  <p class="qr-tip">請客人用手機相機掃描，7 天內有效</p>
+		
+		  <div class="qr-actions no-print">
+		    <button type="button" class="staff-btn" id="btnQrPrint">列印</button>
+		  </div>
+		</dialog>
+
+		
+		<dialog id="memberDialog" class="member-dialog" th:if="${order != null}">
+		  <button type="button" class="member-close" id="btnMemberClose" aria-label="關閉">&times;</button>
+
+		  <h2 class="staff-card-title">請輸入手機號碼</h2>
+		  <p class="qr-meta">訂單編號：<span th:text="${#numbers.formatInteger(order.orders,8)}"></span></p>
+
+		  <!-- novalidate：不用瀏覽器內建的提示泡泡，改由 staff.js 顯示下面的 memberError -->
+		  <form id="memberForm" th:action="@{/staff/checkout/member}" method="post" novalidate>
+		    <input type="hidden" name="order" th:value="${order.orders}">
+		    <label class="member-label" for="memberPhone">會員手機</label>
+		    <input type="tel" class="member-input" id="memberPhone" name="phone"
+		           inputmode="numeric" maxlength="10" pattern="09\d{8}"
+		           placeholder="09xxxxxxxx" autocomplete="off" required>
+		    <p class="member-error" id="memberError" hidden>※請輸入 09 開頭的 10 碼手機號碼</p>
+
+		    <div class="member-actions">
+		      <button type="button" class="staff-btn" id="btnMemberCancel">取消</button>
+		      <button type="submit" class="staff-btn btn-member-submit">確認</button>
+		    </div>
+		  </form>
+		</dialog>
+
+		<dialog id="msgDialog" class="msg-dialog">
+		  <div class="dlg-head">提示</div>
+		  <div class="dlg-body">
+		    <p id="msgDialogText"></p>
+		  </div>
+		  <div class="dlg-foot">
+		    <button type="button" class="staff-btn" id="btnMsgClose">關閉</button>
+		  </div>
+		</dialog>
+		
+
   </main>
 
   <div class="staff-toast" id="staffToast" role="status" aria-live="polite"></div>

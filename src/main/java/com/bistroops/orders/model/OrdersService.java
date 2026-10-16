@@ -8,6 +8,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.bistroops.member.model.MemberService;
+import com.bistroops.member.model.MemberVO;
 import com.bistroops.ordersdetails.model.OrdersDetailsVO;
 
 
@@ -17,6 +19,9 @@ public class OrdersService {
 	
 	@Autowired
 	private OrdersRepository ordersRepository;
+	
+	@Autowired
+	MemberService memberService; 
 	
 		
 	//查詢全部
@@ -120,6 +125,24 @@ public class OrdersService {
 				.toList();
 	}
 	
+
+	//===========輸入會員===========
+	public String bindMember(Integer order,String phone) {
+		if( phone == null|| !phone.matches("09\\d{8}")) {
+			return "手機號碼格式錯誤";
+		}
+		OrdersVO orders =ordersRepository.findById(order).orElse(null);
+		if(order == null)return "找不到此訂單";
+		MemberVO member =memberService.getByTel(phone);
+		if(member ==null ) {
+			return "查無此會員("+phone+")";
+		}
+		orders.setMember(member);
+		ordersRepository.save(orders);
+		return null;
+		
+	}
+
 	//以下兩個方法，撰寫by陳巧馨，線上點餐用
 	//（整筆取消的訂單不算：由 OrdersRepository 的三個查詢排除，見那裡的【線上點餐・要改】；這兩個方法不用改）
 	//查詢訂單是否都結帳，假設訂單都已結帳回傳true

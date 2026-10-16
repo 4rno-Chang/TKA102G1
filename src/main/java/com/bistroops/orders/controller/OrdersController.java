@@ -1,9 +1,5 @@
 package com.bistroops.orders.controller;
 
-import com.bistroops.employee.model.EmployeeService;
-import jakarta.servlet.http.HttpSession;
-
-
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -20,13 +16,18 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import org.springframework.web.util.HtmlUtils;
 
+import com.bistroops.employee.model.EmployeeService;
+import com.bistroops.member.model.MemberService;
 import com.bistroops.orders.ecpay.EcpayUtil;
 import com.bistroops.orders.model.OrdersService;
 import com.bistroops.orders.model.OrdersVO;
 import com.bistroops.ordersdetails.model.OrdersDetailsService;
+
+import jakarta.servlet.http.HttpSession;
 
 
 @Controller
@@ -41,6 +42,8 @@ public class OrdersController {
 	
 	@Autowired
 	OrdersDetailsService ordersDetailsService;
+	
+
 	
 	@Autowired
 	EcpayUtil ecpayUtil; // 綠界小工具（商店資料從 application.properties 讀）
@@ -157,7 +160,16 @@ public class OrdersController {
 		
 		return "/staff/workboard";
 	}
-	
+	//===========輸入會員===========
+	@PostMapping("/checkout/member")
+	public String  bindMember(@RequestParam Integer order,
+							  @RequestParam String phone,
+							    RedirectAttributes ra) {
+		String error=ordersService.bindMember(order,phone);
+		ra.addFlashAttribute("memberMsg",error==null?"已綁定會員" :error);
+		return "redirect:/staff/checkout?order="+order;     // 回到同一張訂單
+	}
+		
 	
 	
 	

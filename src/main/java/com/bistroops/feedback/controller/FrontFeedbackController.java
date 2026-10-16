@@ -2,13 +2,17 @@ package com.bistroops.feedback.controller;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import com.bistroops.feedback.model.FeedbackQrService;
 import com.bistroops.feedback.model.FeedbackService;
 import com.bistroops.member.model.MemberService;
 import com.bistroops.member.model.MemberVO;
+import com.bistroops.orders.model.OrdersVO;
 
 import jakarta.servlet.http.HttpSession;
 
@@ -22,6 +26,9 @@ public class FrontFeedbackController {
 
 	@Autowired
 	MemberService memberService;
+	
+	 @Autowired
+     FeedbackQrService feedbackQrService;
 
 	@PostMapping("/bistroops/feedback/add")
 	public String add(@RequestParam(required = false) Integer orders,
@@ -46,4 +53,30 @@ public class FrontFeedbackController {
 		}
 		return "redirect:" + returnUrl;
 	}
+	
+    @GetMapping("/bistroops/feedback/qr")
+    public String qrPage(@RequestParam(required = false) String token, Model model) {
+            model.addAttribute("token", token);
+            model.addAttribute("order", feedbackQrService.findOrder(token));
+            return "front/feedback/feedback_qr";
+    }
+
+    // 客人送出回饋
+    @PostMapping("/bistroops/feedback/qr")
+    public String qrSubmit(@RequestParam String token,
+                           @RequestParam(required = false) String name,
+                           @RequestParam(required = false) String tel,
+                           @RequestParam(required = false) Integer rating,
+                           @RequestParam(required = false) String content,
+                           RedirectAttributes ra) {
+            OrdersVO order = feedbackQrService.findOrder(token);
+            String error = feedbackService.saveFromQr(order, name, tel, rating, content);
+            if (error == null) {
+                    feedbackQrService.useToken(token);   // 送出成功，QR Code 作廢
+                    ra.addFlashAttribute("done", true);
+            } else {
+                    ra.addFlashAttribute("errorMsg", error);
+            }
+            return "redirect:/bistroops/feedback/qr?token=" + token;
+    }
 }
