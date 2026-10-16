@@ -98,7 +98,6 @@
          getOrders                     th:each                      6. 歷史訂單
          getReservations               th:each                      6. 預約紀錄
          cancelReservation             每筆訂位各一個小表單           6. 預約紀錄
-         getCoupons                    th:each                      6. 優惠券
     
        Controller 和畫面之間約定好的名稱（可以自己改，但 Java、HTML、JS 三邊要一致）：
     
@@ -106,9 +105,9 @@
          Model    loginError / regError / forgotCodeError / resetError / profileError / changePwError
                                 各表單的錯誤訊息文字
          Model    startView     重新載入後要打開登入對話框的哪個畫面：login / register / forgot / reset
-         Model    startTab      重新載入後要打開會員中心的哪個分頁：profile / password / orders / reservations / coupons
+         Model    startTab      重新載入後要打開會員中心的哪個分頁：profile / password / orders / reservations
          Model    toastMsg      重新載入後要跳出的小提示文字，例如「登入成功」
-         Model    orders / currentResvs / historyResvs / coupons   會員中心要顯示的清單
+         Model    orders / currentResvs / historyResvs   會員中心要顯示的清單
     
        小提醒：
          - Controller 用 redirect 的話，Model 的值要改用 RedirectAttributes 的 addFlashAttribute() 才帶得過去
@@ -146,11 +145,7 @@
                 { id: 'R20260818002', date: '2026-08-18', time: '19:00', people: 2, note: '需要兒童座椅' }
             ]
         },
-        coupons: [
-            { id: 'C001', title: '壽星招待甜點', desc: '生日當月用餐，招待主廚甜點一份。', expire: '2026-12-31', used: false },
-            { id: 'C002', title: '平日午間 85 折', desc: '週一至週五 11:00–14:00 套餐適用。', expire: '2026-11-30', used: false },
-            { id: 'C003', title: '新會員 100 元折抵', desc: '消費滿 1000 元可折抵 100 元。', expire: '2026-09-30', used: true }
-        ]
+
     };
 
     // 模擬網路延遲後回傳結果
@@ -261,10 +256,7 @@
             return fake({ ok: true });
         },
 
-        // 優惠券。回傳：[{ id, title, desc, expire, used }]
-        getCoupons() {
-            return fake(demo.coupons);
-        }
+
     };
 
 
@@ -560,14 +552,7 @@
     });
 
 
-    // 快速登入：後端完成後改成導向各平台的登入網址
-    // 例如 location.href = '/oauth2/authorization/' + provider;
-    authModal.querySelectorAll('[data-social]').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const provider = btn.dataset.social;
-            showToast(`尚未串接 ${provider.toUpperCase()} 快速登入`);
-        });
-    });
+
 
     // ---------- 註冊 ----------
     const regPhoneMsg = $('regPhoneMsg');
@@ -956,7 +941,7 @@
     }
     const memberContent = memberModal.querySelector('.member-content');
 
-    // 切換分頁：profile / password / orders / reservations / coupons
+    // 切換分頁：profile / password / orders / reservations
     function showMemberTab(name) {
         memberModal.querySelectorAll('.member-panel').forEach(panel => {
             panel.hidden = panel.dataset.panel !== name;
@@ -971,7 +956,6 @@
         if (name === 'password') loadChangePassword();
         if (name === 'orders') loadOrders();
         if (name === 'reservations') loadReservations();
-        if (name === 'coupons') loadCoupons();
         memberModal.scrollTop = 0;
     }
 
@@ -1594,29 +1578,6 @@
             button.disabled = false;
         }
     });
-
-    // ---------- 優惠券 ----------
-    const couponList = $('couponList');
-
-    // 【Thymeleaf 串接】優惠券
-    //   清單改由 HTML 的 th:each 產生（見 member_modals.html 的 couponList），
-    //   把整個函式換成空的：
-    //     function loadCoupons() {}
-    async function loadCoupons() {
-        const coupons = await memberApi.getCoupons();
-        if (coupons.length === 0) {
-            couponList.innerHTML = '<p class="empty-text">目前沒有優惠券</p>';
-            return;
-        }
-
-        couponList.innerHTML = coupons.map(coupon => `
-    <div class="coupon${coupon.used ? ' used' : ''}">
-      <h4>${escapeHtml(coupon.title)}</h4>
-      <p>${escapeHtml(coupon.desc)}</p>
-      <p class="coupon-expire">${coupon.used ? '已使用' : `使用期限：${escapeHtml(formatDate(coupon.expire))}`}</p>
-    </div>`).join('');
-    }
-
 
     /*========== 7. 頁面載入後 ==========
       【Thymeleaf 串接】表單送出後頁面會重新載入，對話框會關上。
