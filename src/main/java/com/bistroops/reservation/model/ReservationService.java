@@ -817,5 +817,26 @@ public class ReservationService {
 
 		repository.save(reservation);
 	}
+	
+	// 每日訂位提醒使用，只取得需要的資料。
+	public List<Map<String, Object>> getDailyReminderTargets(LocalDate date) {
+
+	    return search(date, "預約").stream()
+	            .map(reservation -> {
+	                var diningTime =
+	                        reservation.getRsvDt().getRsvDtDatetime();
+
+	                String phone = reservation.getMember().getMemTel();
+
+	                return Map.<String, Object>of(
+	                        "reservationNo", reservation.getRsvNo(),
+	                        "phone", phone == null ? "" : phone,
+	                        "timeText", diningTime.format(
+	                                DateTimeFormatter.ofPattern("HH:mm")),
+	                        "tableType",
+	                        reservation.getSeatType().getSeatTypeNo());
+	            })
+	            .toList();
+	}
 
 }

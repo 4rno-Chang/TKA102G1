@@ -1,6 +1,11 @@
 package com.bistroops.waiting.model;
 
 import java.time.LocalDate;
+import java.time.Duration;
+
+import org.springframework.beans.factory.annotation.Autowired;
+
+import com.bistroops.sms.SmsService;
 import java.time.ZoneId;
 
 import java.util.Arrays;
@@ -33,6 +38,10 @@ public class WaitingRedisService {
 	private static final Set<String> ALL_STATUSES = Set.of("WAITING", "NOTIFIED", "SEATED", "MISSED", "CANCELLED");
 
 	private final StringRedisTemplate redisTemplate;
+	
+	@Autowired
+	private SmsService smsService;
+	
 	private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(WaitingRedisService.class);
 
 	private long lastSweepWarningAt;
@@ -123,18 +132,135 @@ public class WaitingRedisService {
 		return parseTicket(execute("GET", tableType, ticketId, accessToken, "", "", ""));
 	}
 
-	// 員工按「叫下一號」。
+	// 保留舊呼叫方式：人工叫號，不發簡訊。
 	public WaitingTicket notifyNext(Integer tableType) {
-
-		return parseTicket(execute("NOTIFY", tableType, "", "", "", "", ""));
+	    return notifyWaiting(tableType, "", false);
 	}
 
-	// 員工從卡片叫號，仍須依取號順序。
-	public WaitingTicket notifyWaiting(Integer tableType, String ticketId) {
+	// 保留舊呼叫方式：人工叫號，不發簡訊。
+	public WaitingTicket notifyWaiting(
+	        Integer tableType, String ticketId) {
 
-		checkTicketId(ticketId);
+	    checkTicketId(ticketId);
 
-		return parseTicket(execute("NOTIFY", tableType, ticketId, "", "", "", ""));
+	    return notifyWaiting(tableType, ticketId, false);
+	}
+
+	// 新後台使用：先依選擇處理簡訊，再啟動Redis叫號倒數。
+	public WaitingTicket notifyWaiting(
+	        Integer tableType,
+	        String expectedTicketId,
+	        boolean sendSms) {
+
+	    checkTableType(tableType);
+
+	    String ticketId = trim(expectedTicketId);
+
+	    if (!ticketId.isEmpty()) {
+	        checkTicketId(ticketId);
+	    }
+
+	    LocalDate businessDate = LocalDate.now(BUSINESS_ZONE);
+
+	    String lockKey = "bistroops:waiting:notify-lock:"
+	            + businessDate + ":" + tableType;
+
+	    String lockOwner = UUID.randomUUID().toString();
+
+	    boolean locked;
+
+	    try {
+	        locked = Boolean.TRUE.equals(
+	                redisTemplate.opsForValue().setIfAbsent(
+	                        lockKey,
+	                        lockOwner,
+	                        Duration.ofMinutes(2)));
+
+	    } catch (DataAccessException ex) {
+	        throw new WaitingUnavailableException(
+	                "目前無法叫號，請稍後再試",
+	                ex);
+	    }
+
+	    if (!locked) {
+	        throw new IllegalArgumentException(
+	                "這個桌型正在處理叫號，請稍後重新整理");
+	    }
+
+	    try {
+	        WaitingTicket next = getTodayTickets(tableType).stream()
+	                .filter(ticket -> "WAITING".equals(ticket.status()))
+	                .min(Comparator.comparingLong(WaitingTicket::sequence))
+	                .orElseThrow(() -> new IllegalArgumentException(
+	                        "此桌型目前沒有可叫號的候位"));
+
+	        if (!ticketId.isEmpty()
+	                && !ticketId.equals(next.ticketId())) {
+	            throw new IllegalArgumentException(
+	                    "候位順序已更新，請重新整理後再叫號");
+	        }
+
+	        if (!businessDate.equals(LocalDate.now(BUSINESS_ZONE))) {
+	            throw new IllegalArgumentException(
+	                    "日期已切換，請重新整理");
+	        }
+
+	        if (sendSms) {
+	            // 如果發送拋出例外，下面的Redis叫號不會執行，
+	            // 號碼牌仍維持候位中，也不開始一分鐘計時。
+	            smsService.send(
+	                    next.phone(),
+	                    "【Bistroops】您的候位號碼 "
+	                            + next.getTicketDisplay()
+	                            + " 已到號，請於十分鐘內向現場人員報到。"
+	                            + "過號請重新掃描 QR Code 取號。");
+	        }
+
+	        if (!businessDate.equals(LocalDate.now(BUSINESS_ZONE))) {
+	            throw new IllegalArgumentException(
+	                    sendSms
+	                            ? "簡訊已處理，但日期已切換，未完成叫號，請洽現場處理"
+	                            : "日期已切換，請重新整理");
+	        }
+
+	        try {
+	            // Lua會在這裡設定NOTIFIED及60秒期限。
+	            return parseTicket(execute(
+	                    "NOTIFY",
+	                    tableType,
+	                    next.ticketId(),
+	                    "", "", "", ""));
+
+	        } catch (RuntimeException ex) {
+	            if (sendSms) {
+	                throw new WaitingUnavailableException(
+	                        "簡訊已處理，但叫號結果未確認；"
+	                                + "請重新整理確認，不要直接重送簡訊",
+	                        ex);
+	            }
+
+	            throw ex;
+	        }
+
+	    } finally {
+	        // 只解除自己取得的鎖。
+	        DefaultRedisScript<Long> unlockScript =
+	                new DefaultRedisScript<>(
+	                        "if redis.call('GET', KEYS[1]) == ARGV[1] then "
+	                                + "return redis.call('DEL', KEYS[1]) "
+	                                + "else return 0 end",
+	                        Long.class);
+
+	        try {
+	            redisTemplate.execute(
+	                    unlockScript,
+	                    List.of(lockKey),
+	                    lockOwner);
+
+	        } catch (RuntimeException ex) {
+	            log.warn("叫號鎖暫時無法解除，將由到期機制清除");
+	        }
+	    }
 	}
 
 	// 員工手動標記過號。
