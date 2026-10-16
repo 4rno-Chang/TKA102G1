@@ -60,11 +60,6 @@
   height: 100dvh;   /* 平板的網址列會伸縮，dvh 會跟著實際高度變 */
   padding: 10px 22px 10px;
 }
-/* 資料庫和假資料兩排卡片同時出現時（main 有 board-both 這個 class）：
-   內容區不再固定成一個畫面高，兩排卡片各自依內容的高度往下排，整頁可以上下捲動。
-   假資料刪掉之後，HTML 上的 board-both 拿掉，這兩條也可以刪掉。 */
-.board-both { height: auto; min-height: 100vh; }
-.board-both .board-scroll { flex: none; margin-bottom: 18px; }
 
 .board-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 16px; margin-bottom: 8px; }
 .board-hint { color: var(--st-muted); font-size: 15px; }

@@ -39,8 +39,8 @@
     </a>
   </aside>
 
-  <!-- board-both：資料庫和假資料兩排卡片同時出現時，讓頁面可以上下捲動。假資料刪掉後，這個 th:classappend 可以拿掉 -->
-  <main class="board-main" th:classappend="${workboardlistAll != null} ? 'board-both'">
+  <!-- 內容區固定一個畫面高，卡片區佔滿剩下的高度，所以橫向捲軸會固定在畫面最下方（workboard.css 的 .board-main、.board-scroll） -->
+  <main class="board-main">
     <header class="board-head">
       <!-- 說明文字會依照目前的畫面切換（由 staff-workboard.js 的 A 區填入） -->
       <p class="board-hint" id="boardHint"></p>
@@ -48,7 +48,7 @@
 
 
    
-   <p class="source-line" th:if="${workboardlistAll != null}"><span class="source-tag source-db">資料庫資料</span></p>
+   <p class="source-line" th:if="${workboardlistAll != null}"></p>
     <div class="board-scroll" th:if="${workboardlistAll != null}">
       <!-- 左右箭頭：那個方向還有卡片時才會出現（由 staff-workboard.js 的 A 區控制） -->
       <button type="button" class="board-arrow board-arrow-prev" aria-label="往左看前面的訂單" hidden>‹</button>
@@ -141,7 +141,6 @@
           <h2 class="edit-title" id="dbEditHeading">
             <span th:text="|${editOrder.seatNo.seatNo} 桌|">A1 桌</span>
             <span class="edit-title-sub">訂單修改</span>
-            <span class="source-tag source-db">資料庫</span>
           </h2>
           <!-- 下單時間、訂單編號 -->
           <p class="edit-meta" th:text="|${#temporals.format(editOrder.ordersTime,'HH:mm')} 下單　訂單編號 ${editOrder.orders}|"></p>

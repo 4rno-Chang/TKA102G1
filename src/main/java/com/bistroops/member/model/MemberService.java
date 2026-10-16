@@ -256,4 +256,9 @@ public class MemberService {
 
 		return passwordEncoder.matches("00000000", member.getMemPassword());
 	}
+	//以下兩個方法，撰寫by李紫綾，結帳輸入會員用
+	public MemberVO getByTel(String memTel) {
+		return dao.findByMemTel(memTel);
+	}
+	
 }

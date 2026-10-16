@@ -86,58 +86,88 @@ public class FeedbackService {
 		return deadline != null && LocalDateTime.now().isBefore(deadline);
 	}
 
+	
 	// 前台會員從歷史訂單填寫回饋：用餐後 7 天內，沒回饋過就新增、回饋過就修改
 	// 回傳要顯示給會員看的訊息（成功和失敗都是）
 	public String saveFromMember(MemberVO member, Integer ordersNo, Integer rating, String content) {
-		if (member == null) {
-			return "請先登入會員";
-		}
-		if (ordersNo == null) {
-			return "找不到這張訂單";
-		}
-		if (rating == null || rating < 1 || rating > 5) {
-			return "請選擇 1～5 星的評分";
-		}
-		String text = content == null ? "" : content.trim();
-		if (text.isEmpty()) {
-			return "請填寫回饋內容";
-		}
-		if (text.length() > 500) {
-			return "回饋內容最多 500 字";
-		}
+	    String text = content == null ? "" : content.trim();
+	    if (member == null) return "請先登入會員";
+	    if (ordersNo == null) return "找不到這張訂單";
+	    if (rating == null || rating < 1 || rating > 5) return "請選擇 1～5 星的評分";
+	    if (text.isEmpty()) return "請填寫回饋內容";
+	    if (text.length() > 500) return "回饋內容最多 500 字";
 
-		OrdersVO order = ordersService.getOne(ordersNo);
-		// 只能回饋自己的、已經結帳的訂單（訂單編號是從表單送來的，可以被改）
-		if (order == null || order.getMember() == null
-				|| !member.getMemNo().equals(order.getMember().getMemNo()) || !order.isPaid()) {
-			return "找不到這張訂單";
-		}
-		FeedbackVO old = feedbackRepository.findFirstByOrders_Orders(ordersNo);
-		if (!isWritable(order)) {
-			return "用餐超過 " + FeedbackVO.FEEDBACK_DAYS + " 天，已經不能"
-					+ (old == null ? "填寫" : "修改") + "回饋了";
-		}
-		if (old != null) {
-			// 只改評分和內容；feeTime（第一次送出的時間）不動
-			old.setFeeRating(rating);
-			old.setFeeContent(text);
-			feedbackRepository.save(old);
-			return "回饋已更新";
-		}
+	    // 只能回饋自己的、已結帳的訂單（訂單編號從表單送來，可能被竄改）
+	    OrdersVO order = ordersService.getOne(ordersNo);
+	    if (order == null || order.getMember() == null || !order.isPaid()
+	            || !member.getMemNo().equals(order.getMember().getMemNo())) {
+	        return "找不到這張訂單";
+	    }
 
-		FeedbackVO fb = new FeedbackVO();
-		fb.setOrders(order);
-		// 沒填姓名的會員用電話代替，和會員中心的招呼語一樣
-		String name = member.getMemName();
-		fb.setFeeCustomer(name == null || name.isBlank() ? member.getMemTel() : name);
-		fb.setFeeCustomerTel(member.getMemTel());
-		fb.setFeeTime(LocalDateTime.now());
-		fb.setFeeRating(rating);
-		fb.setFeeContent(text);
-		feedbackRepository.save(fb);
-		return "感謝您的回饋！";
+	    FeedbackVO fb = feedbackRepository.findFirstByOrders_Orders(ordersNo);
+	    boolean isNew = (fb == null);
+	    if (!isWritable(order)) {
+	        return "用餐超過 " + FeedbackVO.FEEDBACK_DAYS + " 天，已經不能" + (isNew ? "填寫" : "修改") + "回饋了";
+	    }
+
+	    if (isNew) {
+	        String name = member.getMemName();
+	        fb = new FeedbackVO();
+	        fb.setOrders(order);
+	        fb.setFeeCustomer(name == null || name.isBlank() ? member.getMemTel() : name); // 沒填姓名用電話代替
+	        fb.setFeeCustomerTel(member.getMemTel());
+	        fb.setFeeTime(LocalDateTime.now()); // 只在第一次送出時記錄
+	    }
+	    fb.setFeeRating(rating);
+	    fb.setFeeContent(text);
+	    feedbackRepository.save(fb);
+	    return isNew ? "感謝您的回饋！" : "回饋已更新";
 	}
 	
+	
+	//============= 前台非會員從 QR Code 填寫回饋：用餐後 7 天內，沒回饋過就新增=============
+	public String saveFromQr(OrdersVO order, String name, String tel, Integer rating, String content) {
+        if (order == null) {
+                return "QR Code 已失效，請洽服務人員";
+        }
+        if (!isWritable(order)) {
+                return "用餐超過 " + FeedbackVO.FEEDBACK_DAYS + " 天，已經不能填寫回饋了";
+        }
+        if (feedbackRepository.findFirstByOrders_Orders(order.getOrders()) != null) {
+                return "這張訂單已經填寫過回饋了，謝謝您";
+        }
+        if (rating == null || rating < 1 || rating > 5) {
+                return "請選擇 1～5 星的評分";
+        }
+        String text = content == null ? "" : content.trim();
+        if (text.isEmpty()) return "請填寫回饋內容";
+        if (text.length() > 500) return "回饋內容最多 500 字";
+
+        MemberVO member = order.getMember();
+        if (member != null) {
+                // 會員：用會員資料，不管表單送什麼
+                name = (member.getMemName() == null || member.getMemName().isBlank())
+                                ? member.getMemTel() : member.getMemName();
+                tel = member.getMemTel();
+        } else {
+                // 非會員：檢查表單填的
+                name = name == null ? "" : name.trim();
+                tel = tel == null ? "" : tel.trim();
+                if (name.isEmpty()) return "請填寫姓名";
+                if (!tel.matches("09\\d{8}")) return "請填寫正確的手機號碼（09 開頭 10 碼）";
+        }
+
+        FeedbackVO fb = new FeedbackVO();
+        fb.setOrders(order);
+        fb.setFeeCustomer(name);
+        fb.setFeeCustomerTel(tel);
+        fb.setFeeTime(LocalDateTime.now());
+        fb.setFeeRating(rating);
+        fb.setFeeContent(text);
+        feedbackRepository.save(fb);
+        return null;
+}
+
 	
 	
 	
