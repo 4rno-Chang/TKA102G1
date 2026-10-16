@@ -11,7 +11,7 @@ import com.bistroops.ordersdetails.model.OrdersDetailsVO;
 public interface OrderedItemRepository extends JpaRepository<OrdersDetailsVO, Integer> {
 	
 	//查詢還沒結帳的訂單明細
-	@Query("SELECT new com.bistroops.frontorder.model.OrderedItemDTO(" +
+	@Query("SELECT new com.bistroops.orders.model.OrderedItemDTO(" +
 		   "d.meal.mealName, d.odMealNum, d.odActualPrice, d.odComment, d.odStatus) " +
 		   "FROM OrdersDetailsVO d " +
 		   "WHERE d.orders.orders = :ordersNo " +

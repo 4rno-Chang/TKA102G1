@@ -11,11 +11,11 @@ public interface MenuRepository extends JpaRepository<MealVO, Integer> {
 	
 	//不帶圖片查詢
 	@Query("SELECT new com.bistroops.meal.model.MenuMealCardDTO(" +
-		   "m.mealNo, m.mealName, m.mealExp, m.mealPrice, t.mealtypeNo, t.mealtypeName, t.mealtypeHashtag, " +
-           "CASE WHEN m.mealImg IS NOT NULL THEN true ELSE false END) " +
-           "FROM MealVO m JOIN m.mealType t " +
-           "WHERE m.mealStatusEn = :status " +
-           "ORDER BY t.mealtypeNo, m.mealNo")
+			   "m.mealNo, m.mealName, m.mealExp, m.mealPrice, t.mealtypeNo, t.mealtypeName, t.mealtypeHashtag, " +
+	           "CASE WHEN m.mealImg IS NOT NULL THEN true ELSE false END) " +
+	           "FROM MealVO m JOIN m.mealType t " +
+	           "WHERE m.mealStatusEn = :status " +
+	           "ORDER BY t.mealtypeNo, m.mealNo")
 	List<MenuMealCardDTO> findMenuCards(@Param("status") MealEnum status);
 	
 	//圖片查詢
