@@ -66,6 +66,8 @@ public class SecurityConfig {
                 // 權限 7：後台管理頁面
                 .requestMatchers(
                     "/staff/employees",
+                    "/staff/members",
+                    "/staff/members/**",
                     "/staff/employees/**",
                     "/staff/promote",
                     "/staff/announcement-and-qa"

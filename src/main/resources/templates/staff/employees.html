@@ -23,7 +23,7 @@
 <script th:src="@{/js/staff/staff_account.js}" defer></script>
 </head>
 
-<body class="staff-layout">
+<body class="staff-layout" th:attr="data-login-emp-no=${session.employeeNo}">
 
 	<!-- 共用後台側邊欄 -->
 	<nav th:replace="~{staff/staff_sidebar :: sidebar('employees')}"></nav>

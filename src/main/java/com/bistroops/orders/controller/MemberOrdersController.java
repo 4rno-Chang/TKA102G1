@@ -8,6 +8,8 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 
 import com.bistroops.IndexController_inSpringBoot;
 import com.bistroops.announcement.controller.FrontAnnouncementController;
+import com.bistroops.frontorder.controller.FrontOrderController;
+import com.bistroops.promote.controller.FrontPromoteController;
 import com.bistroops.member.model.MemberService;
 import com.bistroops.member.model.MemberVO;
 import com.bistroops.orders.model.OrdersService;
@@ -22,6 +24,8 @@ import jakarta.servlet.http.HttpSession;
 @ControllerAdvice(assignableTypes = {  // 只對這些 Controller 生效
         IndexController_inSpringBoot.class,
         FrontAnnouncementController.class,
+        FrontOrderController.class,
+        FrontPromoteController.class,
         FrontQaController.class,
         ReservationFrontController.class,
         WaitingController.class

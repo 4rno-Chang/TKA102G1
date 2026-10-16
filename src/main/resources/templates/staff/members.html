@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="zh-Hant" xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bistroops 後台｜會員管理</title>
+<link rel="icon" th:href="@{/images/logo-mark.svg}" type="image/svg+xml">
+<link rel="stylesheet" th:href="@{/css/staff/staff.css}">
+<link rel="stylesheet" th:href="@{/css/staff/employees.css}">
+<link rel="stylesheet" th:href="@{/css/staff/members.css}">
+<link rel="stylesheet" th:href="@{/css/staff/staff_account.css}">
+<script th:src="@{/js/staff/staff.js}" defer></script>
+<script th:src="@{/js/staff/members.js}" defer></script>
+<script th:src="@{/js/staff/staff_account.js}" defer></script>
+</head>
+<body class="staff-layout">
+<nav th:replace="~{staff/staff_sidebar :: sidebar('members')}"></nav>
+<main class="staff-main">
+    <header class="staff-header">
+        <div>
+            <p class="staff-eyebrow">Member Management</p>
+            <h1 class="staff-title">會員管理</h1>
+        </div>
+        <p class="staff-clock" id="staffClock"></p>
+    </header>
+    <section class="staff-card">
+        <div class="employee-list-header">
+            <h2 class="staff-card-title">會員列表</h2>
+            <div class="employee-list-actions">
+                <button type="button" class="employee-primary-btn" id="resetMemberSearchBtn"
+                    th:attr="data-url=@{/staff/members}">顯示全部</button>
+                <button type="button" class="employee-primary-btn" id="searchMemberBtn">查詢會員</button>
+            </div>
+        </div>
+        <div class="member-table-scroll">
+            <table class="receipt-table member-table">
+                <colgroup><col class="member-name-col"><col class="member-phone-col"><col class="member-birth-col"><col class="member-mail-col"><col class="member-barcode-col"></colgroup>
+                <thead><tr><th scope="col">姓名</th><th scope="col">手機號碼</th><th scope="col">生日</th><th scope="col">信箱</th><th scope="col">載具</th></tr></thead>
+                <tbody>
+                    <tr th:each="member : ${members}">
+                        <td th:text="${member.name}" th:title="${member.name}"></td>
+                        <td th:text="${member.phone}" th:title="${member.phone}"></td>
+                        <td th:text="${member.birth}" th:title="${member.birth}"></td>
+                        <td th:text="${member.mail}" th:title="${member.mail}"></td>
+                        <td th:text="${member.barcode}" th:title="${member.barcode}"></td>
+                    </tr>
+                    <tr th:if="${#lists.isEmpty(members)}">
+                        <td colspan="5" th:text="${hasSearch} ? '查無符合條件的會員' : '目前沒有會員資料'"></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+</main>
+<div id="memberSearchModal" class="employee-modal" hidden>
+    <div class="employee-modal-content" role="dialog" aria-modal="true"
+        aria-labelledby="memberSearchTitle" aria-describedby="memberSearchHelp">
+        <div class="employee-modal-header">
+            <h2 id="memberSearchTitle">查詢會員</h2>
+            <button type="button" id="closeMemberSearchModal" class="employee-close-btn" aria-label="關閉查詢會員">×</button>
+        </div>
+        <p id="memberSearchHelp">單一查詢：填寫姓名或手機號碼。複合查詢：同時填寫兩項，查詢符合所有條件的會員。</p>
+        <form id="memberSearchForm" th:action="@{/staff/members}" method="get">
+            <div class="employee-form-group">
+                <label for="searchMemberName">會員姓名（可輸入部分姓名）</label>
+                <input type="text" id="searchMemberName" name="name" th:value="${searchName}">
+            </div>
+            <div class="employee-form-group">
+                <label for="searchMemberPhone">手機號碼（完整號碼）</label>
+                <input type="tel" id="searchMemberPhone" name="phone" th:value="${searchPhone}"
+                    inputmode="numeric" maxlength="10" pattern="09[0-9]{8}" title="請輸入以 09 開頭的 10 碼手機號碼">
+            </div>
+            <div class="employee-form-actions">
+                <button type="button" id="cancelMemberSearchBtn">取消</button>
+                <button type="submit" class="employee-primary-btn">查詢</button>
+            </div>
+        </form>
+    </div>
+</div>
+<div class="staff-toast" id="staffToast" role="status" aria-live="polite"></div>
+</body>
+</html>

@@ -308,6 +308,11 @@ public class EmployeeController {
 	                .body("權限不足");
 	    }
 
+	    if (loginEmpNo.equals(empNo)) {
+	        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+	                .body("無法修改自己的權限");
+	    }
+
 	    // 3. 修改指定員工的權限
 	    try {
 	        employeeService.updateEmployeePermissions(
@@ -363,7 +368,14 @@ public class EmployeeController {
 
 	// 停用員工（設定為離職）
 	@PatchMapping("/{empNo}/disable")
-	public ResponseEntity<Void> disableEmployee(@PathVariable Integer empNo) {
+	public ResponseEntity<Void> disableEmployee(@PathVariable Integer empNo, HttpSession session) {
+		Integer loginEmpNo = (Integer) session.getAttribute("employeeNo");
+		if (loginEmpNo == null) {
+			throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "請先登入");
+		}
+		if (loginEmpNo.equals(empNo)) {
+			throw new ResponseStatusException(HttpStatus.FORBIDDEN, "無法停用自己的帳號");
+		}
 
 		if (employeeService.getEmployeeById(empNo).isEmpty()) {
 			return ResponseEntity.notFound().build();

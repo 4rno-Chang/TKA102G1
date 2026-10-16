@@ -9,6 +9,10 @@ public interface MemberRepository extends JpaRepository<MemberVO, Integer> {
 
 	MemberVO findByMemTel(String memTel);
 
+	@Query("SELECT m FROM MemberVO m WHERE (:name = '' OR LOCATE(:name, m.memName) > 0) "
+	        + "AND (:phone = '' OR m.memTel = :phone) ORDER BY m.memNo")
+	java.util.List<MemberVO> searchForStaff(@Param("name") String name, @Param("phone") String phone);
+
 	// 電話不存在時新增未驗證帳號。
 	// 如果另一個請求已建立同電話帳號，就保留既有資料。
 	@Modifying
