@@ -379,3 +379,17 @@
   .booking-dialog-foot { padding: 12px 16px; }
   .booking-dialog-foot .staff-btn { flex: 1; }
 }
+/* 候位簡訊確認彈窗 */
+#waitingSmsDialog {
+    position: fixed;
+    inset: 0;
+    margin: auto;
+    width: min(520px, calc(100vw - 32px));
+    max-height: calc(100vh - 32px);
+    overflow-y: auto;
+    border: none;
+}
+
+#waitingSmsDialog::backdrop {
+    background: rgba(0, 0, 0, 0.35);
+}

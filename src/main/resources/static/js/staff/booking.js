@@ -440,3 +440,73 @@
         initializeStaffReservationEditor();
     }
 })();
+// 候位叫號：選擇是否發送簡訊後才送出表單。
+(() => {
+    'use strict';
+
+    function initializeWaitingSmsDialog() {
+        const dialog = document.getElementById('waitingSmsDialog');
+
+        if (!dialog) return;
+
+        let pendingForm = null;
+
+        document.addEventListener('submit', event => {
+            const form = event.target;
+
+            if (!(form instanceof HTMLFormElement)
+                || !form.matches('[data-waiting-sms-choice]')) {
+                return;
+            }
+
+            if (form.dataset.smsConfirmed === 'true') {
+                delete form.dataset.smsConfirmed;
+
+                form.querySelectorAll('button[type="submit"]')
+                    .forEach(button => {
+                        button.disabled = true;
+                    });
+
+                return;
+            }
+
+            event.preventDefault();
+            event.stopImmediatePropagation();
+
+            if (dialog.open) return;
+
+            pendingForm = form;
+            dialog.returnValue = '';
+            dialog.showModal();
+
+        }, true);
+
+        dialog.addEventListener('close', () => {
+            const form = pendingForm;
+            pendingForm = null;
+
+            if (!form) return;
+
+            // Escape關閉彈窗時，不叫號、不發簡訊。
+            if (!['yes', 'no'].includes(dialog.returnValue)) {
+                return;
+            }
+
+            form.elements.namedItem('sendSms').value =
+                dialog.returnValue === 'yes' ? 'true' : 'false';
+
+            form.dataset.smsConfirmed = 'true';
+            form.requestSubmit();
+        });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener(
+            'DOMContentLoaded',
+            initializeWaitingSmsDialog,
+            { once: true }
+        );
+    } else {
+        initializeWaitingSmsDialog();
+    }
+})();

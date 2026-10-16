@@ -52,6 +52,15 @@
 
 					<a class="staff-btn btn-pay"
 						th:href="@{/staff/booking/rsv/form(date=${date})}"> ＋ 新增訂位 </a>
+					<form th:if="${smsConsoleMode == true}"
+						th:action="@{/staff/booking/sms/test-reminder}" method="post"
+						data-confirm="要將今日有效訂位提醒輸出到Console嗎？同一筆已處理的提醒會略過。">
+
+						<input type="hidden" name="bookingToken"
+							th:value="${bookingToken}">
+
+						<button type="submit" class="staff-btn">測試今日訂位提醒</button>
+					</form>
 				</th:block>
 
 				<th:block th:if="${tab == 'waiting'}">
@@ -413,14 +422,15 @@
 									<h3 class="booking-board-title" th:text="|${b.seatTypeNo} 人桌|"></h3>
 
 									<form th:action="@{/staff/booking/waiting/action}"
-										method="post" data-confirm="確定叫下一號？叫號後一分鐘未報到會自動過號。">
+										method="post" data-waiting-sms-choice>
 
 										<input type="hidden" name="operation" value="NOTIFY">
-										<input type="hidden" name="tableType"
-											th:value="${b.seatTypeNo}"> <input type="hidden"
-											name="ticketId" th:value="${b.nextTicketId}"> <input
-											type="hidden" name="seatType" th:value="${seatType}">
-										<input type="hidden" name="businessDate"
+										<input type="hidden" name="sendSms" value=""> <input
+											type="hidden" name="tableType" th:value="${b.seatTypeNo}">
+										<input type="hidden" name="ticketId"
+											th:value="${b.nextTicketId}"> <input type="hidden"
+											name="seatType" th:value="${seatType}"> <input
+											type="hidden" name="businessDate"
 											th:value="${waitingBusinessDate}"> <input
 											type="hidden" name="bookingToken" th:value="${bookingToken}">
 
@@ -567,5 +577,24 @@
 
 	<div class="staff-toast" id="staffToast" role="status"
 		aria-live="polite"></div>
+	<dialog id="waitingSmsDialog" class="staff-card"
+		aria-labelledby="waitingSmsDialogTitle">
+
+	<form method="dialog">
+		<h2 class="staff-card-title" id="waitingSmsDialogTitle">
+			是否發送簡訊通知？</h2>
+
+		<p>選「是」：簡訊處理成功後，開始一分鐘等待。</p>
+
+		<p>選「否」：視為已人工叫號，立即開始一分鐘等待。</p>
+
+		<div class="booking-actions">
+			<button type="submit" class="staff-btn btn-pay" value="yes">
+				是</button>
+
+			<button type="submit" class="staff-btn" value="no">否</button>
+		</div>
+	</form>
+	</dialog>
 </body>
 </html>
