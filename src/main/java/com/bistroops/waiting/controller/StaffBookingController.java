@@ -1,6 +1,10 @@
 package com.bistroops.waiting.controller;
 
 import java.time.Instant;
+import org.springframework.beans.factory.annotation.Autowired;
+
+import com.bistroops.sms.SmsSendException;
+import com.bistroops.reservationdatetime.config.ReservationReminderScheduler;
 import com.bistroops.seattype.model.SeatTypeService;
 import java.util.UUID;
 
@@ -39,6 +43,9 @@ public class StaffBookingController {
 	private static final ZoneId BUSINESS_ZONE = ZoneId.of("Asia/Taipei");
 
 	private static final List<Integer> TABLE_TYPES = List.of(2, 4, 6);
+	
+	@Autowired
+	private ReservationReminderScheduler reservationReminderScheduler;
 
 	private final ReservationService reservationService;
 	private final WaitingRedisService waitingRedisService;
@@ -100,6 +107,10 @@ public class StaffBookingController {
 		model.addAttribute("seatType", selectedSeatType);
 
 		model.addAttribute("bookingToken", bookingActionToken(session));
+		
+		model.addAttribute(
+		        "smsConsoleMode",
+		        reservationReminderScheduler.isConsoleMode());
 
 		model.addAttribute("bookingNow", java.time.LocalDateTime.now(BUSINESS_ZONE));
 
@@ -457,62 +468,115 @@ public class StaffBookingController {
 	}
 
 	@PostMapping("/booking/waiting/action")
-	public String staffWaitingAction(@RequestParam(name = "operation") String operation,
-			@RequestParam(name = "tableType") Integer tableType,
-			@RequestParam(name = "ticketId", defaultValue = "") String ticketId,
-			@RequestParam(name = "note", defaultValue = "") String note,
-			@RequestParam(name = "businessDate") String businessDate, @RequestParam(name = "bookingToken") String token,
-			@RequestParam(name = "seatType", required = false) Integer seatType, HttpSession session,
-			RedirectAttributes redirect) {
+	public String staffWaitingAction(
+	        @RequestParam(name = "operation") String operation,
+	        @RequestParam(name = "sendSms", required = false) Boolean sendSms,
+	        @RequestParam(name = "tableType") Integer tableType,
+	        @RequestParam(name = "ticketId", defaultValue = "") String ticketId,
+	        @RequestParam(name = "note", defaultValue = "") String note,
+	        @RequestParam(name = "businessDate") String businessDate,
+	        @RequestParam(name = "bookingToken") String token,
+	        @RequestParam(name = "seatType", required = false) Integer seatType,
+	        HttpSession session,
+	        RedirectAttributes redirect) {
 
-		requireBookingEmployee(session);
-		checkBookingActionToken(session, token);
+	    requireBookingEmployee(session);
+	    checkBookingActionToken(session, token);
 
-		try {
-			checkWaitingBusinessDate(businessDate);
+	    try {
+	        checkWaitingBusinessDate(businessDate);
 
-			String message;
+	        String message;
 
-			switch (operation) {
-			case "NOTIFY" -> {
-				// 指定畫面上預期的下一號。
-				// 同一張表單重複送出，不會連續叫到下一組。
-				WaitingTicket ticket = waitingRedisService.notifyWaiting(tableType, ticketId);
+	        switch (operation) {
+	            case "NOTIFY" -> {
+	                if (sendSms == null) {
+	                    throw new IllegalArgumentException(
+	                            "請先選擇是否發送簡訊");
+	                }
 
-				message = "已叫號：" + ticket.getTicketDisplay();
-			}
+	                WaitingTicket ticket =
+	                        waitingRedisService.notifyWaiting(
+	                                tableType, ticketId, sendSms);
 
-			case "MISS" -> {
-				waitingRedisService.missWaiting(tableType, ticketId);
-				message = "候位已設為過號";
-			}
+	                message = "已叫號：" + ticket.getTicketDisplay()
+	                        + (sendSms
+	                                ? "；簡訊已處理，開始一分鐘等待"
+	                                : "；已人工叫號，開始一分鐘等待");
+	            }
 
-			case "CANCEL" -> {
-				waitingRedisService.cancelByStaff(tableType, ticketId);
-				message = "候位已取消";
-			}
+	            case "MISS" -> {
+	                waitingRedisService.missWaiting(tableType, ticketId);
+	                message = "候位已設為過號";
+	            }
 
-			case "COMMENT" -> {
-				waitingRedisService.updateCommentByStaff(tableType, ticketId, note);
+	            case "CANCEL" -> {
+	                waitingRedisService.cancelByStaff(tableType, ticketId);
+	                message = "候位已取消";
+	            }
 
-				message = "候位備註已更新";
-			}
+	            case "COMMENT" -> {
+	                waitingRedisService.updateCommentByStaff(
+	                        tableType, ticketId, note);
 
-			default -> throw new IllegalArgumentException("不支援的候位操作");
-			}
+	                message = "候位備註已更新";
+	            }
 
-			redirect.addFlashAttribute("message", message);
+	            default -> throw new IllegalArgumentException(
+	                    "不支援的候位操作");
+	        }
 
-		} catch (IllegalArgumentException | WaitingUnavailableException ex) {
-			redirect.addFlashAttribute("error", ex.getMessage());
-		}
+	        redirect.addFlashAttribute("message", message);
 
-		redirect.addAttribute("tab", "waiting");
+	    } catch (IllegalArgumentException
+	            | WaitingUnavailableException
+	            | SmsSendException ex) {
 
-		if (seatType != null && TABLE_TYPES.contains(seatType)) {
-			redirect.addAttribute("seatType", seatType);
-		}
+	        redirect.addFlashAttribute("error", ex.getMessage());
+	    }
 
-		return "redirect:/staff/booking";
+	    redirect.addAttribute("tab", "waiting");
+
+	    if (seatType != null && TABLE_TYPES.contains(seatType)) {
+	        redirect.addAttribute("seatType", seatType);
+	    }
+
+	    return "redirect:/staff/booking";
+	}
+	
+	// 只有Console模式能使用此測試入口。
+	@PostMapping("/booking/sms/test-reminder")
+	public String testReservationReminder(
+	        @RequestParam(name = "bookingToken") String token,
+	        HttpSession session,
+	        RedirectAttributes redirect) {
+
+	    requireBookingEmployee(session);
+	    checkBookingActionToken(session, token);
+
+	    if (!reservationReminderScheduler.isConsoleMode()) {
+	        throw new ResponseStatusException(
+	                HttpStatus.FORBIDDEN,
+	                "這個入口只允許Console測試模式");
+	    }
+
+	    try {
+	        var result =
+	                reservationReminderScheduler.sendTodayReminders();
+
+	        redirect.addFlashAttribute(
+	                "message",
+	                "Console測試完成："
+	                        + result.sent() + " 筆成功、"
+	                        + result.skipped() + " 筆略過、"
+	                        + result.failed() + " 筆失敗");
+
+	    } catch (RuntimeException ex) {
+	        redirect.addFlashAttribute(
+	                "error",
+	                "提醒測試未完成，請確認資料庫及Redis連線");
+	    }
+
+	    return "redirect:/staff/booking";
 	}
 }
