@@ -4,7 +4,6 @@ import java.util.Set;
 
 import com.bistroops.meal.model.MealVO;
 
-import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -29,7 +28,7 @@ public class MealtypeVO {
 	@Column(name = "meal_type_hashtag")
 	private String mealtypeHashtag;
 	
-	@OneToMany(mappedBy="mealType",cascade = CascadeType.ALL)
+	@OneToMany(mappedBy="mealType")
 	@OrderBy("mealNo asc")
 	private Set<MealVO> meals;
 

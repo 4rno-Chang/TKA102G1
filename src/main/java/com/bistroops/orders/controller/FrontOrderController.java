@@ -26,6 +26,7 @@ import com.bistroops.orders.model.OrderedItemDTO;
 import com.bistroops.orderscart.controller.CartWebSocketHandler;
 import com.bistroops.orderscart.model.CartItemDTO;
 import com.bistroops.orderscart.model.CartRedisService;
+import com.bistroops.ordersdetails.controller.WorkboardWebSocketHandler;
 import com.bistroops.promote.model.PromoteService;
 import com.bistroops.seat.model.SeatVO;
 
@@ -45,10 +46,13 @@ public class FrontOrderController {
     private CartRedisService cartRedisService;     // 購物車
     @Autowired
     private PromoteService promoteService;         // 活動價
-    @Autowired
-    private CartWebSocketHandler cartWebSocketHandler; // 連動同桌其他手機
     @Autowired 
     private MemberService memberService;
+    @Autowired
+    private CartWebSocketHandler cartWebSocketHandler; // 連動同桌其他手機
+    @Autowired
+    private WorkboardWebSocketHandler workboardWS; // 通知員工的工作面板
+
 
 
     private static final String SEAT_NO = "orderSeatNo";          // session 裡桌號的名字
@@ -197,16 +201,18 @@ public class FrontOrderController {
 	    if (seat == null) {
 	        return BACK;
 	    }
-	    // 【待修正】session 裡沒有 "member"（會員登入存的是 "memberNo"），所以這裡永遠是 null，訂單不會記到會員。
-	    //           改法寫在這個檔案上面「步驟 4：送出訂單」的說明。
+	    
 	    Integer memNo = (Integer) session.getAttribute("memberNo");    // 沒有登入是 null
 	    MemberVO member = (memNo == null) ? null : memberService.getMemNoQuery(memNo);
 	    String error = frontOrderService.submitOrder(seat, member);
+	    
 	    if (error != null) {
 	        ra.addFlashAttribute("message", error);
 	        return BACK + "?open=cart";
 	    }
+	    
 	    cartWebSocketHandler.notifyCartChanged(frontSeatService.getSeatingKey(seat));
+	    workboardWS.notifyChanged();
 	    ra.addFlashAttribute("message", "訂單已送出，餐點製作中");
 	    return BACK + "?open=ordered";               // 回來之後直接打開「已點餐點」
 	}

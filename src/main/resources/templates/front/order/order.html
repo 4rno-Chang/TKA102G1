@@ -87,6 +87,8 @@
     </th:block>
   </main>
 
+  <div class="order-toast" id="orderToast" role="status" aria-live="polite"></div>
+
   <!-- 3. 購物車 -->
 
   <div class="order-sheet" id="dbCartSheet" th:if="${seatNo != null and orderError == null and cartItems != null}" th:hidden="${open != 'cart'}">
@@ -219,7 +221,7 @@
         <footer class="order-item-foot">
           <button type="submit" class="order-btn order-btn-main" data-item-field="submit">加入購物車</button>
           <p class="order-item-total">小計<b>NT$ <span data-item-field="total">0</span></b></p>
-          <button type="submit" class="order-link order-link-danger" data-item-remove th:formaction="@{/bistroops/order/cart/remove}" hidden>從購物車移除</button>
+          <button type="submit" class="order-link order-link-danger" data-item-remove th:formaction="@{/bistroops/order/cart/remove}" hidden>移除</button>
         </footer>
       </form>
     </section>

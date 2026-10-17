@@ -21,6 +21,7 @@ public class MenuCoverRedisService {
 		redisTemplate.opsForHash().put(KEY, String.valueOf(mealtypeNo), String.valueOf(mealNo));
 	}
 	
+	// 取消某個類別的代表圖設定（回到自動挑選）。目前畫面沒有使用，保留備用
 	public void removeCover(Integer mealtypeNo) {
 		redisTemplate.opsForHash().delete(KEY, String.valueOf(mealtypeNo));
 	}

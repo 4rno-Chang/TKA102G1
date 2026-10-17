@@ -13,6 +13,7 @@
   font-weight: 500;
 }
 .promote-alert-ok { background: #dfe6cf; border-left-color: var(--st-green); color: #4f6037; }
+.promote-alert-warn { background: #fbefd6; border-left-color: var(--st-yellow); color: #7a5a1f; }   /* 提醒（不是錯誤）：芥末黃 */
 
 
 /* ========== 2. 工具列：左邊狀態按鈕，右邊搜尋框和「新增活動」 ========== */
@@ -50,6 +51,7 @@
 
 
 .promote-card-img {
+  position: relative;   /* 讓裡面的圖片可以用 absolute 鋪滿整個框 */
   display: grid; place-items: center;
   aspect-ratio: 16 / 9;
   background: var(--st-soft);
@@ -57,7 +59,10 @@
   color: var(--st-muted);
   font-size: 14px;
 }
-.promote-card-img img { display: block; width: 100%; height: 100%; object-fit: fill; }
+/* 圖片鋪滿 16:9 的框，不是 16:9 的圖會被拉成 16:9（跟首頁輪播一樣）。
+   不能只寫 height: 100%：框是 grid＋place-items: center（讓「尚無圖片」置中），圖片的 100% 會量不到框的高度，
+   結果照原本的比例縮放、置中，就不會變形了。用 position: absolute＋inset: 0 直接貼滿四個邊才拉得開 */
+.promote-card-img img { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: fill; }
 
 /* 圖片下面的文字區 */
 .promote-card-body {
@@ -276,6 +281,7 @@
 
 .promote-detail-img,
 .promote-img-box {
+  position: relative;   /* 同上：讓圖片用 absolute 鋪滿 */
   display: grid; place-items: center;
   aspect-ratio: 16 / 9;
   margin-bottom: 6px;
@@ -287,7 +293,7 @@
   overflow: hidden;
 }
 .promote-detail-img img,
-.promote-img-box img { display: block; width: 100%; height: 100%; object-fit: fill; }
+.promote-img-box img { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: fill; }
 
 .promote-field input[type="file"].staff-input {
   height: auto;

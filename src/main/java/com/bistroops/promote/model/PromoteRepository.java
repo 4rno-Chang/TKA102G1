@@ -16,12 +16,17 @@ import org.springframework.transaction.annotation.Transactional;
 @Repository
 public interface PromoteRepository extends JpaRepository<PromoteVO, Integer> {
 
-	//查詢活動有關鍵字的全部活動
+	//查詢活動有關鍵字的全部活動，依進行中、未開始、已結束分組；同一組裡開始時間離現在近的在前（未開始：開始早的在前；其他：開始晚的在前）
 	@Query("SELECT p FROM PromoteVO p WHERE " +
-		   "(:keyword = '' OR p.promoteName LIKE CONCAT('%', :keyword, '%')) AND " +
-		   "p.promoteBegin IS NOT NULL AND p.promoteEnd IS NOT NULL")
-	Page<PromoteVO> findALLPromoteByName(
-			@Param("keyword") String promoteName, Pageable pageable);
+	       "(:keyword = '' OR p.promoteName LIKE CONCAT('%', :keyword, '%')) AND " +
+	       "p.promoteBegin IS NOT NULL AND p.promoteEnd IS NOT NULL " +
+	       "ORDER BY CASE WHEN p.promoteBegin <= :now AND p.promoteEnd >= :now THEN 0 " +   
+	       "              WHEN p.promoteBegin > :now THEN 1 " + 
+	       "              ELSE 2 END, " +
+	       "         CASE WHEN p.promoteBegin > :now THEN p.promoteBegin END ASC, "+
+		   "         p.promoteBegin DESC, p.promoteNo DESC")
+	Page<PromoteVO> findALLPromoteByName(@Param("keyword") String promoteName,
+	                                     @Param("now") LocalDateTime now, Pageable pageable);
 	
 
 	//查詢活動有關鍵字且未開始的活動含分頁
@@ -51,6 +56,12 @@ public interface PromoteRepository extends JpaRepository<PromoteVO, Integer> {
 	@Modifying
 	@Query("UPDATE PromoteVO p SET p.promoteBegin = null, p.promoteEnd = null WHERE p.promoteNo = :promoteNo")
 	public int cancelPromote(@Param("promoteNo") Integer promoteNo);
-	
+
+	//菜單管理的對話框：查詢還沒結束的活動，不帶圖片跟分頁，開始早的排前面
+	//已刪除的活動（cancelPromote 把時間改成 null）不會查到：null 跟任何時間比都不成立
+	@Query("SELECT p.promoteNo AS promoteNo, p.promoteName AS promoteName, " +
+	       "p.promoteBegin AS promoteBegin, p.promoteEnd AS promoteEnd " +
+	       "FROM PromoteVO p WHERE p.promoteEnd >= :now ORDER BY p.promoteBegin")
+	List<PromoteOptionDTO> findOpenOptions(@Param("now") LocalDateTime now);
 
 }

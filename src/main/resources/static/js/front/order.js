@@ -41,7 +41,7 @@ document.addEventListener('click', e => {
   if (!stepBtn) return;
   const input = stepBtn.closest('[data-stepper]').querySelector('input[type="number"]');
   const min = Number(input.min) || 1;
-  const max = Number(input.max) || 20;
+  const max = Number(input.max) || 10;   // 每一品項最多 10 份（跟 CartRedisService.MAX_NUM 一樣）
   const current = Number(input.value) || min;
 
   input.value = Math.max(min, Math.min(max, current + Number(stepBtn.dataset.step)));
@@ -50,10 +50,45 @@ document.addEventListener('click', e => {
   if (sheet) updateItemTotal(sheet);
 });
 
-// A-3. 送出前先確認
+// A-3. 送出前先確認：表單寫了 data-confirm="要問的話"，送出前跳出自己的對話框（取代瀏覽器原本的 confirm）
+//   一定要按「取消」或「確認」才會關（按旁邊、按 Esc 都不會關）。樣式在 order.css 的「確認對話框」
+function orderConfirm(text) {
+  return new Promise(resolve => {
+    const box = document.createElement('dialog');
+    box.className = 'order-confirm';
+    box.innerHTML = `<p class="order-confirm-label">CONFIRM</p>
+      <p class="order-confirm-text"></p>
+      <div class="order-confirm-btns">
+        <button type="button" class="order-confirm-btn is-ok" value="ok">確認</button>
+        <button type="button" class="order-confirm-btn" value="no">取消</button>
+      </div>`;
+    box.querySelector('.order-confirm-text').textContent = text;   // 用 textContent，文字裡有 < > 也不會被當成 HTML
+    box.addEventListener('cancel', e => e.preventDefault());       // 按 Esc 不會關
+    box.addEventListener('click', e => {
+      const btn = e.target.closest('button');
+      if (!btn) return;
+      box.close();
+      box.remove();
+      resolve(btn.value === 'ok');
+    });
+    document.body.append(box);
+    box.showModal();                             // 蓋在所有東西上面，後面的畫面點不到
+    box.querySelector('[value=no]').focus();     // 先停在「取消」，不小心按 Enter 不會送出
+  });
+}
+
 document.addEventListener('submit', e => {
-  const message = e.target.dataset.confirm;
-  if (message && !confirm(message)) e.preventDefault();
+  const form = e.target;
+  const message = form.dataset.confirm;
+  if (!message || form.dataset.confirmed) return;
+  e.preventDefault();             // 先不送出，等客人按按鈕
+  e.stopImmediatePropagation();   // 也先不跑下面 A-8 的「背景送出」
+  orderConfirm(message).then(ok => {
+    if (!ok) return;              // 按「取消」就不送出
+    form.dataset.confirmed = 'yes';                // 已經問過了：再送一次時不要再問
+    form.requestSubmit(e.submitter || undefined);  // 用同一顆按鈕再送一次（清空會走 A-8 的背景送出）
+    delete form.dataset.confirmed;
+  });
 });
 
 // A-4. 菜品的對話框
@@ -195,39 +230,100 @@ function connectCartSocket() {
   const protocol = location.protocol === 'https:' ? 'wss://' : 'ws://';
   const socket = new WebSocket(protocol + location.host + '/bistroops/order/ws');
 
-  socket.addEventListener('message', e => {
+  socket.addEventListener('message', async e => {
     if (e.data !== 'cart-changed') return;
-    const itemOpen = document.querySelector('.order-sheet-item:not([hidden])');
-    if (itemOpen) {
-      showCartChangedBar();
-      return;
+    if (cartBusy || Date.now() - lastCartAction < 2000) return;
+    try {
+      const res = await fetch(location.pathname);
+      const result = swapCartArea(await res.text());
+      if (!result.ok) {
+        location.reload();
+        return;
+      }
+      showToast('同桌的人更新了購物車');
+    } catch (err) {
+      // 網路暫時有問題：下一次有通知時再更新
     }
-    reloadKeepingSheet();
   });
 
   socket.addEventListener('close', () => setTimeout(connectCartSocket, 3000));
 }
 
-function reloadKeepingSheet() {
-  const openSheetEl = document.querySelector('.order-sheet:not([hidden])');
-  let open = '';
-  if (openSheetEl && openSheetEl.id === 'dbCartSheet') open = 'cart';
-  if (openSheetEl && openSheetEl.id === 'dbOrderedSheet') open = 'ordered';
-
-  location.href = location.pathname + (open ? '?open=' + open : '');
-}
-
-function showCartChangedBar() {
-  if (document.getElementById('cartChangedBar')) return;
-  const bar = document.createElement('button');
-  bar.type = 'button';
-  bar.id = 'cartChangedBar';
-  bar.className = 'order-changed-bar';
-  bar.textContent = '同桌的人更新了購物車，點這裡更新';
-  bar.addEventListener('click', reloadKeepingSheet);
-  document.body.appendChild(bar);
-}
-
 connectCartSocket();
+
+// A-8. 購物車的動作不重新載入頁面
+let cartBusy = false;
+let lastCartAction = 0;
+let toastTimer = null;
+
+function showToast(text) {
+  const toast = document.getElementById('orderToast');
+  if (!toast || !text) return;
+  toast.textContent = text;
+  toast.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove('show'), 2000);
+}
+
+function swapCartArea(html) {
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const newBar = doc.querySelector('.order-bar');
+  const oldBar = document.querySelector('.order-bar');
+  if (!newBar || !oldBar || !doc.getElementById('dbCartSheet')) return { ok: false };
+
+  oldBar.replaceWith(newBar);
+  ['dbCartSheet', 'dbOrderedSheet'].forEach(id => {
+    const oldSheet = document.getElementById(id);
+    const newSheet = doc.getElementById(id);
+    if (!oldSheet || !newSheet) return;
+    newSheet.hidden = oldSheet.hidden;
+    newSheet.dataset.returnTo = oldSheet.dataset.returnTo || '';
+    const oldBody = oldSheet.querySelector('.order-sheet-body');
+    const newBody = newSheet.querySelector('.order-sheet-body');
+    oldSheet.replaceWith(newSheet);
+    if (oldBody && newBody) newBody.scrollTop = oldBody.scrollTop;
+  });
+  syncScrollLock();
+
+  const alert = doc.querySelector('.order-alert');
+  return { ok: true, message: alert ? alert.textContent.trim() : '' };
+}
+
+document.addEventListener('submit', async e => {
+  if (e.defaultPrevented) return;
+  const form = e.target;
+  const submitter = e.submitter;
+  const action = submitter && submitter.hasAttribute('formaction') ? submitter.formAction : form.action;
+  if (!action.includes('/order/cart/')) return;
+
+  e.preventDefault();
+  const body = new URLSearchParams(new FormData(form));
+  if (submitter && submitter.name) body.append(submitter.name, submitter.value);
+
+  cartBusy = true;
+  try {
+    const res = await fetch(action, { method: 'POST', body });
+    const result = swapCartArea(await res.text());
+    if (!result.ok) {
+      location.reload();
+      return;
+    }
+    if (form.closest('.order-sheet-item')) closeSheets();
+    showToast(result.message);
+  } catch (err) {
+    if (submitter && submitter.name) {
+      const hidden = document.createElement('input');
+      hidden.type = 'hidden';
+      hidden.name = submitter.name;
+      hidden.value = submitter.value;
+      form.appendChild(hidden);
+    }
+    form.action = action;
+    form.submit();
+  } finally {
+    cartBusy = false;
+    lastCartAction = Date.now();
+  }
+});
 
 })();

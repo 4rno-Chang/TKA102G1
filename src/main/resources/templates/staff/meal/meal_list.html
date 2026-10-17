@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="zh-Hant" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bistroops 後台｜菜單管理</title>
+  <link rel="icon" th:href="@{/images/logo-mark.svg}" type="image/svg+xml">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;700&display=swap">
+  <link rel="stylesheet" th:href="@{/css/staff/staff.css}" />
+  <link rel="stylesheet" th:href="@{/css/staff/meal.css}" />
+  <script th:src="@{/js/staff/staff.js}" defer></script>
+  <script th:src="@{/js/staff/meal.js}" defer></script>
+</head>
+
+<!--
+  菜單管理：Controller 回傳 "staff/meal/meal_list"。CSS：static/css/staff/meal.css、JS：static/js/staff/meal.js
+
+  版面：
+    左邊　菜品列表：依類別分組；上面可以選類別、打關鍵字篩選（在瀏覽器裡篩，不用重新查資料庫）。
+          44 道不分頁（分頁的話同一個類別會被切到不同頁）。
+          類別代表圖那道菜的縮圖左上角有「代表圖」標籤（跟前台點餐頁的活動標籤一樣的樣子）。
+    右邊　菜品詳細：點列表的一道菜才出現。按「修改」打開對話框。平板和手機改成從右邊滑出來。
+    對話框　新增和修改共用：類別（可以新增）、菜品、圖片、活動價。
+          只能按「取消」、「X」或送出離開（按旁邊、按 Esc 都不會關）。
+    編輯類別　右上角「編輯類別」打開另一個對話框：左邊點類別、右邊改名稱和種類；可以新增、刪除沒有菜的類別（不能排序）。
+
+  Controller（StaffMealController）放進 Model 的資料：
+    mealtypes   還在用的類別　　meals  所有菜品（不含圖片）　　covers  類別代表圖（Redis）
+    promotes    還沒結束的活動　mealPromos  菜品參加的未結束活動與活動價
+    message／error、typeMessage／typeError  成功／失敗訊息（typeXxx 顯示在「編輯類別」對話框）
+    mealForm、formError  新增或修改失敗時才有：對話框自動打開，填回剛剛的內容
+  網址的 mealNo（例如 /staff/meal?mealNo=5）：打開頁面時直接打開那道菜的詳細。
+-->
+<body class="staff-layout">
+  <nav th:replace="~{staff/staff_sidebar :: sidebar('meal')}"></nav>
+
+  <main class="staff-main meal-page">
+    <header class="staff-header">
+      <div>
+        <p class="staff-eyebrow">Menu</p>
+        <h1 class="staff-title">菜單管理</h1>
+      </div>
+      <div class="meal-head-actions">
+        <button type="button" class="meal-types-btn" data-types-open>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10" /><path d="m16 16 2 2 4-4" /></svg>
+          編輯類別
+        </button>
+        <button type="button" class="meal-add-btn" data-add-open>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+          新增菜品
+        </button>
+      </div>
+    </header>
+
+    <p class="meal-flash" th:if="${message != null}" th:text="${message}">已新增菜品</p>
+    <p class="meal-flash is-error" th:if="${error != null}" th:text="${error}">沒有儲存</p>
+
+    <!-- ================================================================
+         菜品列表（左）＋ 菜品詳細（右）
+         ================================================================ -->
+    <section class="meal-board">
+      <div class="meal-listcol">
+
+        <!-- 篩選：在瀏覽器裡把不符合的菜藏起來（菜品全部已經在頁面上了，不用再查資料庫） -->
+        <form class="meal-filter" role="search" onsubmit="return false">
+          <label class="meal-filter-type">
+            <span class="sr-only">類別</span>
+            <select id="mealFilterType" data-type-options>
+              <option value="">全部類別</option>
+                <option th:each="t : ${mealtypes}" th:value="${t.mealtypeNo}" th:text="${t.mealtypeName}">開胃菜</option>
+            </select>
+          </label>
+          <label class="meal-filter-q">
+            <span class="sr-only">關鍵字</span>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6" /><path d="m20 20-4.5-4.5" /></svg>
+            <input type="search" id="mealFilterQ" placeholder="搜尋菜名或說明" autocomplete="off">
+          </label>
+          <p class="meal-filter-count" id="mealFilterCount" aria-live="polite"></p>
+        </form>
+        <!-- 四個格子（全部菜品／上架中／未上架／參加活動）：meal.js 畫進有 data-stats 的地方。
+             寬螢幕顯示在右邊（還沒點菜時），平板以下右邊是滑出來的，所以改顯示在這裡 -->
+        <div class="meal-stats meal-stats-bar" data-stats></div>
+
+        <!-- 每個類別一組，每道菜一列。
+               rows   這個類別的菜（__${...}__ 是先把數字填進去再算，menu.html 也是這樣寫）
+               cover  這個類別的代表圖用哪一道（跟前台菜單的規則一樣）：
+                        ① Redis 設定的那道（在這個類別、上架、有圖片才算）＝ chosen
+                        ② 不符合 → 第一道上架、有圖片的菜　③ 都沒有 → null（前台用插圖）
+             每一列的 data-*：點下去時 meal.js 用它們填右邊的詳細和修改的對話框（不用再查資料庫）
+               data-promos  參加的活動，寫成「活動編號:活動價,…」
+               data-cover   custom（設定的代表圖）／default（預設選到的代表圖）／空的（不是代表圖） -->
+        <div class="meal-ledger" id="mealLedger">
+            <section class="meal-group" th:each="t : ${mealtypes}"
+              th:with="rows=${meals.?[mealtypeNo == __${t.mealtypeNo}__]},
+                       pick=${covers != null ? covers[t.mealtypeNo] : null},
+                       art=${t.mealtypeHashtag == '前菜' ? 'dish-appetizer.svg' : (t.mealtypeHashtag == '甜點' ? 'dish-dessert.svg' : 'dish-main.svg')}"
+              th:attr="data-group-type=${t.mealtypeNo}, data-type-name=${t.mealtypeName}, data-tag=${t.mealtypeHashtag},
+                       data-art=@{/images/{f}(f=${art})}">
+              <th:block th:with="chosen=${rows.^[mealNo == __${pick ?: -1}__ and hasImg and status == '上架']},
+                                 cover=${chosen ?: rows.^[hasImg and status == '上架']}">
+                <h3 class="meal-group-title">
+                  <span th:text="${t.mealtypeName}">開胃菜</span>
+                  <small th:text="${#lists.size(rows)} + ' 道'">6 道</small>
+                </h3>
+                <p class="meal-group-empty" th:if="${#lists.isEmpty(rows)}">這個類別還沒有菜品（不用的話，可以在右上角「編輯類別」刪除）</p>
+                <ol class="meal-rows">
+                  <li th:each="m : ${rows}"
+                    th:with="myPromos=${mealPromos != null ? mealPromos.?[mealNo == __${m.mealNo}__] : {}},
+                             isCover=${cover != null and cover.mealNo == m.mealNo}">
+                    <button type="button" class="meal-row" th:classappend="${m.status != '上架'} ? 'is-off'"
+                      th:attr="data-meal-no=${m.mealNo}, data-type=${m.mealtypeNo}, data-name=${m.mealName}, data-exp=${m.mealExp},
+                               data-price=${m.mealPrice}, data-status=${m.status}, data-has-img=${m.hasImg},
+                               data-promos=${#strings.listJoin(myPromos.![promoteNo + ':' + (price ?: '')], ',')},
+                               data-cover=${isCover ? (chosen != null ? 'custom' : 'default') : ''},
+                               data-promo-only=${m.mealPromoOnly}">
+                      <span class="meal-row-thumb" th:classappend="${!m.hasImg} ? 'is-art'">
+                        <img th:if="${m.hasImg}" th:src="@{/staff/meal/img(mealNo=${m.mealNo})}" alt=""
+                          th:attr="data-fallback=@{/images/{f}(f=${art})}" loading="lazy">
+                        <img th:unless="${m.hasImg}" th:src="@{/images/{f}(f=${art})}" alt="" loading="lazy">
+                        <span class="meal-pill" th:if="${isCover}">代表圖</span>
+                      </span>
+                      <span class="meal-row-text">
+                        <span class="meal-row-name" th:text="${m.mealName}">義式烤麵包</span>
+                        <span class="meal-row-exp" th:text="${m.mealExp}">新鮮番茄粒搭配羅勒與初榨橄欖油</span>
+                        <span class="meal-row-tags" th:unless="${#lists.isEmpty(myPromos) and !m.mealPromoOnly}">
+                          <span class="meal-tag is-limited" th:if="${m.mealPromoOnly}">活動限定</span>
+                          <span class="meal-tag" th:each="pr : ${myPromos}" th:classappend="${pr.started} ? 'is-on'"
+                            th:text="${pr.promoteName}">雙十節活動</span>
+                        </span>
+                      </span>
+                      <span class="meal-row-price" th:text="${#numbers.formatInteger(m.mealPrice, 1, 'COMMA')}">160</span>
+                      <span class="meal-row-status" th:text="${m.status}">上架</span>
+                    </button>
+                  </li>
+                </ol>
+              </th:block>
+            </section>
+        </div>
+        <p class="meal-noresult" id="mealNoResult" hidden>找不到符合的菜品，換個關鍵字試試。</p>
+      </div>
+
+      <!-- ================================================================
+           菜品詳細（點列表的菜之後由 meal.js 用那一列的 data-* 填入）
+           是代表圖的話，圖片左上角有「代表圖」標籤；下方的小字按鈕可以設為類別代表圖
+           ================================================================ -->
+      <div class="meal-panel-backdrop" id="mealPanelBackdrop" hidden></div>
+      <aside class="meal-panel" id="mealPanel" aria-label="菜品詳細">
+
+        <div class="meal-panel-empty" data-panel="empty">
+          <!-- 圖示：放大鏡（查菜品），外面一圈深咖啡色的框 -->
+          <span class="meal-empty-icon" aria-hidden="true">
+            <svg viewBox="0 0 32 32"><circle cx="14" cy="14" r="8.5" /><path d="M10 11.2a4.5 4.5 0 0 1 3.4-1.9" /><path d="m20.4 20.4 7 7" /></svg>
+          </span>
+          <p>查詢分類</p>
+          <div class="meal-stats" data-stats></div>
+        </div>
+
+        <div class="meal-view" data-panel="view" hidden>
+          <button type="button" class="meal-panel-close" data-panel-close aria-label="關閉">×</button>
+          <figure class="meal-view-photo" data-view="photo">
+            <img alt="">
+            <span class="meal-pill" data-view="pill" hidden>代表圖</span>
+          </figure>
+          <p class="meal-view-type" data-view="type">開胃菜</p>
+          <h2 class="meal-view-name" data-view="name">義式烤麵包</h2>
+          <p class="meal-view-price"><span data-view="price">NT$ 160</span><span class="meal-view-status" data-view="status">上架</span></p>
+          <p class="meal-view-exp" data-view="exp">新鮮番茄粒搭配羅勒與初榨橄欖油</p>
+
+          <dl class="meal-view-facts">
+            <div><dt>菜品編號</dt><dd data-view="no">1</dd></div>
+            <div><dt>活動價</dt><dd data-view="promos">沒有參加活動</dd></div>
+            <div><dt>活動限定</dt><dd data-view="promoOnly">否</dd></div>
+          </dl>
+
+          <div class="meal-view-actions">
+            <button type="button" class="staff-btn btn-pay" data-edit-open>修改</button>
+          </div>
+
+          <!-- 類別代表圖：不搶眼的小字按鈕。有圖片、上架、還不是「設定的」代表圖才出現（meal.js 決定要不要顯示）。
+               想換代表圖時，對另一道菜按這個按鈕就好 -->
+          <div class="meal-view-links">
+            <form th:action="@{/staff/meal/cover}" method="post" data-cover-set hidden>
+              <input type="hidden" name="mealtypeNo">
+              <input type="hidden" name="mealNo">
+              <button type="submit" class="meal-link-btn">設為類別代表圖</button>
+            </form>
+          </div>
+        </div>
+      </aside>
+    </section>
+  </main>
+
+  <!-- ================================================================
+       新增／修改菜品（同一個對話框）：都送到 POST /staff/meal/save，mealNo 是空的就是新增、有值就是修改
+         只能按「取消」、「X」或送出離開；按旁邊、按 Esc 都不會關（meal.js）
+
+       1 類別：最後一個選項「＋ 新增類別…」的值是 0（類別編號從 1 開始不會撞到），選了才要填名稱和種類。
+               種類（開胃菜／主餐／甜點／飲料）存進 meal_type_hashtag：前菜／主餐／甜點／飲料，決定點餐時的常用備註。
+       4 活動價：同一道菜可以參加「時間重疊」的活動，重疊的期間前台用比較低的價格（勾了重疊的活動，下面會出現提醒）。
+               每個還沒結束的活動一列，第 i 列送出三個欄位（Controller 用 MealFormDTO 的 List<MealPromoFormDTO> promos 接）：
+               promos[i].promoteNo  活動編號（一定會送）
+               promos[i].joined     有勾才會送 true
+               promos[i].price      活動價。選「打折」時 meal.js 先用原價 × 折數四捨五入算好，送出的一定是金額
+
+       新增或修改失敗時（formError），對話框自動打開並填回 mealForm 的內容（圖片要重新選）
+       ================================================================ -->
+  <div class="meal-modal" id="mealDialog" role="dialog" aria-modal="true" aria-labelledby="mealDialogTitle"
+    th:attr="data-open=${formError != null}" hidden>
+    <form class="meal-modal-box" id="mealForm" th:action="@{/staff/meal/save}" method="post" enctype="multipart/form-data"
+      th:attr="data-old-promos=${mealForm?.promos != null ? #strings.listJoin(mealForm.promos.?[joined].![promoteNo + ':' + (price ?: '')], ',') : ''}">
+      <input type="hidden" name="mealNo" th:value="${mealForm?.mealNo}">
+
+      <header class="meal-modal-head">
+        <div>
+          <p class="staff-eyebrow" data-mode-text="New Dish|Edit Dish">New Dish</p>
+          <h2 id="mealDialogTitle" data-mode-text="新增菜品|修改菜品">新增菜品</h2>
+        </div>
+        <button type="button" class="meal-modal-x" data-dialog-close aria-label="關閉">×</button>
+      </header>
+
+      <div class="meal-modal-body">
+        <p class="meal-flash is-error" th:if="${formError != null}" th:text="${formError}">類別名稱已經有了</p>
+
+        <section class="meal-step">
+          <h3><span>1</span>類別</h3>
+          <div class="meal-type-row">
+            <label class="meal-field">
+              <span class="sr-only">類別</span>
+              <select class="staff-input" name="mealtypeNo" id="formType" required data-type-options>
+                <option value="" disabled th:selected="${mealForm?.mealtypeNo == null}">請選擇類別</option>
+                  <option th:each="t : ${mealtypes}" th:value="${t.mealtypeNo}" th:text="${t.mealtypeName}"
+                    th:attr="data-tag=${t.mealtypeHashtag}"
+                    th:selected="${mealForm?.mealtypeNo == t.mealtypeNo}">開胃菜</option>
+                <option value="0" data-new-type th:selected="${mealForm?.mealtypeNo == 0}">＋ 新增類別…</option>
+              </select>
+            </label>
+          </div>
+
+          <!-- 選了「＋ 新增類別」才出現 -->
+          <div class="meal-newtype" id="formNewType" hidden>
+            <label class="meal-field">
+              <span>新類別的名稱<b>最多 30 個字，例如：披薩</b></span>
+              <input type="text" class="staff-input" name="newTypeName" maxlength="30" th:value="${mealForm?.newTypeName}">
+            </label>
+            <fieldset class="meal-field">
+              <legend>這個類別屬於</legend>
+              <div class="meal-kinds">
+                <label><input type="radio" name="newTypeTag" value="前菜" th:checked="${mealForm?.newTypeTag == '前菜'}"><span>開胃菜</span></label>
+                <label><input type="radio" name="newTypeTag" value="主餐" th:checked="${mealForm?.newTypeTag == '主餐'}"><span>主餐</span></label>
+                <label><input type="radio" name="newTypeTag" value="甜點" th:checked="${mealForm?.newTypeTag == '甜點'}"><span>甜點</span></label>
+                <label><input type="radio" name="newTypeTag" value="飲料" th:checked="${mealForm?.newTypeTag == '飲料'}"><span>飲料</span></label>
+              </div>
+            </fieldset>
+          </div>
+          <p class="meal-tagpreview" id="formTagPreview" hidden></p>
+        </section>
+
+        <section class="meal-step">
+          <h3><span>2</span>菜品</h3>
+          <label class="meal-field">
+            <span>名稱<b>必填，最多 20 個字</b></span>
+            <input type="text" class="staff-input" name="mealName" maxlength="20" required th:value="${mealForm?.mealName}">
+          </label>
+          <div class="meal-field-row">
+            <label class="meal-field">
+              <span>價格</span>
+              <span class="meal-money"><input type="number" class="staff-input" name="mealPrice" id="formPrice" min="1" max="99999" step="1" required th:value="${mealForm?.mealPrice}"></span>
+            </label>
+            <fieldset class="meal-field">
+              <legend>狀態</legend>
+              <div class="meal-switch">
+                <label><input type="radio" name="mealStatus" value="上架" th:checked="${mealForm == null or mealForm.mealStatus != '未上架'}"><span>上架</span></label>
+                <label><input type="radio" name="mealStatus" value="未上架" th:checked="${mealForm?.mealStatus == '未上架'}"><span>未上架</span></label>
+              </div>
+            </fieldset>
+          </div>
+          <label class="meal-field">
+            <span>說明<b>最多 100 個字，會顯示在前台菜單和點餐頁</b></span>
+            <textarea class="staff-input" name="mealExp" rows="3" maxlength="100" th:text="${mealForm?.mealExp}"></textarea>
+          </label>
+        </section>
+
+        <section class="meal-step">
+          <h3><span>3</span>圖片<small>可以不放，前台會用插圖</small></h3>
+          <label class="meal-drop" data-drop>
+            <img alt="" data-drop-preview hidden>
+            <span data-drop-text>選擇圖片（5MB 以內，寬 1000px 左右最清楚）</span>
+            <input type="file" name="mealImg" accept="image/*">
+          </label>
+          <!-- 修改、而且原本有圖片時才出現 -->
+          <label class="meal-check" id="formRemoveImg" hidden><input type="checkbox" name="removeImg" value="true"> 刪除目前的圖片（前台改用插圖）</label>
+        </section>
+
+        <section class="meal-step">
+          <h3><span>4</span>活動價<small>勾選要參加的活動，用折數或直接打金額</small></h3>
+          <!-- 活動限定菜品：每天半夜的排程會在「活動開始那天」自動上架、「參加的活動全部結束後」自動下架（至少要參加一個活動）。
+               勾的時候，如果勾的活動都還沒開始，meal.js 會把上面的狀態切成「未上架」；想先上架的話可以自己改回「上架」 -->
+          <label class="meal-check meal-promo-only">
+            <input type="checkbox" name="mealPromoOnly" value="true" id="formPromoOnly"
+              th:checked="${mealForm != null and mealForm.mealPromoOnly}">
+            <span>活動限定菜品<small>活動開始那天半夜自動上架、參加的活動全部結束後半夜自動下架（至少要勾一個活動）</small></span>
+          </label>
+          <p class="meal-promo-only-note" id="formPromoOnlyNote" hidden>勾的活動還沒開始，狀態已經改成「未上架」，活動開始那天會自動上架。想先上架的話，把上面的狀態改回「上架」就好。</p>
+          <p class="meal-promo-empty" th:if="${promotes == null or #lists.isEmpty(promotes)}" data-promo-empty>目前沒有還沒結束的活動。</p>
+          <th:block th:if="${promotes != null}" th:with="now=${#temporals.createNow()}">
+            <!-- data-begin／data-end：完整的開始、結束時間，meal.js 用來判斷活動時間有沒有重疊（時間重疊時出現「前台會用比較低的價格」的提醒） -->
+            <div class="meal-promo" th:each="p, st : ${promotes}" data-promo-row
+              th:attr="data-begin=${#temporals.format(p.promoteBegin, 'yyyy-MM-dd HH:mm:ss')}, data-end=${#temporals.format(p.promoteEnd, 'yyyy-MM-dd HH:mm:ss')}">
+              <input type="hidden" th:name="|promos[${st.index}].promoteNo|" th:value="${p.promoteNo}">
+              <label class="meal-promo-head">
+                <input type="checkbox" th:name="|promos[${st.index}].joined|" value="true" data-promo-join>
+                <span class="meal-promo-name" th:text="${p.promoteName}">雙十節活動</span>
+                <span class="meal-promo-when">
+                  <span th:text="|${#temporals.format(p.promoteBegin, 'MM/dd')}～${#temporals.format(p.promoteEnd, 'MM/dd')}|">10/01～10/31</span>
+                  <span class="meal-tag" th:classappend="${p.promoteBegin.isAfter(now)} ? '' : 'is-on'"
+                    th:text="${p.promoteBegin.isAfter(now) ? '未開始' : '進行中'}">進行中</span>
+                </span>
+              </label>
+              <p class="meal-promo-clash" data-promo-clash hidden></p>
+              <div class="meal-promo-set" hidden>
+                <div class="meal-promo-mode">
+                  <label><input type="radio" th:name="|promoMode${st.index}|" value="rate" checked data-promo-mode><span>打折</span></label>
+                  <label><input type="radio" th:name="|promoMode${st.index}|" value="amount" data-promo-mode><span>直接打金額</span></label>
+                </div>
+                <label class="meal-promo-input">
+                  <span class="sr-only">折數或金額</span>
+                  <input type="text" class="staff-input" inputmode="numeric" maxlength="2" autocomplete="off" data-promo-input>
+                  <span data-promo-unit>折</span>
+                </label>
+                <output class="meal-promo-result" data-promo-result>先填上面的價格</output>
+                <input type="hidden" th:name="|promos[${st.index}].price|" data-promo-price>
+              </div>
+            </div>
+          </th:block>
+        </section>
+      </div>
+
+      <footer class="meal-modal-foot">
+        <!-- 刪除菜品：只有「修改」時出現，送出下面的 mealDeleteForm（staff.js 會先跳確認） -->
+        <button type="submit" class="staff-btn btn-danger-outline meal-delete-btn" form="mealDeleteForm" id="formMealDelete" hidden>刪除菜品</button>
+        <button type="button" class="staff-btn" data-dialog-close>取消</button>
+        <button type="submit" class="staff-btn btn-pay" data-mode-text="新增|儲存">新增</button>
+      </footer>
+    </form>
+  </div>
+
+  <!-- ================================================================
+       編輯類別（右上角「編輯類別」打開）：跟菜品的對話框一樣，只能按「關閉」或「X」離開
+         左邊　類別清單（照類別編號排列，不能排序），最下面是「＋ 新增類別」
+         右邊　點了哪一個就編輯哪一個：名稱、種類（四種寫死的選項），選種類時下面會出現這種類的常用備註
+               底下沒有菜的類別才會出現「刪除類別」
+         種類存進 meal_type_hashtag：前菜／主餐／甜點／飲料（畫面上的「開胃菜」存成「前菜」），決定點餐時的常用備註。
+
+         儲存、新增：POST /staff/meal/type/save（mealtypeNo 空的＝新增）；刪除：POST /staff/meal/type/delete（軟刪除）
+         有 typeMessage 或 typeError 時，這個對話框會自動打開並顯示訊息
+       ================================================================ -->
+  <div class="meal-modal" id="typeDialog" role="dialog" aria-modal="true" aria-labelledby="typeDialogTitle"
+    th:attr="data-open=${typeMessage != null or typeError != null}" hidden>
+    <div class="meal-modal-box meal-types-box">
+      <header class="meal-modal-head">
+        <div>
+          <p class="staff-eyebrow">Categories</p>
+          <h2 id="typeDialogTitle">編輯類別</h2>
+        </div>
+        <button type="button" class="meal-modal-x" data-types-close aria-label="關閉">×</button>
+      </header>
+
+      <div class="meal-modal-body">
+        <p class="meal-flash" th:if="${typeMessage != null}" th:text="${typeMessage}">已儲存類別</p>
+        <p class="meal-flash is-error" th:if="${typeError != null}" th:text="${typeError}">已經有這個類別了</p>
+
+        <div class="meal-types-layout">
+          <!-- 左：類別清單。每一顆的 data-*：點了之後 meal.js 用它們填右邊
+                 data-deletable  底下沒有菜（true 才會出現「刪除類別」） -->
+          <nav class="meal-types-nav" aria-label="類別">
+            <ul class="meal-types-list" id="typeList">
+                <li th:each="t : ${mealtypes}">
+                  <button type="button" class="meal-types-pick" data-type-pick
+                    th:attr="data-no=${t.mealtypeNo}, data-name=${t.mealtypeName}, data-tag=${t.mealtypeHashtag},
+                             data-deletable=${#lists.isEmpty(meals.?[mealtypeNo == __${t.mealtypeNo}__])}">
+                    <span th:text="${t.mealtypeName}">開胃菜</span>
+                    <small th:text="${t.mealtypeHashtag == '前菜' ? '開胃菜' : t.mealtypeHashtag}">開胃菜</small>
+                  </button>
+                </li>
+            </ul>
+            <button type="button" class="meal-types-pick is-add" data-type-pick data-no="">＋ 新增類別</button>
+          </nav>
+
+          <!-- 右：編輯（新增和修改共用；mealtypeNo 是空的就是新增） -->
+          <form class="meal-types-edit" id="typeForm" th:action="@{/staff/meal/type/save}" method="post">
+            <h3 class="meal-types-title" id="typeFormTitle">修改類別</h3>
+            <input type="hidden" name="mealtypeNo">
+            <label class="meal-field">
+              <span>類別名稱<b>最多 30 個字，例如：披薩</b></span>
+              <input type="text" class="staff-input" name="mealtypeName" maxlength="30" required>
+            </label>
+            <fieldset class="meal-field">
+              <legend>這個類別屬於</legend>
+              <div class="meal-kinds">
+                <label><input type="radio" name="mealtypeHashtag" value="前菜" required><span>開胃菜</span></label>
+                <label><input type="radio" name="mealtypeHashtag" value="主餐" required><span>主餐</span></label>
+                <label><input type="radio" name="mealtypeHashtag" value="甜點" required><span>甜點</span></label>
+                <label><input type="radio" name="mealtypeHashtag" value="飲料" required><span>飲料</span></label>
+              </div>
+            </fieldset>
+            <p class="meal-tagpreview" id="typeTagPreview" hidden></p>
+            <div class="meal-types-actions">
+              <!-- 刪除按鈕只有底下沒有菜的類別才出現；按了送出下面的 typeDeleteForm（staff.js 會先跳紅色警告）
+                   旁邊的紅色小字：可以刪除時寫「※此類別內無菜品，可刪除」，有菜時寫「※有餐點歸類於此類別，無法刪除」（meal.js 填） -->
+              <button type="submit" class="staff-btn btn-danger-outline" form="typeDeleteForm" id="typeDeleteBtn" hidden>刪除類別</button>
+              <small class="meal-types-delhint" id="typeDeleteHint" hidden>※此類別內無菜品，可刪除</small>
+              <button type="submit" class="staff-btn btn-pay" id="typeSaveBtn">儲存</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <footer class="meal-modal-foot">
+        <button type="button" class="staff-btn" data-types-close>關閉</button>
+      </footer>
+    </div>
+  </div>
+
+  <!-- 刪除類別：編輯類別裡的「刪除類別」送出這個表單（mealtypeNo、確認的話由 meal.js 填） -->
+  <form id="typeDeleteForm" th:action="@{/staff/meal/type/delete}" method="post" data-confirm="確定要刪除這個類別嗎？" data-confirm-warn>
+    <input type="hidden" name="mealtypeNo">
+  </form>
+
+  <!-- 刪除菜品：修改對話框左下角的「刪除菜品」送出這個表單（mealNo 由 meal.js 填）。軟刪除：類別改成 null，
+       後台列表、前台菜單、點餐頁都查不到；以前的訂單還看得到這道菜 -->
+  <form id="mealDeleteForm" th:action="@{/staff/meal/delete}" method="post" data-confirm="確定要刪除這道菜嗎？" data-confirm-warn>
+    <input type="hidden" name="mealNo">
+  </form>
+
+  <div class="staff-toast" id="staffToast" role="status" aria-live="polite"></div>
+</body>
+
+</html>
