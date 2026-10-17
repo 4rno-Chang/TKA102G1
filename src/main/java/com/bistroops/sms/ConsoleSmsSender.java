@@ -1,13 +1,12 @@
 package com.bistroops.sms;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import org.springframework.web.context.request.RequestContextHolder;
@@ -15,12 +14,6 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 
 import jakarta.servlet.http.HttpSession;
 
-/**
- * 測試模式：
- * 1. 保留Console紀錄。
- * 2. 網頁操作產生的訊息，只放入該瀏覽器的Session。
- * 3. 排程訊息另外保存，由有權限的後台讀取。
- */
 @Component
 @ConditionalOnProperty(
         prefix = "app.sms",
@@ -29,9 +22,6 @@ import jakarta.servlet.http.HttpSession;
         matchIfMissing = true)
 public class ConsoleSmsSender implements SmsSender {
 
-    private static final Logger log =
-            LoggerFactory.getLogger(ConsoleSmsSender.class);
-
     private static final String SESSION_MESSAGES =
             "bistroops.simulatedSmsMessages";
 
@@ -39,6 +29,7 @@ public class ConsoleSmsSender implements SmsSender {
             24 * 60 * 60 * 1000L;
 
     private final String streamId = UUID.randomUUID().toString();
+
     private final AtomicLong sequence = new AtomicLong();
 
     private final List<PreviewMessage> scheduledMessages =
@@ -47,39 +38,32 @@ public class ConsoleSmsSender implements SmsSender {
     @Override
     public void send(String phone, String message) {
 
-        log.info(
-                "\n========== 模擬簡訊：未實際發送 ==========\n"
-                        + "收件電話：{}\n"
-                        + "簡訊內容：{}\n"
-                        + "========================================",
+        PreviewMessage preview = new PreviewMessage(
+                sequence.incrementAndGet(),
                 phone,
-                message);
+                message,
+                System.currentTimeMillis());
 
         var attributes = RequestContextHolder.getRequestAttributes();
 
         if (attributes instanceof ServletRequestAttributes web) {
+
             HttpSession session = web.getRequest().getSession();
 
             synchronized (session) {
-                List<PreviewMessage> messages = sessionMessages(session);
+                List<PreviewMessage> messages = copyMessages(session);
 
-                messages.add(new PreviewMessage(
-                        sequence.incrementAndGet(),
-                        phone,
-                        message,
-                        System.currentTimeMillis()));
-
+                messages.add(preview);
                 trim(messages, 50);
+
+                // Redis Session 必須明確重新設定，才會記錄此次更新。
+                session.setAttribute(SESSION_MESSAGES, messages);
             }
 
         } else {
+            // 排程沒有瀏覽器 Session，另外保留供後台讀取。
             synchronized (scheduledMessages) {
-                scheduledMessages.add(new PreviewMessage(
-                        sequence.incrementAndGet(),
-                        phone,
-                        message,
-                        System.currentTimeMillis()));
-
+                scheduledMessages.add(preview);
                 trim(scheduledMessages, 100);
             }
         }
@@ -96,11 +80,9 @@ public class ConsoleSmsSender implements SmsSender {
         List<PreviewMessage> result = new ArrayList<>();
 
         if (session != null) {
-            synchronized (session) {
-                List<PreviewMessage> messages = sessionMessages(session);
-                trim(messages, 50);
-                result.addAll(messages);
-            }
+            List<PreviewMessage> messages = copyMessages(session);
+            trim(messages, 50);
+            result.addAll(messages);
         }
 
         if (includeScheduled) {
@@ -115,19 +97,22 @@ public class ConsoleSmsSender implements SmsSender {
         return result;
     }
 
-    @SuppressWarnings("unchecked")
-    private List<PreviewMessage> sessionMessages(HttpSession session) {
+    private List<PreviewMessage> copyMessages(HttpSession session) {
+
+        List<PreviewMessage> result = new ArrayList<>();
 
         Object stored = session.getAttribute(SESSION_MESSAGES);
 
-        if (stored instanceof List<?>) {
-            return (List<PreviewMessage>) stored;
+        if (stored instanceof List<?> messages) {
+            for (Object item : messages) {
+                if (item instanceof PreviewMessage preview) {
+                    result.add(preview);
+                }
+            }
         }
 
-        List<PreviewMessage> messages = new ArrayList<>();
-        session.setAttribute(SESSION_MESSAGES, messages);
-
-        return messages;
+        // 讀取時不建立空的 Session 屬性，也不修改原本的清單。
+        return result;
     }
 
     private void trim(List<PreviewMessage> messages, int limit) {
@@ -145,6 +130,8 @@ public class ConsoleSmsSender implements SmsSender {
             long id,
             String phone,
             String message,
-            long createdAt) {
+            long createdAt) implements Serializable {
+
+        private static final long serialVersionUID = 1L;
     }
 }
