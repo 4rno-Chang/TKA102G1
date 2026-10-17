@@ -132,7 +132,7 @@ public class OrdersService {
 			return "手機號碼格式錯誤";
 		}
 		OrdersVO orders =ordersRepository.findById(order).orElse(null);
-		if(order == null)return "找不到此訂單";
+		if(orders == null)return "找不到此訂單";
 		MemberVO member =memberService.getByTel(phone);
 		if(member ==null ) {
 			return "查無此會員("+phone+")";

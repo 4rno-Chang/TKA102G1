@@ -140,8 +140,12 @@
 		  <h2 class="staff-card-title">請輸入手機號碼</h2>
 		  <p class="qr-meta">訂單編號：<span th:text="${#numbers.formatInteger(order.orders,8)}"></span></p>
 
+		  <!-- 查詢結果：輸入滿 10 碼後，staff.js 向 data-lookup-url 查詢，在這裡顯示會員名稱或「查無此會員」 -->
+		  <p class="member-result" id="memberResult" hidden></p>
+
 		  <!-- novalidate：不用瀏覽器內建的提示泡泡，改由 staff.js 顯示下面的 memberError -->
-		  <form id="memberForm" th:action="@{/staff/checkout/member}" method="post" novalidate>
+		  <form id="memberForm" th:action="@{/staff/checkout/member}" method="post" novalidate
+		        th:data-lookup-url="@{/staff/checkout/member/lookup}">
 		    <input type="hidden" name="order" th:value="${order.orders}">
 		    <label class="member-label" for="memberPhone">會員手機</label>
 		    <input type="tel" class="member-input" id="memberPhone" name="phone"

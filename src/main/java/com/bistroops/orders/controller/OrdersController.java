@@ -4,6 +4,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -22,6 +23,7 @@ import org.springframework.web.util.HtmlUtils;
 
 import com.bistroops.employee.model.EmployeeService;
 import com.bistroops.member.model.MemberService;
+import com.bistroops.member.model.MemberVO;
 import com.bistroops.orders.ecpay.EcpayUtil;
 import com.bistroops.orders.model.OrdersService;
 import com.bistroops.orders.model.OrdersVO;
@@ -42,6 +44,9 @@ public class OrdersController {
 	
 	@Autowired
 	OrdersDetailsService ordersDetailsService;
+	
+	@Autowired
+	MemberService memberService;
 	
 
 	
@@ -169,6 +174,19 @@ public class OrdersController {
 		ra.addFlashAttribute("memberMsg",error==null?"已綁定會員" :error);
 		return "redirect:/staff/checkout?order="+order;     // 回到同一張訂單
 	}
+	
+	 //===========輸入會員：輸入手機時即時查詢（給 staff.js 用，回傳 JSON）===========
+	@GetMapping("/checkout/member/lookup")
+	@ResponseBody 
+	public Map<String ,Object>lookupMember (@RequestParam String phone){
+		Map<String,Object> result = new HashMap<>();
+		MemberVO member = phone.matches("09\\d{8}")? memberService .getByTel(phone):null ;
+		result.put("found",member!=null);
+		if(member !=null)result.put("name",member.getMemName());// 只回傳名稱，不要整個 MemberVO（裡面有密碼）
+		
+			return result;
+	}
+ 
 		
 	
 	

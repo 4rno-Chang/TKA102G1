@@ -58,7 +58,7 @@
         <p class="board-empty" th:if="${#lists.isEmpty(workboardlistAll)}"
            th:text="${view == 'done'} ? '目前沒有待結帳的桌子' : '目前沒有進行中的訂單'">目前沒有進行中的訂單</p>
 
-        <article class="table-card" th:each="od : ${workboardlistAll}">
+         <article class="table-card" th:each="od : ${workboardlistAll}" th:data-order="${od.orders}"> <!-- WebSocket -->
           <!-- 點這一列可以縮小／展開卡片（由 staff-workboard.js 的 A 區處理，不需要後端） -->
           <button type="button" class="table-card-head" data-toggle-card aria-expanded="true">
             <strong class="table-name" th:text="|${od.seatNo.seatNo} 桌|">A1 桌</strong>
@@ -229,80 +229,6 @@
   </div>
 
 
-
-  <!-- ================================================================
-       【假資料】編輯訂單的對話框（假資料卡片下方的「編輯訂單」會打開它）
-       開關與內容由 staff-workboard.js 的「B. 假資料」控制。
-       資料庫的版本確認沒問題後，這個 div 整個刪掉（到它結尾的 </div> 為止）。
-       ================================================================ -->
-<div class="edit-modal" id="editModal" hidden>
-    <!-- 半透明的背景，點一下會關閉對話框 -->
-    <div class="edit-backdrop" data-edit-close></div>
-
-    <section class="edit-dialog" role="dialog" aria-modal="true" aria-labelledby="editHeading">
-      <header class="edit-head">
-        <div>
-          <!-- 桌號由 staff-workboard.js 填入，後面固定接「訂單修改」 -->
-          <h2 class="edit-title" id="editHeading">
-            <span id="editTitle"></span>
-            <span class="edit-title-sub">訂單修改</span>
-            <span class="source-tag" th:if="${orders != null}">假資料</span>
-          </h2>
-          <!-- 下單時間、訂單編號 -->
-          <p class="edit-meta" id="editMeta"></p>
-        </div>
-        <button type="button" class="edit-close" data-edit-close aria-label="關閉">×</button>
-      </header>
-
-      <!-- ========== 畫面一：填寫備註 ========== -->
-      <div class="edit-body" id="editNotesView">
-        <!-- 常用備註：先點下面要填的欄位，再點這裡的按鈕，文字就會加進那個欄位 -->
-        <div class="edit-section">
-          <h3 class="edit-label">常用備註 <small>先點要填的欄位，再點這裡</small></h3>
-          <div class="chips">
-            <button type="button" class="chip chip-small" data-note-chip="趕時間">趕時間</button>
-            <button type="button" class="chip chip-small" data-note-chip="過敏注意">過敏注意</button>
-            <button type="button" class="chip chip-small" data-note-chip="餐點一起上">餐點一起上</button>
-            <button type="button" class="chip chip-small" data-note-chip="不要香菜">不要香菜</button>
-            <button type="button" class="chip chip-small" data-note-chip="不要洋蔥">不要洋蔥</button>
-            <button type="button" class="chip chip-small" data-note-chip="不要蒜">不要蒜</button>
-            <button type="button" class="chip chip-small" data-note-chip="少鹽">少鹽</button>
-            <button type="button" class="chip chip-small" data-note-chip="不辣">不辣</button>
-            <button type="button" class="chip chip-small" data-note-chip="醬汁另外放">醬汁另外放</button>
-            <button type="button" class="chip chip-small" data-note-chip="晚點再上">晚點再上</button>
-          </div>
-        </div>
-
-        <div class="edit-section">
-          <h3 class="edit-label">餐點 <small>可以填備註，或刪除單一道餐點；按「儲存變更」後才會生效</small></h3>
-          <!-- 每一道餐點一列：品名、備註的輸入框、刪除按鈕；由 staff-workboard.js 產生 -->
-          <ul class="edit-items" id="editItems"></ul>
-        </div>
-      </div>
-
-      <footer class="edit-foot" id="editNotesFoot">
-        <!-- 只有在這一桌的餐點都還沒出餐時才會顯示，由 staff-workboard.js 控制 -->
-        <button type="button" class="staff-btn btn-danger-outline" id="editAskDelete">刪除訂單</button>
-        <span class="edit-foot-space"></span>
-        <button type="button" class="staff-btn" data-edit-close>取消</button>
-        <button type="button" class="staff-btn btn-pay" id="editSave">儲存變更</button>
-      </footer>
-
-      <!-- ========== 畫面二：確認刪除（按了「刪除訂單」才會換成這個畫面） ========== -->
-      <div class="edit-body" id="editDeleteView" hidden>
-        <div class="delete-warn">
-          <p class="delete-warn-title">確定要刪除這筆訂單嗎？</p>
-          <p>刪除後這一桌的餐點會全部標記成「已取消」，並從內場、外場和結帳消失，之後只能在「訂單管理」的「已取消」查到。</p>
-        </div>
-      </div>
-
-      <footer class="edit-foot" id="editDeleteFoot" hidden>
-        <button type="button" class="staff-btn" id="editBackToNotes">← 返回</button>
-        <span class="edit-foot-space"></span>
-        <button type="button" class="staff-btn btn-danger" id="editConfirmDelete">確認刪除</button>
-      </footer>
-    </section>
-  </div>
 
   <div class="staff-toast" id="staffToast" role="status" aria-live="polite"
   		th:attr="data-error=${error}"></div>

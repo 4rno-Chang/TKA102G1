@@ -26,16 +26,21 @@ public class OrdersDetailsController {
 	@Autowired
 	OrdersService ordersService;
 	
+	@Autowired
+	WorkboardWebSocketHandler workboardWs;// 工作面板的即時通知
+	
 	//=============修改狀態<input type="hidden" name="itemId" th:value="${item.ordersDetailsNo}">
 	@PostMapping("/workboard/toServe")
-	public String toServe(@RequestParam Integer itemId) {
+	public String toServe(@RequestParam Integer itemId) {   //出餐->
 		odSvc.updateToserve(itemId);
+		workboardWs.notifyChanged();  //通知所有工作面板重新整理
 		return "redirect:/staff/workboard?view=kitchen" ;
 	}
 	//退回上一步 準備中
 	@PostMapping("/workboard/backToCooking")
 	public String backToCooking(@RequestParam Integer itemId) {
 		odSvc.updateTobackToCooking(itemId);
+		workboardWs.notifyChanged();  //通知所有工作面板重新整理
 		return "redirect:/staff/workboard?view=kitchen";
 	}
 	
@@ -43,6 +48,7 @@ public class OrdersDetailsController {
 	@PostMapping("/workboard/served")
 	public String served(@RequestParam Integer itemId) {
 		odSvc.updateToserved(itemId);
+		workboardWs.notifyChanged();  //通知所有工作面板重新整理
 		return "redirect:/staff/workboard?view=floor";
 	}
 		
@@ -59,6 +65,7 @@ public class OrdersDetailsController {
 		try{
 			odSvc.saveNotes(orderId,itemIds,itemNotes,cancelledItemIds);
 			ordersService.recalculate(orderId);   // 有取消或復原，金額要重算
+			workboardWs.notifyChanged();  //通知所有工作面板重新整理 // 成功才通知
 		}catch(IllegalArgumentException e){
 			ra.addFlashAttribute("error",e.getMessage());
 			return "redirect:/staff/workboard/edit?orderId=" + orderId;
@@ -73,13 +80,13 @@ public class OrdersDetailsController {
 		try{
 			odSvc.cancelAll(orderId);
 			ordersService.recalculateUnpaid(orderId); //全部取消金額重新算->歸0
+			workboardWs.notifyChanged();  //通知所有工作面板重新整理 // 成功才通知
 		}catch(IllegalArgumentException e){
 			ra.addFlashAttribute("error",e.getMessage());
 			return "redirect:/staff/workboard/edit?orderId=" + orderId;
 		}
 		return "redirect:/staff/workboard?view=kitchen";
 	}
-	
 	
 	
 	
