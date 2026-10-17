@@ -65,7 +65,7 @@
            prevDate  前一天、nextDate 後一天（已經是今天時放 null）、today 今天
          ================================================================ -->
     <div class="source-block" th:if="${orderslistAll != null}">
-      <p class="source-line"><span class="source-tag source-db">資料庫資料</span></p>
+      <p class="source-line"></p>
        <!-- 篩選列：條件都帶在網址上，例如 /staff/orders?status=PAID&date=2026-10-04&keyword=A1
            狀態的按鈕是連結（網址帶著目前的日期和關鍵字，所以換狀態時不會跑掉）。
            日期和關鍵字在一個 method="get" 的表單裡：在月曆選了日期、或在搜尋框按 Enter，表單就會送出；
@@ -168,50 +168,6 @@
       </section>
     </div>
 
-
-    <!-- ================================================================
-         【假資料】由 orders.js 的「B. 假資料」產生與控制。
-         資料庫的版本確認沒問題後，這個 div 整個刪掉（到它結尾的 </div> 為止）。
-         這裡的篩選、日期、搜尋都是 JS 直接在瀏覽器裡篩選，不會送到後端。
-         ================================================================ -->
-         
-<!--     <div class="source-block">
-      <p class="source-line" th:if="${orders != null}"><span class="source-tag">假資料</span></p>
-
-      篩選：依狀態 + 用桌號或訂單編號搜尋
-      <div class="orders-tools">
-        <div class="chips" id="orderFilters">
-          <button type="button" class="chip active" data-filter="ALL">全部</button>
-          <button type="button" class="chip" data-filter="ACTIVE">用餐中</button>
-          <button type="button" class="chip" data-filter="DONE">待結帳</button>
-          <button type="button" class="chip" data-filter="PAID">已結帳</button>
-          <button type="button" class="chip" data-filter="CANCELLED">已取消</button>
-        </div>
-
-        日期切換：在「全部」「已結帳」「已取消」會出現（「用餐中」「待結帳」時是 hidden）
-        <div class="date-nav" id="orderDateNav" hidden>
-          <button type="button" class="date-nav-btn" id="datePrev" aria-label="前一天">‹</button>
-          <span class="date-nav-date">
-            <span id="dateLabel"></span>
-            <input type="date" class="date-nav-input" id="dateInput" aria-label="選擇日期">
-          </span>
-          <button type="button" class="date-nav-btn" id="dateNext" aria-label="後一天">›</button>
-        </div>
-
-        <input type="search" class="staff-input" id="orderSearch" placeholder="輸入桌號或訂單編號" aria-label="搜尋訂單">
-      </div>
-
-      <section class="staff-card">
-        欄位名稱（手機寬度時隱藏）
-        <div class="order-row order-row-head">
-          <span>訂單編號</span><span>桌號</span><span>下單時間</span><span class="num">金額</span><span>狀態</span><span></span>
-        </div>
-        每一筆訂單一列，點一下可以展開餐點明細；由 orders.js 產生
-        <div id="orderList"></div>
-      </section>
-    </div> -->
-    
-    
   </main>
 
   <div class="staff-toast" id="staffToast" role="status" aria-live="polite"></div>
