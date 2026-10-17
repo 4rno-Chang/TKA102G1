@@ -215,6 +215,12 @@
 
 		<!-- 員工個人資料彈窗功能 -->
 		<script th:src="@{/js/staff/staff_profile.js}" defer></script>
+		<script th:src="@{/js/sms-simulator.js}"
+        data-sms-simulator
+        data-staff="true"
+        th:attr="data-inbox-url=@{/sms/simulation/messages},
+                 data-css-url=@{/css/staff/sms-simulator.css}"
+        defer></script>
 	</nav>
 
 </body>

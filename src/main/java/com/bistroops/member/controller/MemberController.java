@@ -1,6 +1,8 @@
 package com.bistroops.member.controller;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import com.bistroops.sms.SmsService;
+import com.bistroops.sms.SmsSendException;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import org.springframework.stereotype.Controller;
@@ -36,6 +38,9 @@ public class MemberController {
 
 	@Autowired
 	CaptchaService captchaService;
+	
+	@Autowired
+	private SmsService smsService;
 
 	// 會員註冊
 	@PostMapping("/member/register")
@@ -194,60 +199,80 @@ public class MemberController {
 		return "ERROR";
 	}
 
-	// 會員中心：發送手機認證碼
+	// 會員中心：發送手機認證碼。
 	@PostMapping("/member/sendVerifyPhoneCode")
 	@ResponseBody
 	public String sendVerifyPhoneCode(HttpSession session) {
 
-		// 從 Session 取得會員編號
-		Integer memNo = (Integer) session.getAttribute("memberNo");
+	    Object stored = session.getAttribute("memberNo");
 
-		// 尚未登入
-		if (memNo == null) {
-		    return "NOT_LOGIN";
-		}
+	    if (!(stored instanceof Integer memberNo)) {
+	        return "NOT_LOGIN";
+	    }
 
-		// 從 MySQL 取得最新會員資料
-		MemberVO member = memberService.getMemNoQuery(memNo);
+	    MemberVO member = memberService.getMemNoQuery(memberNo);
 
-		if (member == null) {
-		    return "NOT_LOGIN";
-		}
+	    if (member == null) {
+	        return "NOT_LOGIN";
+	    }
 
-		// 已經驗證過
-		if ("已驗證".equals(member.getMemStatus())) {
-			return "ALREADY_VERIFIED";
-		}
+	    if ("已驗證".equals(member.getMemStatus())) {
+	        return "ALREADY_VERIFIED";
+	    }
 
-		// 限制 60 秒內不可重複發送
-		Long lastSendTime = (Long) session.getAttribute("memberVerifyLastSendTime");
+	    // 電話從登入會員資料取得，不接受前端指定其他電話。
+	    String phone = member.getMemTel();
 
-		long now = System.currentTimeMillis();
+	    if (phone == null || !phone.matches("09[0-9]{8}")) {
+	        return "PHONE_ERROR";
+	    }
 
-		if (lastSendTime != null && now - lastSendTime < 60_000L) {
-			return "TOO_FAST";
-		}
+	    // 避免同一Session同時重複發送。
+	    synchronized (session) {
+	        Long lastSendTime =
+	                (Long) session.getAttribute("memberVerifyLastSendTime");
 
-		// 產生六位數驗證碼
-		SecureRandom random = new SecureRandom();
-		String code = String.format("%06d", random.nextInt(1000000));
+	        long now = System.currentTimeMillis();
 
-		// 使用獨立 Session，避免影響忘記密碼、修改密碼
-		session.setAttribute("memberVerifyCode", code);
-		session.setAttribute("memberVerifyPhone", member.getMemTel());
-		session.setAttribute("memberVerifyExpireAt", System.currentTimeMillis() + 5 * 60 * 1000L);
+	        if (lastSendTime != null
+	                && now - lastSendTime < 60_000L) {
+	            return "TOO_FAST";
+	        }
 
-		// 記錄本次發送時間
-		session.setAttribute("memberVerifyLastSendTime", now);
+	        SecureRandom random = new SecureRandom();
 
-		// 新驗證碼發送成功，錯誤次數歸零
-		session.setAttribute("memberVerifyErrorCount", 0);
+	        String code = String.format(
+	                java.util.Locale.ROOT,
+	                "%06d",
+	                random.nextInt(1_000_000));
 
-		// 測試階段：驗證碼印在 Eclipse Console
-		System.out.println("會員手機認證：" + member.getMemTel());
-		System.out.println("會員認證碼：" + code);
+	        try {
+	            smsService.send(
+	                    phone,
+	                    "【Bistroops】您的會員電話驗證碼為 "
+	                            + code
+	                            + "，有效時間為5分鐘，請勿提供給他人。");
 
-		return "OK";
+	        } catch (SmsSendException ex) {
+	            // 失敗時不覆蓋原驗證碼，也不開始此次重發限制。
+	            return "SEND_FAILED";
+	        }
+
+	        // 發送處理成功後才保存此次驗證資料。
+	        long sentAt = System.currentTimeMillis();
+
+	        session.setAttribute("memberVerifyCode", code);
+	        session.setAttribute("memberVerifyPhone", phone);
+
+	        session.setAttribute(
+	                "memberVerifyExpireAt",
+	                sentAt + 5 * 60 * 1000L);
+
+	        session.setAttribute("memberVerifyLastSendTime", sentAt);
+	        session.setAttribute("memberVerifyErrorCount", 0);
+
+	        return "OK";
+	    }
 	}
 
 	// 會員中心：確認手機驗證碼

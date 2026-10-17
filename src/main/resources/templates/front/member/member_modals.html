@@ -809,7 +809,12 @@
     }
 })();
 </script>
-
+<script th:src="@{/js/sms-simulator.js}"
+        data-sms-simulator
+        data-staff="false"
+        th:attr="data-inbox-url=@{/sms/simulation/messages},
+                 data-css-url=@{/css/staff/sms-simulator.css}"
+        defer></script>
 
 	</div>
 
