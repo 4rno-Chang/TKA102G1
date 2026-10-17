@@ -56,12 +56,12 @@ public class ConsoleSmsSender implements SmsSender {
                 messages.add(preview);
                 trim(messages, 50);
 
-                // 明確更新屬性，讓 Redis Session 儲存訊息。
+                // Redis Session 必須明確重新設定，才會記錄此次更新。
                 session.setAttribute(SESSION_MESSAGES, messages);
             }
 
         } else {
-            // 排程訊息由具備權限的後台讀取。
+            // 排程沒有瀏覽器 Session，另外保留供後台讀取。
             synchronized (scheduledMessages) {
                 scheduledMessages.add(preview);
                 trim(scheduledMessages, 100);
@@ -111,6 +111,7 @@ public class ConsoleSmsSender implements SmsSender {
             }
         }
 
+        // 讀取時不建立空的 Session 屬性，也不修改原本的清單。
         return result;
     }
 
