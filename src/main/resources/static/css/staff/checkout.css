@@ -121,6 +121,15 @@
                 background: #fff; border: 1px solid var(--st-border); border-radius: 12px;
                 font-size: 22px; letter-spacing: 2px; text-align: center; }
 .member-input:focus { outline: none; border-color: var(--st-text); }
+/* 查詢結果：查詢中是灰色，找到會員是綠色，查無此會員是紅色 */
+.member-result { margin-top: 14px; padding: 10px 14px;
+                 background: var(--st-soft); border-radius: 12px;
+                 color: var(--st-muted); font-size: 16px; font-weight: 500; }
+.member-result.is-found { background: #eef1e6; color: #5f6b45; }
+.member-result.is-found strong { color: var(--st-text); font-size: 18px; }
+.member-result.is-error { background: #fbeee9; color: var(--st-red); }
+.btn-member-submit:disabled { opacity: .4; cursor: not-allowed; }
+.btn-member-submit:disabled:hover { background: var(--st-text); border-color: var(--st-text); }
 .member-error { margin-top: 8px; color: var(--st-red); font-size: 14px; text-align: left; }
 .member-actions { display: flex; gap: 12px; margin-top: 20px; }
 .member-actions .staff-btn { flex: 1; }
