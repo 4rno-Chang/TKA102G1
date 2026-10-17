@@ -1,5 +1,6 @@
 package com.bistroops.promote.model;
 
+import java.io.IOException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -15,23 +16,34 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.bistroops.ImageCompressor;
+import com.bistroops.promotemeal.model.PromoteMealRepository;
+
 
 @Service
 public class PromoteService {
 	
 	//設定查詢時的分頁每頁幾個結果
 	private static final int PAGE_SIZE = 8;
-
+	//進行中、已結束活動的排序方式
+	private static final Sort BEGIN_NEAR_PAST = 
+			Sort.by(Sort.Direction.DESC, "promoteBegin", "promoteNo");
+	//未開始活動的排序方式
+	private static final Sort BEGIN_NEAR_FUTURE = 
+			Sort.by(Sort.Direction.ASC, "promoteBegin", "promoteNo");
+	
 	@Autowired
-	private PromoteRepository repository;
+	private PromoteRepository promoteRepository;
+	
+	@Autowired
+	private PromoteMealRepository promoteMealRepository;
 	
 	// 新增一筆活動
 	@Transactional
-	public PromoteVO addPromote(PromoteVO promote, byte[] img) {
+	public PromoteVO addPromote(PromoteVO promote, byte[] img) throws IOException {
 	    LocalDate begin = promote.getPromoteBegin().toLocalDate();
 	    LocalDate end = promote.getPromoteEnd().toLocalDate();
-	    // 新增一定沒有編號。編號是表單的隱藏欄位送來的，可以被改；
-	    // 設成 null 才能保證 save 做的是「新增」，不會蓋掉別的活動
+	    // 設成 null確保不會蓋到其他活動
 	    promote.setPromoteNo(null);
 	    promote.setPromoteName(promote.getPromoteName().trim());
 	    promote.setPromoteBegin(begin.atStartOfDay());
@@ -42,9 +54,9 @@ public class PromoteService {
 	    }
 	    
 	    if (img != null) {
-	        promote.setPromoteImg(img);
+	    	promote.setPromoteImg(ImageCompressor.compress(img, ImageCompressor.PROMOTE_WIDTH));
 	    }
-	    return repository.save(promote);
+	    return promoteRepository.save(promote);
 	}
 
 	
@@ -55,15 +67,16 @@ public class PromoteService {
 		
 		switch (status) {
 			case "未開始":
-				return repository.findByPromoteNameContainingAndPromoteBeginAfter
-											(keyword, now, getPromotePageable(page));
+				return promoteRepository.findByPromoteNameContainingAndPromoteBeginAfter
+											(keyword, now, getPromotePageable(page, BEGIN_NEAR_FUTURE));
 			case "進行中":
-				return repository.findActivePromotes(keyword, now, getPromotePageable(page));
+				return promoteRepository.findActivePromotes(keyword, now, getPromotePageable(page, BEGIN_NEAR_PAST));
 			case "已結束":
-				return repository.findByPromoteNameContainingAndPromoteEndBefore
-											(keyword, now, getPromotePageable(page));
+				return promoteRepository.findByPromoteNameContainingAndPromoteEndBefore
+											(keyword, now, getPromotePageable(page, BEGIN_NEAR_PAST));
 			default:
-				return repository.findALLPromoteByName(keyword, getPromotePageable(page));
+				return promoteRepository.findALLPromoteByName
+											(keyword,now,PageRequest.of(Math.max(page, 1) - 1, PAGE_SIZE));
 		}
 	}
 	
@@ -74,7 +87,12 @@ public class PromoteService {
 		if (keyword.isEmpty()) 
 			return Page.empty();
 		
-		return repository.findByPromoteNameContainingAndPromoteEndBefore(keyword, now, getPromotePageable(page));
+		return promoteRepository.findByPromoteNameContainingAndPromoteEndBefore(keyword, now, getPromotePageable(page));
+	}
+	
+    //菜單管理用：還沒結束的活動（未開始＋進行中，不含圖片）
+	public List<PromoteOptionDTO> getOpenOptions() {
+		return promoteRepository.findOpenOptions(LocalDateTime.now());
 	}
 	
 	//用編號查一筆
@@ -82,7 +100,7 @@ public class PromoteService {
 		if (promoteNo == null) {
 			return null;
 		}
-		Optional<PromoteVO> promote = repository.findById(promoteNo);
+		Optional<PromoteVO> promote = promoteRepository.findById(promoteNo);
 		
 		if(promote.isPresent()) {
 			PromoteVO promoteVO = promote.get();
@@ -91,7 +109,7 @@ public class PromoteService {
 			}
 		}
 		
-		return repository.findById(promoteNo).orElse(null);
+		return promoteRepository.findById(promoteNo).orElse(null);
 	}
 	
 	//用編號查一筆活動的圖片
@@ -108,7 +126,7 @@ public class PromoteService {
 	@Transactional
 	public PromoteVO updatePromote(Integer promoteNo, String promoteName, 
 									String promoteContent, LocalDateTime promoteBegin, 
-									LocalDateTime promoteEnd, byte[] img) {
+									LocalDateTime promoteEnd, byte[] img) throws IOException{
 		PromoteVO promote = getPromoteByNo(promoteNo); 
 		if (promote == null) {
 			return null; // 找不到該活動，回傳 null
@@ -128,16 +146,16 @@ public class PromoteService {
 	    }
 		
 	    if (img != null) {
-	        promote.setPromoteImg(img);
+	        promote.setPromoteImg(ImageCompressor.compress(img, ImageCompressor.PROMOTE_WIDTH));
 	    }
 	    
-	    return repository.save(promote);
+	    return promoteRepository.save(promote);
 	}
 	
 	//刪除一筆活動，保留刪除動作但不接到前端
 	@Transactional
 	public void deletePromoteByNo(Integer promoteNo) {
-		repository.deleteById(promoteNo);
+		promoteRepository.deleteById(promoteNo);
 	}
 	
 	//刪除一筆未開始的活動。將狀態改成已刪除，刪除成功回傳 null
@@ -152,7 +170,7 @@ public class PromoteService {
 		if (promote.getOrdersDetails() != null && !promote.getOrdersDetails().isEmpty()) {
 			return "這個活動已經有訂單使用，不能刪除";
 		}
-		repository.cancelPromote(promoteNo);
+		promoteRepository.cancelPromote(promoteNo);
 		return "已刪除活動";
 	}
 
@@ -196,6 +214,9 @@ public class PromoteService {
 		return PageRequest.of(pageNum - 1, PAGE_SIZE, Sort.by(Sort.Direction.DESC, "promoteEnd","promoteNo"));
 	}
 	
+	private Pageable getPromotePageable(int pageNum, Sort sort) {
+		return PageRequest.of(Math.max(pageNum, 1) - 1, PAGE_SIZE, sort);
+	}
 
 	//判斷一筆活動的狀態
 	public String getStatus(PromoteVO promote) {
@@ -219,7 +240,7 @@ public class PromoteService {
 	@Transactional(readOnly = true)
 	public Map<Integer, PromoPriceDTO> getActivePrices() {
 	    LocalDateTime now = LocalDateTime.now();
-	    List<PromoteVO> promotes = repository.findAllActivePromotes(now);
+	    List<PromoteVO> promotes = promoteRepository.findAllActivePromotes(now);
 	    
 	    Map<Integer, PromoPriceDTO> result = null;
 	    
@@ -233,6 +254,14 @@ public class PromoteService {
 	    						  (a, b) -> a.getPrice() <= b.getPrice() ? a : b));
 
 	    return result;
+	}
+	
+	// 改日期後，這個活動的菜品是否同時參加時間重疊的其他活動：有的話回傳提醒訊息，沒有回傳 null
+	public String checkMealOverlap(Integer promoteNo, LocalDateTime begin, LocalDateTime end) {
+		List<String> names = promoteMealRepository.findOverlapMealNames(promoteNo, begin, end);
+		if (names.isEmpty()) return null;
+		return "改了日期之後，「" + String.join("、", names) + "」也參加了時間重疊的其他活動，"
+		            + "重疊的期間前台會用比較低的價格。確定要儲存的話，請按下方的「仍要儲存」";
 	}
 	
 }

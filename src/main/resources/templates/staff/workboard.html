@@ -181,7 +181,7 @@
               <li class="edit-item" th:each="item : ${editOrder.ordersDetails}"
                   th:classappend="${item.odStatus == '已取消'} ? 'is-removed'">
                 <span class="edit-item-name">
-                  <span class="dish-tag" th:text="${item.meal.mealType.mealtypeName}">主菜</span>
+                  <span class="dish-tag" th:if="${item.meal.mealType != null}" th:text="${item.meal.mealType.mealtypeName}">主菜</span><!-- 【菜單管理】刪除的菜品類別是 null：不顯示類別標籤 -->
                   <span th:text="${ item.meal.mealName}">品名</span>
                   <span class="dish-qty" th:if="${item.odMealNum> 1}" th:text="|× ${item.odMealNum}|">× 2</span>
                 </span>
@@ -242,7 +242,7 @@
        ================================================================ -->
   <th:block th:remove="all">
     <th:block th:fragment="dishInfo">
-      <span class="dish-tag" th:text="${item.meal.mealType.mealtypeName}">主菜</span>
+      <span class="dish-tag" th:if="${item.meal.mealType != null}" th:text="${item.meal.mealType.mealtypeName}">主菜</span><!-- 【菜單管理】刪除的菜品類別是 null：不顯示類別標籤 -->
       <span class="dish-name">
         <span th:text="${item.meal.mealName}">品名</span>
         <span class="dish-qty" th:if="${item.odMealNum > 1}" th:text="|× ${item.odMealNum}|" >×2</span>

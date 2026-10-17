@@ -111,6 +111,13 @@
   font-size: 12px; font-weight: 400;
   opacity: .75;
 }
+/* 活動價的小標示：接在價錢後面 */
+.menu-item-promo {
+  margin-left: 2px;
+  color: var(--color-primary);
+  font-size: 12px; font-weight: 500;
+  letter-spacing: 0;
+}
 .menu-item-desc {
   margin-top: 6px;
   color: var(--color-text-light);

@@ -72,13 +72,10 @@
               th:classappend="${active == 'employees'} ? 'active'">
          並在那個頁面引用選單時填對應的名稱，例如 sidebar('employees')。
 
-         停在這一組裡面的頁面時（目前是活動管理、公告及QA），選單會自動展開：
-         下面那行 div 的 th:classappend 在 active 是這幾個名稱時加上 open。
-         【Thymeleaf 串接】之後員工管理、會員管理、菜單管理做好了，把它們的名稱也加進條件裡，例如
-           th:classappend="${active == 'promote' or active == 'announcement-and-qa' or active == 'employees'} ? 'open'" -->
+         停在這一組裡面的頁面時（目前是活動管理、公告及QA），選單會自動展開： -->
 			<div class="staff-group"
 				th:attr="data-can-manage=${canManageBackend == true}"
-				th:classappend="${canManageBackend == true and (active == 'promote' or active == 'announcement-and-qa' or active == 'employees' or active == 'members')} ? 'open'">
+				th:classappend="${canManageBackend == true and (active == 'promote' or active == 'announcement-and-qa' or active == 'employees' or active == 'members' or active == 'meal')} ? 'open'">
 				<button type="button" class="staff-menu-item staff-group-toggle"
 					data-menu-group aria-expanded="false">
 					<svg viewBox="0 0 24 24" aria-hidden="true">
@@ -111,13 +108,13 @@
 						<span>會員管理</span>
 					</a>
 
-					<button type="button" class="staff-menu-item staff-sub-item"
-						data-coming-soon="菜單管理">
+					<a class="staff-menu-item staff-sub-item" th:href="@{/staff/meal}"
+						th:classappend="${active == 'meal'} ? 'active'">
 						<svg viewBox="0 0 24 24" aria-hidden="true">
 							<path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z" />
 							<path d="M5 17a3 3 0 0 1 3-3h11M9 8h6" /></svg>
 						<span>菜單管理</span>
-					</button>
+					</a>
 
 					<!-- 活動管理：連到 /staff/promote（頁面是 templates/staff/promote.html，Controller 在 StaffPageController 的 promote）；
              活動管理的頁面填 sidebar('promote') -->

@@ -4,8 +4,7 @@
    這一頁主要是給手機看的（客人掃桌上的 QR code 進來），所以樣式是「先照手機寫」，最後第 9 區才是畫面比較寬時的調整。
    內容：1. 整頁與頁首（前台共用的精簡頁首）　2. 說明與訊息　3. 一排類別　4. 菜單（卡片排成格子）　5. 數量與按鈕
          6. 右下角浮著的按鈕（已點餐點、購物車）　7. 從右邊滑出來的面板（購物車、已點餐點）
-         8. 菜品的對話框（點卡片、按「編輯」時出現）　9. 比較寬的畫面　10.「資料庫／假資料」的小標籤
-   資料庫的版本和假資料的版本用的是同一組 class，所以刪掉假資料之後這個檔案不用改（第 10 區的小標籤可以一起刪）。
+         8. 菜品的對話框（點卡片、按「編輯」時出現）　9. 比較寬的畫面
    ========================================================= */
 
 
@@ -98,7 +97,6 @@
   scrollbar-width: none;
 }
 .order-cats::-webkit-scrollbar { display: none; }
-.order-cats + .order-cats { margin-top: 8px; }   /* 資料庫和假資料兩排同時出現時，中間留一點距離 */
 .order-cat {
   flex: none;
   display: inline-flex; align-items: center;
@@ -296,7 +294,6 @@
   position: fixed; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom)); z-index: 900;
 }
 .order-bar-row { display: flex; justify-content: flex-end; gap: 10px; }
-.order-bar-row + .order-bar-row { margin-top: 8px; }   /* 資料庫和假資料兩列同時出現時 */
 .order-bar-side,
 .order-bar-cart {
   flex: none;
@@ -390,6 +387,9 @@
 .order-foot-actions form { display: flex; }      /* 資料庫的版本按鈕包在表單裡 */
 .order-foot-main { flex: 1; }                    /* 「送出訂單」佔掉剩下的寬度 */
 .order-foot-note { margin-top: 8px; color: var(--color-text-light); font-size: 13px; line-height: 1.7; }
+/* 購物車只有 0 元餐點時的提醒（order.html 的 order-foot-warn），「送出訂單」變淡、不能按 */
+.order-foot-warn { margin-top: 10px; color: var(--color-primary-dark); font-size: 13px; line-height: 1.7; }
+.order-btn-main:disabled { opacity: .45; cursor: not-allowed; }
 
 /* 已點餐點的一項：菜名和備註、狀態、小計 */
 .order-ordered-item { display: flex; align-items: center; gap: 10px; padding: 12px 0; border-bottom: 1px solid var(--color-border); }
@@ -403,27 +403,14 @@
 .order-ordered-item.is-cancelled .order-cart-name span,
 .order-ordered-item.is-cancelled .order-cart-sub { color: var(--color-text-light); text-decoration: line-through; }
 
-/* 「同桌的人更新了購物車，點這裡更新」：WebSocket（order.js 的 A-7）收到通知、但客人正在填菜品的對話框時才會出現。
-   固定在頁首的下面、置中；A-7 還沒啟用之前不會出現 */
-.order-changed-bar {
-  position: fixed; top: calc(var(--order-head-h) + 10px); left: 50%; z-index: 1300;
-  max-width: calc(100% - 32px);
-  padding: 10px 18px;
-  background: var(--lux-gold-gradient);
-  border: 0; border-radius: 999px;
-  box-shadow: 0 10px 26px rgba(35, 32, 28, .28);
-  color: var(--lux-ink);
-  font-size: 14px; font-weight: 500;
-  transform: translateX(-50%);
-  cursor: pointer;
-}
-/* 畫面下方跳出來的提示（假資料用）：平常透明，加上 show 才看得到 */
+/* 畫面下方跳出來的小提示（「已加入購物車」等，order.js 的 A-8）：平常透明，加上 show 才看得到 */
 .order-toast {
   position: fixed; left: 50%; bottom: 96px; z-index: 1200;
   max-width: calc(100% - 32px);
   padding: 10px 20px;
   background: var(--lux-ink);
-  border-radius: 999px;
+  border: 1px solid var(--color-gold);   /* 金框、小圓角（「已加入購物車」「同桌的人更新了購物車」都是這個） */
+  border-radius: 6px;
   color: var(--lux-gold-light);
   font-size: 14px; text-align: center;
   transform: translateX(-50%);
@@ -533,3 +520,46 @@
   .order-cat { justify-content: flex-start; border-radius: 10px; }
   .order-body > .source-block { grid-column: 2; }
 }
+
+
+/* ========== 確認對話框（order.js 的 A-3：送出訂單、清空購物車前會問） ==========
+   跟前台其他畫面同一套風格：白底、頂端一條金色漸層粗線、裡面內縮一圈金色細線、小標用英文字母拉開間距。
+   按鈕跟左邊的類別一樣：小圓角的方形、文字置中；「確認」是金色（像「活動商品」），「取消」是白底金框（像一般類別），
+   滑過、按下時都變成深墨色底、淺金色字。 */
+.order-confirm {
+  width: min(440px, calc(100% - 32px));
+  margin: 14vh auto auto;
+  padding: 36px 28px 26px;
+  /* 兩層背景：上層是頂端 4px 高的金色漸層粗線，下層是白底 */
+  background: var(--lux-gold-gradient) top / 100% 4px no-repeat, var(--color-bg-light);
+  border: 0; border-radius: 4px;
+  outline: 1px solid var(--lux-line); outline-offset: -8px;   /* 內縮一圈的金色細線 */
+  color: var(--color-text);
+  text-align: center;
+  box-shadow: 0 24px 60px rgba(35, 32, 28, .3);
+  animation: order-confirm-in .25s ease-out;
+}
+.order-confirm::backdrop { background: rgba(35, 32, 28, .55); }
+.order-confirm-label {
+  margin-bottom: 12px;
+  color: var(--color-primary);
+  font-family: var(--font-serif); font-size: 13px; letter-spacing: .3em;
+}
+.order-confirm-text { margin-bottom: 26px; font-size: 16px; line-height: 1.9; }
+.order-confirm-btns { display: flex; gap: 12px; }
+.order-confirm-btn {
+  flex: 1;
+  display: inline-flex; align-items: center; justify-content: center;
+  min-height: 48px; padding: 0 16px;
+  background: var(--color-bg-light);
+  border: 1px solid var(--color-gold);
+  border-radius: 10px;
+  color: var(--color-primary);
+  font-size: 15px; letter-spacing: 2px;
+  cursor: pointer;
+  transition: background-color var(--transition), color var(--transition);
+}
+.order-confirm-btn.is-ok { background: var(--lux-gold-gradient); border-color: transparent; color: var(--lux-ink); font-weight: 500; }
+.order-confirm-btn:hover, .order-confirm-btn:active { background: var(--lux-ink); border-color: var(--lux-ink); color: var(--lux-gold-light); }
+.order-confirm-btn:focus-visible { outline: 2px solid var(--color-gold); outline-offset: 3px; }   /* 選到時：金色外框（不用瀏覽器的黑框） */
+@keyframes order-confirm-in { from { opacity: 0; transform: translateY(-14px); } }

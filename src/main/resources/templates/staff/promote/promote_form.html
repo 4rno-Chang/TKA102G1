@@ -20,7 +20,7 @@
 <!--
   活動管理（表單頁）：新增活動、修改活動。新增和修改共用這一頁、同一個表單。
   Controller 回傳的名稱是 "staff/promote/promote_form"（這個檔案在 templates/staff/promote/ 資料夾裡）。
-  畫面上的資料全部來自資料庫（Controller 放進 Model，這裡用 Thymeleaf 顯示）；假資料已經移除。
+  畫面上的資料全部來自資料庫（Controller 放進 Model，這裡用 Thymeleaf 顯示）。
 
   活動管理有兩個頁面，都放在 templates/staff/promote/：
     promote_list.html            查詢 ＋ 卡片 ＋「活動詳細」的對話框
@@ -83,6 +83,7 @@
                            修改 GET /staff/promote/edit?promoteNo=1   放從資料庫查出來的那一筆
                          promoteForm.promoteNo 是 null → 畫面當作「新增」；有值 → 當作「修改」。
            errorMsg      （儲存不通過時才放）錯誤訊息，會顯示在表單最上面。
+           overlapMsg    （改日期造成菜品的活動時間重疊時才放）黃色的提醒，下方多一顆「仍要儲存」（送 confirmOverlap=true）。
 
          表單會送出的欄位（POST /staff/promote/save）。名稱和 PromoteVO 的屬性相同，
          所以 Controller 直接用 @Valid PromoteVO 接：
@@ -164,6 +165,8 @@
           <div class="promote-body">
             <!-- Controller 檢查不通過時的錯誤訊息 -->
             <p class="promote-alert" th:if="${errorMsg != null}" th:text="${errorMsg}">錯誤訊息</p>
+            <!-- 改了日期之後，有菜品同時參加時間重疊的其他活動：先提醒，按下方的「仍要儲存」才會存（Controller 放 overlapMsg） -->
+            <p class="promote-alert promote-alert-warn" th:if="${overlapMsg != null}" th:text="${overlapMsg}">時間重疊的提醒</p>
             <!-- 送出前 JS 檢查不通過時的錯誤訊息（promote.js 填入） -->
             <p class="promote-alert" data-form-error hidden></p>
 
@@ -287,6 +290,9 @@
           <footer class="promote-foot">
             <a class="staff-btn" th:href="@{/staff/promote(status=${param.status}, keyword=${param.keyword}, page=${param.page})}">取消</a>
             <button type="submit" class="staff-btn btn-pay">儲存</button>
+            <!-- 有重疊提醒時才出現：送出時多帶 confirmOverlap=true，Controller 就不再檢查、直接存。
+                 放在「儲存」後面：在欄位裡按 Enter 送出的是第一顆按鈕（儲存），會重新檢查一次，不會不小心略過提醒 -->
+            <button type="submit" class="staff-btn btn-pay" name="confirmOverlap" value="true" th:if="${overlapMsg != null}">仍要儲存</button>
           </footer>
         </form>
       </section>

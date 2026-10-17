@@ -1,0 +1,502 @@
+/* =========================================================
+   Bistroops 員工後台：菜品管理（staff/meal/meal_list.html）
+   要先載入 staff.css（變數、按鈕、輸入框、左邊選單）。
+
+   1. 頁首的「新增菜品」與訊息　2. 列表＋詳細的版面　3. 篩選　4. 菜品列表（含代表圖、活動的標籤）
+   5. 菜品詳細　6. 對話框共用的欄位　7. 新增／修改的對話框　8. 活動價
+   9. 平板（1200px 以下：詳細改成從右邊滑出）　10. 手機（640px 以下）
+   ========================================================= */
+
+.sr-only {
+  position: absolute; width: 1px; height: 1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
+}
+
+
+/* ========== 1. 頁首的「編輯類別」「新增菜品」與訊息 ========== */
+.meal-head-actions { display: flex; align-items: center; gap: 12px; }
+/* 「編輯類別」：白底深咖啡框，跟旁邊實心的「新增菜品」分出主次 */
+.meal-types-btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  min-height: 52px;
+  padding: 0 22px 0 18px;
+  background: var(--st-card);
+  border: 1.5px solid var(--st-text); border-radius: 999px;
+  color: var(--st-text);
+  font-size: 16px; font-weight: 700;
+  transition: background-color .2s, color .2s, transform .1s;
+}
+.meal-types-btn:hover { background: var(--st-text); color: #fff; }
+.meal-types-btn:active { transform: scale(.97); }
+.meal-types-btn svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.meal-add-btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  min-height: 52px;
+  padding: 0 26px 0 20px;
+  background: var(--st-text);
+  border: 0; border-radius: 999px;
+  color: #fff;
+  font-size: 16px; font-weight: 700;
+  box-shadow: 0 8px 20px rgba(59, 47, 42, .2);
+  transition: background-color .2s, transform .1s;
+}
+.meal-add-btn:hover { background: var(--st-red); }
+.meal-add-btn:active { transform: scale(.97); }
+.meal-add-btn svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; }
+
+.meal-flash {
+  margin-bottom: 18px;
+  padding: 12px 18px;
+  background: #dfe6cf;
+  border-radius: 12px;
+  color: #4f6037;
+  font-weight: 500;
+}
+.meal-flash.is-error { background: #f6d9d2; color: #a23e2b; }
+
+
+/* ========== 2. 列表（左）＋ 詳細（右） ========== */
+.meal-board {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 380px;
+  align-items: start;
+  gap: 24px;
+}
+
+
+/* ========== 3. 篩選 ========== */
+.meal-filter {
+  position: sticky; top: 0; z-index: 5;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
+  margin-bottom: 8px;
+  padding: 10px 0;
+  background: var(--st-bg);
+}
+.meal-filter select,
+.meal-filter input {
+  height: 48px;
+  background: var(--st-card);
+  border: 1px solid var(--st-border);
+  border-radius: 999px;
+}
+.meal-filter select { padding: 0 16px; min-width: 150px; }
+.meal-filter select:focus,
+.meal-filter input:focus { outline: 2px solid var(--st-yellow); outline-offset: 1px; }
+.meal-filter-q { position: relative; flex: 1 1 220px; }
+.meal-filter-q svg {
+  position: absolute; left: 16px; top: 50%; translate: 0 -50%;
+  width: 18px; height: 18px;
+  fill: none; stroke: var(--st-muted); stroke-width: 2; stroke-linecap: round;
+}
+.meal-filter-q input { width: 100%; padding: 0 16px 0 42px; }
+.meal-filter-count { color: var(--st-muted); font-size: 14px; white-space: nowrap; }
+
+
+/* ========== 4. 菜品列表：像紙本菜單一樣一行一道 ========== */
+.meal-group + .meal-group { margin-top: 26px; }
+.meal-group-title {
+  display: flex; align-items: baseline; gap: 10px;
+  padding-bottom: 6px;
+  border-bottom: 2px solid var(--st-text);
+  font-family: var(--st-serif); font-size: 19px;
+}
+.meal-group-title small { color: var(--st-muted); font-family: var(--st-sans); font-size: 13px; font-weight: 500; }
+.meal-group-empty { padding: 14px 4px; color: var(--st-muted); font-size: 14px; }
+.meal-rows { list-style: none; }
+
+.meal-row {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr) auto 64px;
+  align-items: center; gap: 14px;
+  width: 100%; min-height: 80px;
+  padding: 8px 10px 8px 18px;   /* 左邊留空間：選到時的紅線不會貼著圖片 */
+  background: none;
+  border: 0; border-bottom: 1px dashed var(--st-border);
+  text-align: left;
+  transition: background-color .15s;
+}
+.meal-row:hover { background: rgba(241, 232, 217, .6); }
+/* 選取中的那一道：左邊一條磚紅色 */
+.meal-row.active { background: var(--st-card); box-shadow: inset 4px 0 0 var(--st-red); }
+
+.meal-row-thumb { position: relative; width: 64px; height: 64px; border-radius: 12px; overflow: hidden; background: var(--st-soft); }
+.meal-row-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.meal-row-thumb.is-art img { object-fit: contain; padding: 6px; opacity: .7; }
+
+/* 「代表圖」標籤：跟前台點餐頁的活動標籤一樣，金色膠囊放在圖片左上角 */
+.meal-pill {
+  position: absolute; left: 3px; top: 3px;
+  padding: 0 6px;
+  background: linear-gradient(135deg, #b8935a 0%, #e2cb96 50%, #b08a48 100%);
+  border-radius: 999px;
+  color: #23201c;
+  font-size: 10px; font-weight: 500; line-height: 1.8;
+  white-space: nowrap;
+}
+
+/* 第一行：菜名、隔一個字的距離（1em）放活動標籤；第二行：說明 */
+.meal-row-text { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 1em; align-items: center; min-width: 0; }
+.meal-row-name { font-weight: 700; }
+.meal-row-exp { grid-column: 1 / -1; overflow: hidden; color: var(--st-muted); font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+.meal-row-tags { grid-column: 2; grid-row: 1; display: flex; flex-wrap: wrap; gap: 4px; }
+
+/* 活動的小標籤：進行中是金色，未開始是外框 */
+.meal-tag {
+  display: inline-block;
+  padding: 0 8px;
+  border: 1px solid #c9a96a; border-radius: 999px;
+  color: #8a6a2e;
+  font-size: 12px; line-height: 1.7;
+  white-space: nowrap;
+}
+.meal-tag.is-on { background: linear-gradient(135deg, #b8935a 0%, #e2cb96 50%, #b08a48 100%); border-color: transparent; color: #23201c; }
+
+.meal-row-price { font-family: var(--st-serif); font-size: 18px; font-weight: 700; white-space: nowrap; }
+.meal-row-price::before { content: "NT$ "; color: var(--st-muted); font-family: var(--st-sans); font-size: 12px; font-weight: 500; }
+/* 狀態：前面一個圓點，上架綠、未上架灰 */
+.meal-row-status { display: inline-flex; align-items: center; gap: 6px; color: #4f6037; font-size: 13px; white-space: nowrap; }
+.meal-row-status::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--st-green); }
+.meal-row.is-off .meal-row-status { color: var(--st-muted); }
+.meal-row.is-off .meal-row-status::before { background: #c9bdb0; }
+.meal-row.is-off .meal-row-thumb,
+.meal-row.is-off .meal-row-text,
+.meal-row.is-off .meal-row-price { opacity: .5; }
+
+.meal-noresult { padding: 40px 0; color: var(--st-muted); text-align: center; }
+
+
+/* ========== 5. 菜品詳細：右邊固定的一張卡片 ========== */
+.meal-panel {
+  position: sticky; top: 16px;
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  background: var(--st-card);
+  border: 1px solid var(--st-border);
+  border-radius: var(--st-radius);
+  box-shadow: var(--st-shadow);
+}
+.meal-panel-backdrop { display: none; }
+.meal-panel-close {
+  position: absolute; right: 12px; top: 12px; z-index: 1;
+  display: none;   /* 寬螢幕不用關（詳細一直在右邊）；平板以下才出現，見第 9 區 */
+  width: 48px; height: 48px;
+  background: rgba(255, 253, 248, .92);
+  border: 1px solid var(--st-border); border-radius: 50%;
+  font-size: 24px; line-height: 1;
+}
+
+/* 還沒點任何菜：圖示＋統計 */
+.meal-panel-empty { padding: 40px 28px; color: var(--st-muted); text-align: center; }
+/* 圖示：深咖啡色框線的圓圈＋放大鏡（裡面一小段弧線是鏡片的反光） */
+.meal-empty-icon {
+  display: grid; place-items: center;
+  width: 76px; height: 76px; margin: 0 auto 12px;
+  background: none;
+  border: 2px solid var(--st-text); border-radius: 50%;   /* 深咖啡色框線，裡面不塗顏色 */
+  color: var(--st-text);
+}
+.meal-empty-icon svg {
+  width: 48px; height: 48px;
+  fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round;
+}
+.meal-panel-empty > p { color: var(--st-text); font-family: var(--st-serif); font-size: 18px; font-weight: 700; }
+/* 四個格子：可以按，按中的那格是磚紅色框 */
+.meal-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 20px; text-align: left; }
+.meal-stat {
+  display: flex; flex-direction: column; align-items: flex-start;
+  padding: 12px 14px;
+  background: var(--st-bg);
+  border: 2px solid transparent; border-radius: 12px;
+  color: var(--st-muted); font-size: 13px; text-align: left;
+  transition: border-color .2s, background-color .2s;
+}
+.meal-stat:hover { border-color: var(--st-border); }
+.meal-stat:focus-visible { outline: 2px solid var(--st-yellow); outline-offset: 2px; }
+.meal-stat b { color: var(--st-text); font-family: var(--st-serif); font-size: 24px; font-weight: 700; }
+.meal-stat.is-active { background: #fbeee9; border-color: var(--st-red); color: var(--st-red); }
+.meal-stat.is-active b { color: var(--st-red); }
+.meal-stats-bar { display: none; }   /* 寬螢幕用右邊的；平板以下才出現，見第 9 區 */
+
+.meal-view { position: relative; padding-bottom: 18px; }
+.meal-view-photo { position: relative; aspect-ratio: 4 / 3; background: var(--st-soft); border-radius: var(--st-radius) var(--st-radius) 0 0; overflow: hidden; }
+.meal-view-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.meal-view-photo.is-art img { object-fit: contain; padding: 32px; }
+.meal-view-photo .meal-pill { left: 12px; top: 12px; padding: 0 10px; font-size: 12px; }
+.meal-view-type { margin: 18px 22px 0; color: var(--st-red); font-size: 13px; font-weight: 700; letter-spacing: 1px; }
+.meal-view-name { margin: 2px 22px 0; font-family: var(--st-serif); font-size: 24px; line-height: 1.35; }
+.meal-view-price { display: flex; align-items: center; gap: 12px; margin: 6px 22px 0; font-family: var(--st-serif); font-size: 22px; font-weight: 700; }
+.meal-view-status { padding: 1px 12px; background: #dfe6cf; border-radius: 999px; color: #4f6037; font-family: var(--st-sans); font-size: 13px; }
+.meal-view-status.is-off { background: #e6dfd5; color: #7a6d62; }
+.meal-view-exp { margin: 10px 22px 0; white-space: pre-line; }
+.meal-view-exp:empty::before { content: "（沒有說明）"; color: var(--st-muted); }
+
+.meal-view-facts { margin: 16px 22px 0; border-top: 1px solid var(--st-border); }
+.meal-view-facts div { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px dashed var(--st-border); font-size: 14px; }
+.meal-view-facts dt { flex: none; color: var(--st-muted); }
+.meal-view-facts dd { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; font-weight: 500; text-align: right; }
+.meal-view-facts small { color: var(--st-muted); font-weight: 400; }
+
+.meal-view-actions { margin: 18px 22px 0; }
+.meal-view-actions .staff-btn { width: 100%; }
+/* 代表圖：不搶眼的小字按鈕 */
+.meal-view-links { display: flex; justify-content: center; margin: 6px 22px 0; }
+.meal-link-btn {
+  padding: 8px 4px;
+  background: none; border: 0;
+  color: var(--st-muted);
+  font-size: 13px;
+  text-decoration: underline; text-underline-offset: 3px;
+}
+.meal-link-btn:hover { color: var(--st-red); }
+
+
+/* ========== 6. 對話框共用的欄位 ========== */
+.meal-field { display: flex; flex-direction: column; gap: 6px; min-width: 0; margin-bottom: 14px; border: 0; }
+.meal-field > span,
+.meal-field > legend { font-size: 14px; font-weight: 700; }
+.meal-field legend { margin-bottom: 6px; padding: 0; }
+.meal-field b { margin-left: 8px; color: var(--st-muted); font-size: 12px; font-weight: 400; }
+.meal-field .staff-input { width: 100%; }
+.meal-field textarea.staff-input { height: auto; padding: 12px 16px; resize: vertical; line-height: 1.6; }
+.meal-field-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+
+/* 數字欄位不要右邊的上下箭頭（鍵盤的上下鍵、滑鼠滾輪也不會改數字，見 meal.js A-10） */
+.meal-modal input[type="number"] { appearance: textfield; -moz-appearance: textfield; }
+.meal-modal input[type="number"]::-webkit-inner-spin-button,
+.meal-modal input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+
+/* 價格前面的 NT$ */
+.meal-money { position: relative; display: block; }
+.meal-money::before { content: "NT$"; position: absolute; left: 14px; top: 50%; translate: 0 -50%; color: var(--st-muted); font-size: 14px; }
+.meal-money input { padding-left: 52px; }
+
+/* 兩格的切換（上架／未上架、打折／直接打金額） */
+.meal-switch,
+.meal-promo-mode { display: grid; grid-template-columns: 1fr 1fr; padding: 4px; background: var(--st-soft); border-radius: 12px; }
+.meal-switch label,
+.meal-promo-mode label { position: relative; }
+.meal-switch input,
+.meal-promo-mode input { position: absolute; opacity: 0; }
+.meal-switch span,
+.meal-promo-mode span {
+  display: flex; align-items: center; justify-content: center;
+  min-height: 40px; padding: 0 10px;
+  border-radius: 9px;
+  font-weight: 500; white-space: nowrap;
+  cursor: pointer;
+}
+.meal-switch input:checked + span,
+.meal-promo-mode input:checked + span { background: var(--st-card); box-shadow: 0 2px 6px rgba(90, 60, 30, .12); }
+.meal-switch input:focus-visible + span,
+.meal-promo-mode input:focus-visible + span { outline: 2px solid var(--st-yellow); }
+
+/* 選圖片：虛線框，選了之後顯示預覽 */
+.meal-drop {
+  position: relative;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+  min-height: 120px;
+  padding: 14px;
+  background: var(--st-bg);
+  border: 2px dashed var(--st-border);
+  border-radius: 14px;
+  color: var(--st-muted); font-size: 14px; text-align: center;
+  cursor: pointer;
+  transition: border-color .2s;
+}
+.meal-drop:hover,
+.meal-drop.is-over { border-color: var(--st-yellow); }
+.meal-drop input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.meal-drop img { max-width: 100%; max-height: 180px; border-radius: 10px; }
+.meal-check { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 14px; }
+.meal-check input { width: 20px; height: 20px; accent-color: var(--st-red); }
+
+
+/* ========== 7. 新增／修改的對話框 ========== */
+.meal-modal {
+  position: fixed; inset: 0; z-index: 2000;
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+  background: rgba(40, 30, 25, .55);
+}
+.meal-modal-box {
+  display: flex; flex-direction: column;
+  width: min(680px, 100%); max-height: calc(100vh - 40px);
+  background: var(--st-card);
+  border-radius: 22px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, .25);
+  overflow: hidden;
+  animation: meal-pop .2s ease-out;
+}
+@keyframes meal-pop { from { opacity: 0; transform: translateY(12px) scale(.98); } }
+/* 按旁邊的時候對話框輕輕晃一下，提醒要按「取消」或「X」 */
+.meal-modal-box.is-shake { animation: meal-shake .3s; }
+@keyframes meal-shake { 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
+
+.meal-modal-head {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+  padding: 20px 24px 14px;
+  border-bottom: 1px solid var(--st-border);
+}
+.meal-modal-head h2 { font-family: var(--st-serif); font-size: 24px; }
+.meal-modal-x {
+  flex: none;
+  width: 48px; height: 48px;
+  background: var(--st-bg);
+  border: 0; border-radius: 50%;
+  font-size: 26px; line-height: 1;
+}
+.meal-modal-x:hover { background: var(--st-soft); }
+.meal-modal-body { flex: 1; padding: 18px 24px 4px; overflow-y: auto; }
+.meal-modal-foot {
+  display: flex; justify-content: flex-end; gap: 10px;
+  padding: 14px 24px;
+  background: var(--st-bg);
+  border-top: 1px solid var(--st-border);
+}
+.meal-modal-foot .staff-btn { min-width: 120px; }
+.meal-modal-foot .meal-delete-btn { margin-right: auto; }   /* 刪除菜品放在左下角，離「儲存」遠一點，比較不會按錯 */
+
+/* 步驟：左邊一個圓圈數字 */
+.meal-step + .meal-step { margin-top: 8px; padding-top: 16px; border-top: 1px dashed var(--st-border); }
+.meal-step h3 { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; font-size: 17px; }
+.meal-step h3 span {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px;
+  background: var(--st-text); border-radius: 50%;
+  color: #fff; font-size: 14px;
+}
+.meal-step h3 small { color: var(--st-muted); font-size: 13px; font-weight: 400; }
+
+/* 類別：下拉選單＋（沒有菜的時候）刪除按鈕 */
+.meal-type-row { display: flex; align-items: flex-start; gap: 10px; }
+.meal-type-row .meal-field { flex: 1; margin-bottom: 8px; }
+
+/* ---------- 編輯類別的對話框（外框、標題、按鈕跟菜品的對話框共用 .meal-modal-*；名稱、種類、常用備註也共用） ---------- */
+.meal-types-box { width: min(760px, 100%); }
+/* 左邊類別清單、右邊編輯 */
+.meal-types-layout { display: grid; grid-template-columns: 210px minmax(0, 1fr); gap: 20px; align-items: start; }
+.meal-types-nav { display: flex; flex-direction: column; gap: 6px; }
+.meal-types-list { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.meal-types-pick {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  width: 100%; min-height: 48px;
+  padding: 0 14px;
+  background: var(--st-bg);
+  border: 2px solid transparent; border-radius: 12px;
+  color: var(--st-text);
+  font-size: 15px; font-weight: 700; text-align: left;
+  transition: border-color .2s, background-color .2s;
+}
+.meal-types-pick span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.meal-types-pick small { flex: none; color: var(--st-muted); font-size: 12px; font-weight: 400; }
+.meal-types-pick:hover { border-color: var(--st-border); }
+/* 選到的那一顆：磚紅色框（跟查詢分類的格子一樣） */
+.meal-types-pick.is-active { background: #fbeee9; border-color: var(--st-red); }
+.meal-types-pick.is-active small { color: var(--st-red); }
+.meal-types-pick.is-add { justify-content: center; background: none; border: 2px dashed var(--st-border); color: var(--st-muted); font-weight: 500; }
+.meal-types-pick.is-add.is-active { border-style: solid; border-color: var(--st-red); background: #fbeee9; color: var(--st-red); }
+/* 右邊的編輯區：米色底的一塊 */
+.meal-types-edit { padding: 18px 18px 14px; background: var(--st-bg); border-radius: 16px; }
+.meal-types-title { margin-bottom: 14px; font-family: var(--st-serif); font-size: 19px; }
+.meal-types-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 4px; }   /* 太窄（手機）時自動換行 */
+.meal-types-actions .staff-btn { min-width: 0; min-height: 46px; padding: 0 20px; }
+.meal-types-actions .btn-pay { margin-left: auto; min-width: 110px; }
+.meal-types-delhint { align-self: center; color: var(--st-red); font-size: 13px; }   /* 「刪除這個類別」旁邊的紅色小字 */
+.meal-types-actions .staff-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+/* 新類別：名稱＋四種（開胃菜／主餐／甜點／飲料） */
+.meal-newtype { margin: 4px 0 12px; padding: 16px 16px 2px; background: var(--st-bg); border-radius: 14px; }
+.meal-kinds { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.meal-kinds label { position: relative; }
+.meal-kinds input { position: absolute; opacity: 0; }
+.meal-kinds span {
+  display: flex; align-items: center; justify-content: center;
+  min-height: 48px;
+  background: var(--st-card);
+  border: 1px solid var(--st-border); border-radius: 12px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.meal-kinds input:checked + span { background: var(--st-text); border-color: var(--st-text); color: #fff; }
+.meal-kinds input:focus-visible + span { outline: 2px solid var(--st-yellow); outline-offset: 1px; }
+
+/* 常用備註的預覽 */
+.meal-tagpreview { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 12px; color: var(--st-muted); font-size: 13px; }
+.meal-tagpreview i { padding: 2px 10px; background: var(--st-soft); border-radius: 999px; color: var(--st-text); font-style: normal; }
+
+
+/* ========== 8. 活動價：每個活動一張小卡，勾了才展開設定 ========== */
+.meal-promo-empty { color: var(--st-muted); font-size: 14px; }
+.meal-promo { margin-bottom: 10px; border: 1px solid var(--st-border); border-radius: 14px; }
+.meal-promo.is-joined { border-color: #c9a96a; background: #fdf8ee; }
+.meal-promo-head { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 12px; min-height: 52px; padding: 8px 14px; cursor: pointer; }
+.meal-promo-head input { width: 22px; height: 22px; accent-color: var(--st-text); }
+.meal-promo-name { font-weight: 700; }
+.meal-promo-when { display: inline-flex; align-items: center; gap: 8px; margin-left: auto; color: var(--st-muted); font-size: 13px; }
+/* 活動限定菜品：勾選格（活動價那一步的最上面）＋ 列表上的磚紅色外框小標籤 */
+.meal-promo-only { align-items: flex-start; margin: 0 0 14px; padding: 12px 14px; background: var(--st-bg); border-radius: 12px; }
+.meal-promo-only span { display: flex; flex-direction: column; font-weight: 700; }
+.meal-promo-only small { color: var(--st-muted); font-size: 12px; font-weight: 400; }
+.meal-tag.is-limited { border-color: var(--st-red); color: var(--st-red); }
+.meal-promo-only-note { margin: -8px 0 14px; padding: 8px 14px; background: #fbeee9; border-radius: 10px; color: var(--st-red); font-size: 13px; }
+/* 時間重疊：不能勾的活動變淡；提示文字在活動名稱下面 */
+.meal-promo-clash { margin: -4px 14px 10px 48px; color: #9a6b1c; font-size: 13px; }   /* 時間重疊的提醒：芥末黃系（提醒，不是錯誤） */
+.meal-promo-set {
+  display: grid; grid-template-columns: auto 150px minmax(0, 1fr); align-items: center; gap: 10px;
+  padding: 0 14px 12px 48px;
+}
+.meal-promo-set[hidden] { display: none; }
+.meal-promo-input { position: relative; display: block; }
+.meal-promo-input input { width: 100%; padding-right: 40px; }
+.meal-promo-input [data-promo-unit] { position: absolute; right: 14px; top: 50%; translate: 0 -50%; color: var(--st-muted); font-size: 14px; }
+.meal-promo-result { color: var(--st-muted); font-size: 14px; }
+.meal-promo-result b { color: var(--st-red); font-family: var(--st-serif); font-size: 18px; }
+.meal-promo-result.is-error { color: var(--st-red); }
+
+
+/* ========== 9. 平板（1200px 以下）：詳細改成從右邊滑出來 ========== */
+@media (max-width: 1200px) {
+  .meal-board { grid-template-columns: minmax(0, 1fr); }
+  .meal-panel {
+    position: fixed; top: 0; right: 0; bottom: 0; z-index: 1500;
+    width: min(440px, 100%); max-height: none;
+    border-radius: 0;
+    transform: translateX(105%);
+    transition: transform .25s ease-out;
+  }
+  .meal-panel.open { transform: none; }
+  .meal-panel-backdrop { position: fixed; inset: 0; z-index: 1400; display: block; background: rgba(40, 30, 25, .4); }
+  .meal-panel-close { display: block; }
+  .meal-view-photo { border-radius: 0; }
+  .meal-panel-empty { display: none; }   /* 滑出來的面板一定是點了某一道菜，用不到「還沒點」的畫面 */
+  .meal-stats-bar { display: grid; grid-template-columns: repeat(4, 1fr); margin: 0 0 16px; }   /* 四個格子改放在列表上面 */
+  .meal-stats-bar .meal-stat { padding: 8px 12px; background: var(--st-card); border-color: var(--st-border); }
+  .meal-stats-bar .meal-stat.is-active { background: #fbeee9; border-color: var(--st-red); }
+  .meal-stats-bar .meal-stat b { font-size: 20px; }
+}
+
+
+/* ========== 10. 手機（640px 以下） ========== */
+@media (max-width: 640px) {
+  .meal-add-btn { position: fixed; right: 16px; bottom: 88px; z-index: 900; }   /* 選單在最下面，按鈕浮在它上面 */
+  .meal-row { grid-template-columns: 56px minmax(0, 1fr) auto; gap: 10px; }
+  .meal-row-text { grid-template-columns: minmax(0, 1fr); }   /* 手機太窄：活動標籤放回說明下面 */
+  .meal-row-tags { grid-column: 1; grid-row: 3; margin-top: 3px; }
+  .meal-row-thumb { width: 56px; height: 56px; }
+  .meal-row-status { grid-column: 2 / -1; margin-top: -6px; }
+  .meal-field-row,
+  .meal-kinds { grid-template-columns: repeat(2, 1fr); }
+  .meal-type-row { flex-direction: column; align-items: stretch; gap: 0; }
+  .meal-promo-set { grid-template-columns: minmax(0, 1fr) 120px; padding-left: 14px; }
+  .meal-promo-mode { grid-column: 1 / -1; }
+  .meal-modal { padding: 0; align-items: flex-end; }
+  .meal-modal-box { max-height: 94vh; border-radius: 22px 22px 0 0; }
+  .meal-modal-head, .meal-modal-body, .meal-modal-foot { padding-left: 16px; padding-right: 16px; }
+  .meal-modal-foot .staff-btn { flex: 1; min-width: 0; padding: 0 10px; }   /* 三顆按鈕一排放得下 */
+  .meal-modal-foot .meal-delete-btn { margin-right: 0; }
+  .meal-types-layout { grid-template-columns: minmax(0, 1fr); gap: 14px; }   /* 手機：類別清單在上面排成一排一排，編輯在下面 */
+  .meal-types-list { flex-direction: row; flex-wrap: wrap; }
+  .meal-types-pick { width: auto; min-height: 40px; }
+  .meal-types-pick small { display: none; }
+  .meal-head-actions .meal-types-btn { min-height: 44px; padding: 0 16px 0 12px; font-size: 15px; }
+}

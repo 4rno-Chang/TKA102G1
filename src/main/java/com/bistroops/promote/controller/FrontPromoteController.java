@@ -1,7 +1,10 @@
 package com.bistroops.promote.controller;
 
+import java.net.URI;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
@@ -48,7 +51,8 @@ public class FrontPromoteController {
 		byte[] img = (promote != null) ? promote.getPromoteImg() : null;
 
 		if (img == null || img.length == 0) {
-			return ResponseEntity.notFound().build();
+			return ResponseEntity.status(HttpStatus.FOUND)
+					.location(URI.create("/images/no-image.svg")).build();
 		}
 
 		return ResponseEntity.ok().contentType(MediaType.IMAGE_JPEG).header(HttpHeaders.CACHE_CONTROL, "no-cache")
