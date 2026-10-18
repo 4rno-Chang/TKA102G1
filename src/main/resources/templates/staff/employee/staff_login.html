@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-Hant">
+<html lang="zh-Hant" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport"
@@ -18,7 +18,22 @@
         <h1>Bistroops</h1>
         <div class="subtitle">員工後台登入系統</div>
 
-        <form id="loginForm">
+        <section class="account-switch" th:if="${loggedInEmployeeNo != null}" aria-label="目前登入帳號">
+            <p>目前已登入「<strong th:text="${loggedInEmployeeName}"></strong>」
+                （員工編號 <span th:text="${loggedInEmployeeNo}"></span>）。</p>
+            <p class="account-switch-note">若要保留目前登入，請在無痕視窗開啟信件中的網址。</p>
+            <div id="accountSwitchActions">
+                <button type="button" id="switchAccountBtn">切換帳號</button>
+                <a class="login-secondary-btn" href="/staff">返回後台</a>
+            </div>
+            <div id="accountSwitchConfirm" hidden>
+                <p>確定要登出目前帳號嗎？同一瀏覽器的其他分頁也會登出；登入新帳號後將共用新身分。</p>
+                <button type="button" id="confirmSwitchAccountBtn">確認登出並切換</button>
+                <button type="button" id="cancelSwitchAccountBtn" class="login-secondary-btn">取消</button>
+            </div>
+        </section>
+
+        <form id="loginForm" th:if="${loggedInEmployeeNo == null}">
 
             <label for="empNo">員工編號</label>
             <input type="text"
@@ -38,13 +53,49 @@
 
         </form>
 
-        <div id="message"></div>
+        <div id="message" role="alert"></div>
 
     </div>
 
     <script>
+        const switchAccountBtn = document.getElementById("switchAccountBtn");
+        if (switchAccountBtn) {
+            const actions = document.getElementById("accountSwitchActions");
+            const confirmation = document.getElementById("accountSwitchConfirm");
+            const confirmBtn = document.getElementById("confirmSwitchAccountBtn");
+            const cancelBtn = document.getElementById("cancelSwitchAccountBtn");
+            switchAccountBtn.addEventListener("click", () => {
+                actions.hidden = true;
+                confirmation.hidden = false;
+                cancelBtn.focus();
+            });
+            cancelBtn.addEventListener("click", () => {
+                confirmation.hidden = true;
+                actions.hidden = false;
+                switchAccountBtn.focus();
+            });
+            confirmBtn.addEventListener("click", async () => {
+                if (confirmBtn.disabled) return;
+                confirmBtn.disabled = true;
+                cancelBtn.disabled = true;
+                const message = document.getElementById("message");
+                message.textContent = "";
+                try {
+                    const response = await fetch("/api/employees/logout", { method: "POST" });
+                    if (!response.ok && response.status !== 401) {
+                        throw new Error("登出失敗");
+                    }
+                    window.location.replace("/staff/login");
+                } catch (error) {
+                    message.textContent = "切換帳號失敗，請稍後再試";
+                    confirmBtn.disabled = false;
+                    cancelBtn.disabled = false;
+                }
+            });
+        }
+
         document.getElementById("loginForm")
-            .addEventListener("submit", async function(event) {
+            ?.addEventListener("submit", async function(event) {
 
                 event.preventDefault();
 
