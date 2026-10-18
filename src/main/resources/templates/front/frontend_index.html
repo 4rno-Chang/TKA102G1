@@ -70,16 +70,17 @@
 			<div class="container">
 				<p class="eyebrow">Our Menu</p>
 				<h2 class="section-title">精選菜單</h2>
+				<!-- 三張圖只是展示，不是連結；要看菜單按下面的「查看完整菜單」 -->
 				<div class="menu-grid">
-					<a href="#" class="menu-card placeholder"
+					<div class="menu-card placeholder"
 						th:style="|background-image: url('@{/images/dish-appetizer.svg}')|"><span
-						class="menu-card-text">開胃菜<small>Appetizer</small></span></a> <a
-						href="#" class="menu-card placeholder"
+						class="menu-card-text">開胃菜<small>Appetizer</small></span></div>
+					<div class="menu-card placeholder"
 						th:style="|background-image: url('@{/images/dish-main.svg}')|"><span
-						class="menu-card-text">主餐<small>main course</small></span></a> <a
-						href="#" class="menu-card placeholder"
+						class="menu-card-text">主餐<small>main course</small></span></div>
+					<div class="menu-card placeholder"
 						th:style="|background-image: url('@{/images/dish-dessert.svg}')|"><span
-						class="menu-card-text">甜點<small>dessert</small></span></a>
+						class="menu-card-text">甜點<small>dessert</small></span></div>
 				</div>
 				<div class="btn-center">
 					<a th:href="@{/bistroops/menu}" class="btn-outline">查看完整菜單</a>

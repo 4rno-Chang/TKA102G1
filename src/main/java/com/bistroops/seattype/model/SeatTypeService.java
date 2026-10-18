@@ -305,12 +305,12 @@ public class SeatTypeService {
 		if ("free".equals(mode)) {
 			for (ReservationVO r : snap.pendingOf(type)) {
 				Map<String, Object> item = row("no", r.getRsvNo(), "time", fmt(slotOf(r)), "name",
-						r.getMember() == null ? "" : r.getMember().getMemName(), "note", r.getRsvComment());
+						rsvDisplayName(r), "note", r.getRsvComment());
 				(slotOf(r) >= snap.now ? rsvComing : rsvLate).add(item);
 			}
 			snap.waiting.get(type).stream().sorted(Comparator.comparingLong(WaitingTicket::sequence))
 					.forEach(ticket -> waitingList.add(row("no", ticket.ticketId(), "number", ticket.getTicketDisplay(),
-							"name", ticket.name(), "note", ticket.note(), "status", ticket.getStatusText())));
+							"name", waitingDisplayName(ticket), "note", ticket.note(), "status", ticket.getStatusText())));
 		}
 
 		return row("no", s.getSeatNo(), "type", type, "status", s.getSeatStatus(), "cls", statusClass(s), "zone",
@@ -550,7 +550,7 @@ public class SeatTypeService {
 				if (!RSV_PENDING.equals(r.getRsvStatus())) {
 					continue;
 				}
-				String name = r.getMember() == null ? "" : r.getMember().getMemName();
+				String name = rsvDisplayName(r);
 				String title = fmt(slot) + " " + name + "（" + (r.getRsvComment() == null ? "" : r.getRsvComment()) + "）"
 						+ (pastSlot ? "・逾時未到"
 								: "・需要 " + check[0] + " 桌、預計空出 " + check[1] + " 桌"
@@ -695,6 +695,28 @@ public class SeatTypeService {
 
 	private static boolean isUnpaid(OrdersVO o) {
 		return o.getOrdersPay() == null || o.getOrdersPay().isBlank();
+	}
+
+	// 訂位顯示的名字：「聯絡姓名: 電話末 3 碼」，例如「陳媽媽: 798」；沒填聯絡姓名（rsv_name，CJ 的前台訂位時填）→「訂位: 678」
+	// reservation 沒有電話欄位，訂位電話就是會員電話（mem_tel 一定有值）
+	private static String rsvDisplayName(ReservationVO r) {
+		return nameWithTel(r.getRsvName(), "訂位", r.getMember() == null ? null : r.getMember().getMemTel(), "未填寫");
+	}
+
+	// 候位顯示的名字：「姓名: 電話末 3 碼」，例如「張先生: 666」；沒填姓名 →「候位: 666」
+	// 姓名、電話都沒有就回傳空字串（畫面顯示「未填姓名」）
+	private static String waitingDisplayName(WaitingTicket ticket) {
+		return nameWithTel(ticket.name(), "候位", ticket.phone(), "");
+	}
+
+	// 「名字: 電話末 3 碼」；沒有名字用 label 代替；沒有電話只顯示名字；兩個都沒有回傳 empty
+	private static String nameWithTel(String name, String label, String tel, String empty) {
+		boolean hasName = name != null && !name.isBlank();
+		boolean hasTel = tel != null && tel.length() >= 3;
+		if (!hasTel) {
+			return hasName ? name.trim() : empty;
+		}
+		return (hasName ? name.trim() : label) + ": " + tel.substring(tel.length() - 3);
 	}
 
 	private static int slotOf(ReservationVO r) {
