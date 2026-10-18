@@ -412,15 +412,39 @@
             refreshSlots();
         });
 
-        form.addEventListener('submit', event => {
-            if (!form.reportValidity()) {
-                event.preventDefault();
-                return;
-            }
+		let submitting = false;
+		const originalSaveText = saveButton.textContent;
 
-            saveButton.disabled = true;
-            saveButton.textContent = '儲存中…';
-        });
+		form.addEventListener('submit', event => {
+		    if (submitting) {
+		        event.preventDefault();
+		        return;
+		    }
+
+		    if (event.defaultPrevented) return;
+
+		    if (!form.reportValidity()) {
+		        event.preventDefault();
+		        return;
+		    }
+
+		    submitting = true;
+		    form.setAttribute('aria-busy', 'true');
+
+		    saveButton.disabled = true;
+		    saveButton.textContent = '儲存中…';
+		});
+
+		// 使用瀏覽器上一頁返回時，恢復按鈕。
+		window.addEventListener('pageshow', event => {
+		    if (!event.persisted || !submitting) return;
+
+		    submitting = false;
+		    form.removeAttribute('aria-busy');
+
+		    saveButton.textContent = originalSaveText;
+		    refreshSlots();
+		});
 
         window.addEventListener('pageshow', () => {
             saveButton.textContent = '儲存訂位';

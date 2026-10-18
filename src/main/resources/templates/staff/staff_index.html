@@ -89,7 +89,7 @@
          ★★ 上面四個名稱目前都是「範例」★★ 要叫什麼名字請負責的組員自己決定，
          決定後把下面 ${...} 裡的名稱（包含 th:if 裡的 nextRoundCount）改成 Controller 實際放進 Model 的名稱。 -->
 		<a class="staff-card home-bar" th:if="${nextRoundCount != null}"
-			th:href="${hasBooking == true} ? @{/staff/reservations} : null"
+			th:href="${hasBooking == true} ? @{/staff/booking} : null"
 			th:classappend="${hasBooking == true} ? '' : 'no-permission'"
 			th:attr="aria-disabled=${hasBooking != true}" data-permission-link>
 			<span class="home-bar-title">訂候位管理</span> <span
@@ -103,7 +103,7 @@
 		<!-- ===== 【假資料】四個 <strong> 裡的數字由 staff.js 的「B. 假資料」填入（依照 data-demo-home 的名稱）。
          資料庫的版本確認沒問題後，這個 button 整個刪掉 ===== -->
 		<a class="staff-card home-bar" th:if="${nextRoundCount == null}"
-			th:href="${hasBooking == true} ? @{/staff/reservations} : null"
+			th:href="${hasBooking == true} ? @{/staff/booking} : null"
 			th:classappend="${hasBooking == true} ? '' : 'no-permission'"
 			th:attr="aria-disabled=${hasBooking != true}" data-permission-link>
 			<span class="home-bar-title">訂候位管理<span class="source-tag"

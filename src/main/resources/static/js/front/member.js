@@ -1673,3 +1673,66 @@
 
 
 })();
+// 前台新增／編輯訂位：防止連續送出。
+(() => {
+    'use strict';
+
+    const lockedForms = new Map();
+
+    function restore(form) {
+        const saved = lockedForms.get(form);
+        if (!saved) return;
+
+        saved.forEach(({ button, text, disabled }) => {
+            button.textContent = text;
+            button.disabled = disabled;
+        });
+
+        form.removeAttribute('aria-busy');
+        lockedForms.delete(form);
+    }
+
+    window.addEventListener('submit', event => {
+        const form = event.target;
+
+        if (!(form instanceof HTMLFormElement)) return;
+
+        const path = new URL(form.action, location.href).pathname;
+
+        if (![
+            '/bistroops/reservation/submit',
+            '/bistroops/reservation/edit'
+        ].includes(path)) {
+            return;
+        }
+
+        if (lockedForms.has(form)) {
+            event.preventDefault();
+            return;
+        }
+
+        // 先讓原有表單驗證執行完畢。
+        if (event.defaultPrevented) return;
+
+        const saved = Array.from(
+            form.querySelectorAll('button[type="submit"]')
+        ).map(button => ({
+            button,
+            text: button.textContent,
+            disabled: button.disabled
+        }));
+
+        lockedForms.set(form, saved);
+        form.setAttribute('aria-busy', 'true');
+
+        saved.forEach(({ button }) => {
+            button.disabled = true;
+            button.textContent = '處理中…';
+        });
+    });
+
+    // 使用瀏覽器上一頁返回時，恢復按鈕。
+    window.addEventListener('pageshow', () => {
+        Array.from(lockedForms.keys()).forEach(restore);
+    });
+})();
