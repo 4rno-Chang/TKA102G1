@@ -122,6 +122,28 @@ public class EmployeeController {
 	    ));
 	}
 
+	// 只有後臺管理權限的主管可以重設員工密碼
+	@PostMapping("/{empNo}/reset-password")
+	public ResponseEntity<Map<String, String>> resetPassword(
+	        @PathVariable Integer empNo, HttpSession session) {
+	    Integer loginEmpNo = (Integer) session.getAttribute("employeeNo");
+	    if (loginEmpNo == null) {
+	        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "請先登入"));
+	    }
+	    if (!employeeService.hasPermission(loginEmpNo, 7)) {
+	        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "權限不足"));
+	    }
+	    if (employeeService.getEmployeeById(empNo).isEmpty()) {
+	        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "找不到員工"));
+	    }
+	    try {
+	        employeeService.resetPassword(empNo);
+	        return ResponseEntity.ok(Map.of("message", "密碼已重設為目前儲存的手機號碼，下次登入須重新設定密碼"));
+	    } catch (IllegalArgumentException e) {
+	        return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+	    }
+	}
+
 	// 員工修改密碼
 	@PostMapping("/change-password")
 	public ResponseEntity<Map<String, String>> changePassword(@RequestBody Map<String, String> data,
