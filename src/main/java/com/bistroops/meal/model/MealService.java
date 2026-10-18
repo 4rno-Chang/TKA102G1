@@ -135,7 +135,7 @@ public class MealService {
 			if (!p.isJoined())
 				continue;
 			if (!openNos.contains(p.getPromoteNo()))
-				return "有勾選的活動已經結束了，請重新整理頁面後再儲存";
+				return "有勾選的活動已經結束或被刪除，請重新整理頁面後再儲存";
 
 			if (p.getPrice() == null || p.getPrice() < 0)
 				return "請填活動價（不能是負數）";
