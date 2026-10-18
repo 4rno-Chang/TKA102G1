@@ -140,6 +140,16 @@
 		  <h2 class="staff-card-title">請輸入手機號碼</h2>
 		  <p class="qr-meta">訂單編號：<span th:text="${#numbers.formatInteger(order.orders,8)}"></span></p>
 
+		  <!-- 這張訂單目前有沒有會員：客人登入會員點餐，或之前已經用手機綁定過，order.member 就有資料
+		       沒填姓名的會員改顯示手機號碼 -->
+		  <p class="member-current" th:if="${order.member != null}">
+		    <span class="badge">會員</span>
+		    <strong th:text="${order.member.memName != null and !order.member.memName.isBlank()} ? ${order.member.memName} : ${order.member.memTel}">王小明</strong>
+		  </p>
+		  <p class="member-current" th:if="${order.member == null}">
+		    <span class="badge">非會員</span> 這張訂單還沒有會員
+		  </p>
+
 		  <!-- 查詢結果：輸入滿 10 碼後，staff.js 向 data-lookup-url 查詢，在這裡顯示會員名稱或「查無此會員」 -->
 		  <p class="member-result" id="memberResult" hidden></p>
 

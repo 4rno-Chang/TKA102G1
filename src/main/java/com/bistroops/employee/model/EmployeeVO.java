@@ -38,6 +38,20 @@ public class EmployeeVO {
 	
 	@Column(name = "emp_tel")
 	private String empTel;
+
+	@Column(name = "emp_email", length = 254)
+	private String empEmail;
+
+	@JsonIgnore
+	@Column(name = "emp_temp_password_expires_at")
+	private java.time.Instant empTempPasswordExpiresAt;
+
+	public String getEmpEmail() { return empEmail; }
+	public void setEmpEmail(String empEmail) { this.empEmail = empEmail; }
+	public java.time.Instant getEmpTempPasswordExpiresAt() { return empTempPasswordExpiresAt; }
+	public void setEmpTempPasswordExpiresAt(java.time.Instant expiresAt) {
+	    this.empTempPasswordExpiresAt = expiresAt;
+	}
 	
 	@Column(name = "emp_ice")
 	private String empIce;

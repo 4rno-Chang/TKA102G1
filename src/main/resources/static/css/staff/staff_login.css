@@ -68,3 +68,41 @@ button:hover {
     text-align: center;
     color: #c0392b;
 }
+
+.account-switch p {
+    line-height: 1.7;
+    overflow-wrap: anywhere;
+}
+
+.account-switch-note {
+    color: #777;
+    font-size: 14px;
+}
+
+.login-secondary-btn {
+    display: block;
+    width: 100%;
+    margin-top: 12px;
+    padding: 12px;
+    border: 1px solid #344e41;
+    border-radius: 6px;
+    background: white;
+    color: #344e41;
+    font-size: 16px;
+    text-align: center;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.login-secondary-btn:hover {
+    background: #f5f2ed;
+}
+
+.account-switch button:disabled {
+    opacity: 0.6;
+    cursor: wait;
+}
+
+.account-switch [hidden] {
+    display: none;
+}

@@ -101,7 +101,9 @@ CREATE TABLE IF NOT EXISTS employee(
   emp_name VARCHAR(30) NOT NULL COMMENT '姓名',
   emp_password VARCHAR(100) NOT NULL COMMENT '密碼',
   emp_pwd_changed BOOLEAN NOT NULL DEFAULT FALSE COMMENT '是否已完成首次密碼修改',
+  emp_temp_password_expires_at DATETIME(6) NULL COMMENT '臨時密碼到期時間',
   emp_tel VARCHAR(10) NOT NULL COMMENT '本人電話',
+  emp_email VARCHAR(254) NULL COMMENT '員工通知信箱',
   emp_ice VARCHAR(30) COMMENT '緊急聯絡人',
   emp_icetel VARCHAR(10) COMMENT '緊急聯絡人電話',
   emp_add VARCHAR(100) COMMENT '地址',
@@ -496,29 +498,32 @@ VALUES
     (3, 3, 6, '2026-08-24 20:45:00', '預約', '6人慶生聚餐');
 
 -- 13. 員工 (employee)
+-- 五位測試員工初始密碼皆為 Test1234，登入後須修改密碼。
+-- emp_email 暫為 NULL；請填入可收信的真實信箱，或登入後在編輯視窗補齊，才能寄送重設通知。
 INSERT INTO employee
-(emp_name, emp_password, emp_tel, emp_ice,
+(emp_name, emp_password, emp_tel, emp_email, emp_pwd_changed,
+ emp_temp_password_expires_at, emp_ice,
  emp_icetel, emp_add, emp_sal, emp_status, emp_photo)
 VALUES
 ('陳小心',
- '{bcrypt}$2y$10$6SYYr3G35GKj0Ekhw6UKd.y6sUTmCBp4/jWfykkSo0YHlJ0r1qa9q',
- '0987878787', '', '', '', 30000, '1', NULL),
+ '{bcrypt}$2a$10$g2db.AEZVThNjtzx7H4Wn.yZ8Hd1.M3T6FtcxfVuEK5XR7sTFPjNK',
+ '0987878787', NULL, FALSE, NULL, '', '', '', 30000, '1', NULL),
 
 ('カイル',
- '{bcrypt}$2y$10$BEoKQ7peCLE37..771PRgece9Vv/bzU1jQXGoSvGphSzIJz/BJ11S',
- '0911223344', '愛蜜莉雅', '0987654321', '露格尼卡王國', 40000, '1', NULL),
+ '{bcrypt}$2a$10$g2db.AEZVThNjtzx7H4Wn.yZ8Hd1.M3T6FtcxfVuEK5XR7sTFPjNK',
+ '0911223344', NULL, FALSE, NULL, '愛蜜莉雅', '0987654321', '露格尼卡王國', 40000, '1', NULL),
 
 ('張學長',
- '{bcrypt}$2y$10$Nxb9YSwhmDWc58oUYd1KWumgnHseCQlDJgaLEMyVWpqprQ.rnuck.',
- '0987654321', '', '', '電腦市程式碼街最強社區666號', 100000, '2', NULL),
+ '{bcrypt}$2a$10$g2db.AEZVThNjtzx7H4Wn.yZ8Hd1.M3T6FtcxfVuEK5XR7sTFPjNK',
+ '0987654321', NULL, FALSE, NULL, '', '', '電腦市程式碼街最強社區666號', 100000, '2', NULL),
 
 ('李木子',
- '{bcrypt}$2y$10$OMPcRNLstLX4WZVQne5LcuXvTudI5K89ZRHW7lC5bremWmKZ5tod2',
- '0900111222', '', '', '快樂縣可愛鄉聰明路102號', 40000, '1', NULL),
+ '{bcrypt}$2a$10$g2db.AEZVThNjtzx7H4Wn.yZ8Hd1.M3T6FtcxfVuEK5XR7sTFPjNK',
+ '0900111222', NULL, FALSE, NULL, '', '', '快樂縣可愛鄉聰明路102號', 40000, '1', NULL),
 
 ('強滾滾',
- '{bcrypt}$2y$10$4hmVp4LxpKKQ.A5XlbhnIOTUfu9p4cmY.fGKpBLOJjtAgSR5YmiSK',
- '0933445566', '張學長', '0987654321',
+ '{bcrypt}$2a$10$g2db.AEZVThNjtzx7H4Wn.yZ8Hd1.M3T6FtcxfVuEK5XR7sTFPjNK',
+ '0933445566', NULL, FALSE, NULL, '張學長', '0987654321',
  '電腦市程式碼街最強社區666號', 50000, '1', NULL);
 
 -- 14. 權限 (permission)

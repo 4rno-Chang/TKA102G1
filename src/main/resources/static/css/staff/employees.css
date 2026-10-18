@@ -1,4 +1,22 @@
 /* 員工管理 */
+.employee-delivery-status {
+    padding: 12px 16px;
+    margin: 0 0 16px;
+    border: 1px solid #a52a2a;
+    border-radius: 8px;
+    background: #fff1ef;
+    color: #a52a2a;
+    line-height: 1.6;
+}
+
+.employee-delivery-status[hidden] { display: none; }
+
+.employee-form-group small {
+    display: block;
+    margin-top: 6px;
+    color: #666;
+    line-height: 1.5;
+}
 .employee-list-header {
 	display: flex;
 	justify-content: space-between;
@@ -92,6 +110,14 @@
 	justify-content: flex-end;
 	gap: 12px;
 	margin-top: 24px;
+}
+
+#resetEmployeePasswordBtn {
+	margin-right: auto;
+}
+
+#resetEmployeePasswordBtn[hidden] {
+	display: none;
 }
 
 /* ===== 員工權限勾選清單 ===== */

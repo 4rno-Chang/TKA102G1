@@ -52,6 +52,7 @@
 				</div>
 			</div>
 
+			<p id="employeeDeliveryStatus" class="employee-delivery-status" role="status" hidden></p>
 			<div style="overflow-x: auto;">
 				<table class="receipt-table">
 					<thead>
@@ -127,6 +128,12 @@
 				</div>
 
 				<div class="employee-form-group">
+					<label for="empEmail">Email *</label>
+					<input type="email" id="empEmail" name="empEmail" maxlength="254" autocomplete="off" required>
+					<small>臨時密碼會寄至此信箱；修改信箱後請先儲存，再按「忘記密碼」寄送。</small>
+				</div>
+
+				<div class="employee-form-group">
 					<label for="empIce">緊急聯絡人</label> <input type="text" id="empIce"
 						name="empIce" maxlength="30">
 				</div>
@@ -168,6 +175,7 @@
 				</div>
 
 				<div class="employee-form-actions">
+					<button type="button" id="resetEmployeePasswordBtn" hidden>忘記密碼</button>
 					<button type="button" id="cancelEmployeeBtn">取消</button>
 					<button type="submit" class="employee-primary-btn">儲存員工</button>
 				</div>
