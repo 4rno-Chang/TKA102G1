@@ -7,7 +7,6 @@ import org.springframework.stereotype.Service;
 // 撰寫by陳巧馨
 // 後台主頁的「工作備註欄」，每位員工各存一份在 Redis（不設過期時間）
 //   key：staff:worknote:員工編號（例如 staff:worknote:3），值：備註的文字
-//   員工編號從登入時存在 session 的 "employeeNo" 取得
 @Service
 public class EmployeeNoteRedisService {
 
