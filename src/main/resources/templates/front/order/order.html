@@ -14,7 +14,10 @@
   <link rel="stylesheet" th:href="@{/css/front/front.css}" />
   <link rel="stylesheet" th:href="@{/css/front/member.css}" />
   <link rel="stylesheet" th:href="@{/css/front/order.css}" />
+  <link rel="stylesheet" th:href="@{/css/front/booking-loading.css}" />
   <script th:src="@{/js/front/member.js}" defer></script>
+  <!-- booking-loading.js：送出中防止重複點擊（order.js 會用到它的 bookingLock，所以要放在前面） -->
+  <script th:src="@{/js/front/booking-loading.js}" defer></script>
   <script th:src="@{/js/front/order.js}" defer></script>
 </head>
 
@@ -138,7 +141,7 @@
             <form th:action="@{/bistroops/order/cart/clear}" method="post" data-confirm="確定要清空購物車嗎？">
               <button type="submit" class="order-btn order-btn-ghost">清空</button>
             </form>
-            <form class="order-foot-main" th:action="@{/bistroops/order/submit}" method="post"
+            <form class="order-foot-main" th:action="@{/bistroops/order/submit}" method="post" data-loading=".order-sheet-panel"
                   data-confirm="確定要送出訂單嗎？送出後餐點就會開始製作，無法自行取消。">
               <button type="submit" class="order-btn order-btn-main" th:disabled="${onlyFree}">送出訂單</button>
             </form>

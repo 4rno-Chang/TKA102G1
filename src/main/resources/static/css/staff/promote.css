@@ -30,10 +30,12 @@
 
 /* ========== 3. 活動的卡片 ==========*/
 
+/* 一排 4 張（一頁 8 筆＝上面 4 張、下面 4 張）；平板以下一排 2 張、手機一排 1 張（在這一區最下面）。
+   卡片寬度跟著畫面變，卡片裡的字也跟著卡片寬度變（見下面的 container-type） */
 .promote-cards {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 18px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: clamp(12px, 1.4vw, 24px);
 }
 /* 沒有資料時的那一行字：橫跨整列 */
 .promote-cards .staff-empty { grid-column: 1 / -1; }
@@ -46,7 +48,10 @@
   border: 1px solid var(--st-border);
   border-radius: var(--st-radius);
   box-shadow: var(--st-shadow);
-  overflow: hidden;   
+  overflow: hidden;
+  /* 讓卡片裡的字可以用 cqi（卡片寬度的 1%）當單位：卡片變寬，字就跟著變大。
+     clamp(最小, 跟著卡片變, 最大)：卡片再窄、再寬，字都不會小於最小值、大於最大值 */
+  container-type: inline-size;
 }
 
 
@@ -57,7 +62,7 @@
   background: var(--st-soft);
   border-bottom: 1px solid var(--st-border);
   color: var(--st-muted);
-  font-size: 14px;
+  font-size: clamp(13px, 4.6cqi, 20px);
 }
 /* 圖片鋪滿 16:9 的框，不是 16:9 的圖會被拉成 16:9（跟首頁輪播一樣）。
    不能只寫 height: 100%：框是 grid＋place-items: center（讓「尚無圖片」置中），圖片的 100% 會量不到框的高度，
@@ -67,16 +72,16 @@
 /* 圖片下面的文字區 */
 .promote-card-body {
   flex: 1;   
-  display: flex; flex-direction: column; gap: 8px;
-  padding: 14px 16px 16px;
+  display: flex; flex-direction: column; gap: clamp(6px, 2.6cqi, 12px);
+  padding: clamp(12px, 4.6cqi, 22px) clamp(14px, 5.3cqi, 24px) clamp(14px, 5.3cqi, 24px);
 }
 .promote-card-name {
-  font-family: var(--st-serif); font-size: 20px; font-weight: 700; line-height: 1.4;
+  font-family: var(--st-serif); font-size: clamp(17px, 6.6cqi, 28px); font-weight: 700; line-height: 1.4;
   overflow-wrap: anywhere;
 }
-.promote-card-no { margin-left: 6px; color: var(--st-muted); font-family: var(--st-sans); font-size: 13px; font-weight: 400; }
-.promote-card-period { font-size: 14px; line-height: 1.6; }
-.promote-card-period small { color: var(--st-muted); font-size: 13px; }
+.promote-card-no { margin-left: 6px; color: var(--st-muted); font-family: var(--st-sans); font-size: clamp(12px, 4.3cqi, 18px); font-weight: 400; }
+.promote-card-period { font-size: clamp(13px, 4.6cqi, 20px); line-height: 1.6; }
+.promote-card-period small { color: var(--st-muted); font-size: clamp(12px, 4.3cqi, 18px); }
 
 /* 最下面一排：左邊狀態，右邊「詳細」按鈕 */
 .promote-card-foot {
@@ -84,7 +89,21 @@
   margin-top: auto;   /* 推到文字區的最下面 */
   padding-top: 6px;
 }
-.promote-card-foot .staff-btn { min-width: 0; min-height: 44px; }
+.promote-card-foot .tag { font-size: clamp(12px, 4.3cqi, 18px); padding: .15em .9em; }
+.promote-card-foot .staff-btn {
+  min-width: 0; min-height: clamp(40px, 14.5cqi, 56px);
+  padding: 0 clamp(14px, 6.6cqi, 28px);
+  font-size: clamp(14px, 5.3cqi, 22px);
+}
+
+/* 平板（1024px 以下，直放、橫放都算）：一排 2 張 */
+@media (max-width: 1024px) {
+  .promote-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+/* 手機（640px 以下）：一排 1 張 */
+@media (max-width: 640px) {
+  .promote-cards { grid-template-columns: minmax(0, 1fr); }
+}
 
 
 /* ---------- 分頁：在卡片下面，靠右（右下角） ---------- */

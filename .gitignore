@@ -79,3 +79,5 @@ Thumbs.db
 src/main/resources/hibernate.cfg.xml
 application.properties
 HELP.md
+/.apt_generated/
+/.apt_generated_tests/

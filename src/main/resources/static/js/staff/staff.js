@@ -2,8 +2,8 @@
    Bistroops 員工後台：共用程式（每個後台頁面都要載入，而且要放在最前面）
 
    這個檔案分成兩區：
-     A. 共用程式（保留）：小工具、小提示、尚未開放的按鈕、選單的摺疊、時鐘、對話框、送出前先確認
-     B. 假資料：示範訂單 StaffStore、訂單狀態的對照表、重設示範資料、主頁訂候位的示範數字
+     A. 共用程式（保留）：小工具、小提示、尚未開放的按鈕、選單的摺疊、時鐘、對話框、送出前先確認、主頁的工作備忘錄
+     B. 假資料：示範訂單 StaffStore、訂單狀態的對照表、主頁訂候位的示範數字
 
    對應的 CSS：static/css/staff/staff.css（共用）＋各頁自己的 CSS（checkout.css、orders.css、workboard.css、staff_index.css）
    各頁面自己的程式：staff-workboard.js／checkout.js／orders.js
@@ -265,8 +265,49 @@ window.addEventListener('submit', e => {
     return;
   }
   form.dataset.submitting = 'yes';
-  staffBtnLoading(e.submitter || form.querySelector('[type="submit"]'));
+  const btn = e.submitter || form.querySelector('[type="submit"]');
+  if (form.dataset.loadingMask === 'center' && btn) {
+    // 等待圖示放在蒙版中間（工作面板的餐點）：按鈕只鎖住，裡面的「出餐 →」「● 等待送餐」等文字和排列都不動
+    btn.dataset.html = btn.innerHTML;   // 上一頁回來時 staffBtnDone 會用到
+    btn.classList.add('is-loading');
+  } else {
+    staffBtnLoading(btn);
+  }
+  staffAreaLock(form, e.submitter);
 });
+
+/* 送出中的蒙版：<form> 寫了 data-loading 才會加。按下去的按鈕所在的區塊蓋一層 20% 的白色，並加上 inert
+   （滑鼠、手指、鍵盤都不能再按同一區塊的其他按鈕、改欄位；inert 不影響送出的內容）。按鈕本身浮在白色那一層上面。
+     data-loading=".meal-modal-box"   蓋住離按鈕最近的那個區塊（寫 CSS 選擇器）
+     data-loading                     沒寫值：蓋住表單本身
+   從按鈕往外找：刪除菜品這種按鈕在對話框裡、表單在對話框外面（form="..."），要蓋的是按鈕所在的對話框。
+   不想要蒙版的表單，拿掉 data-loading 就好；按鈕的「處理中…」照常。
+   data-loading-mask="center"：改成 60% 的白色，等待圖示放在蒙版正中間（工作面板的出餐、退回、確認送達：蓋住那一道菜）。 */
+function staffAreaLock(form, submitter) {
+  if (!form.hasAttribute('data-loading')) return;
+  const selector = form.dataset.loading;
+  const area = selector ? ((submitter && submitter.closest(selector)) || form.closest(selector)) : form;
+  if (!area) return;
+  if (getComputedStyle(area).position === 'static') {   // 白色那一層要貼著這個區塊
+    area.style.position = 'relative';
+    area.dataset.posAdded = 'yes';
+  }
+  area.classList.add('is-submitting');
+  if (form.dataset.loadingMask === 'center') {
+    area.classList.add('mask-center');
+    area.insertAdjacentHTML('beforeend', '<span class="mask-loader"><span class="cloche-loader"><i></i></span></span>');
+  }
+  area.inert = true;
+}
+function staffAreaUnlock(area) {
+  area.classList.remove('is-submitting', 'mask-center');
+  area.querySelectorAll(':scope > .mask-loader').forEach(el => el.remove());
+  area.inert = false;
+  if (area.dataset.posAdded) {
+    area.style.position = '';
+    delete area.dataset.posAdded;
+  }
+}
 
 // 按「上一頁」回來時，瀏覽器可能直接拿出之前的畫面（按鈕還在轉），要恢復
 window.addEventListener('pageshow', e => {
@@ -275,6 +316,7 @@ window.addEventListener('pageshow', e => {
   document.querySelectorAll('form[data-paying]').forEach(f => delete f.dataset.paying);
   document.querySelectorAll('.is-paying').forEach(btn => btn.classList.remove('is-paying'));
   document.querySelectorAll('.is-loading').forEach(staffBtnDone);
+  document.querySelectorAll('.is-submitting').forEach(staffAreaUnlock);
 });
 
   document.addEventListener('DOMContentLoaded', () => {
@@ -407,6 +449,75 @@ window.addEventListener('pageshow', e => {
 
 
 
+
+
+/* ========== A-9. 主頁的工作備忘錄（staff_index.html 的 #workNote） ==========
+   每位員工各自一份，存在 Redis（EmployeeNoteController／EmployeeNoteRedisService），換一台平板登入也看得到。
+     打開頁面：GET  data-url，拿到這位員工的備忘錄放進填寫框（拿到之前顯示「讀取中…」、不能打字）
+     打字：停下來 2 秒後 POST data-url（欄位 note），右下角顯示「已儲存 14:32」（存好的時間）
+     離開填寫框（點到別的地方）：有還沒存的就馬上存
+     只有內容改過才會送出；打開頁面、點進填寫框但沒打字，都不會呼叫伺服器
+     全部用 fetch 在背景送出，頁面不會重新整理
+     離開頁面時還沒存到的：用 sendBeacon 送出最後一次（換頁時也送得出去）
+   讀取或儲存失敗（例如登入過期、網路斷線）時，右下角顯示原因，頁面不會出錯。 */
+const workNote = document.getElementById('workNote');
+if (workNote && workNote.dataset.url) {
+  const noteUrl = workNote.dataset.url;
+  const noteStatus = document.getElementById('workNoteStatus');
+  const setStatus = text => { if (noteStatus) noteStatus.textContent = text; };
+  const noteBody = () => new URLSearchParams({ note: workNote.value });
+  let noteDirty = false;   // 打過字、還沒存到
+  let noteTimer = 0;
+
+  // 讀取
+  workNote.readOnly = true;
+  setStatus('讀取中…');
+  fetch(noteUrl)
+    .then(res => {
+      if (!res.ok || res.redirected) throw new Error(res.status);   // redirected：登入過期被導到登入頁
+      return res.text();
+    })
+    .then(text => {
+      workNote.value = text;
+      setStatus('');
+    })
+    .catch(() => setStatus('讀取失敗，請重新整理頁面（或重新登入）'))
+    .finally(() => { workNote.readOnly = false; });
+
+  // 儲存
+  async function saveWorkNote() {
+    clearTimeout(noteTimer);
+    const sending = workNote.value;
+    try {
+      const res = await fetch(noteUrl, { method: 'POST', body: new URLSearchParams({ note: sending }) });
+      if (!res.ok || res.redirected) throw new Error(res.status);
+      noteDirty = workNote.value !== sending;   // 送出去的途中又打了字：還沒存完，等下一次
+      if (noteDirty) return;
+      const now = new Date();
+      setStatus(`已儲存 ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`);
+    } catch (err) {
+      setStatus('儲存失敗，請稍後再試（或重新登入）');
+    }
+  }
+  // 打字：停下來 2 秒後存
+  workNote.addEventListener('input', () => {
+    noteDirty = true;
+    setStatus('儲存中…');
+    clearTimeout(noteTimer);
+    noteTimer = setTimeout(saveWorkNote, 2000);
+  });
+  // 離開填寫框（點到別的地方）：有還沒存的就馬上存，不用等 2 秒
+  workNote.addEventListener('blur', () => {
+    if (noteDirty) saveWorkNote();
+  });
+
+  // 離開頁面：還有沒存到的就送出最後一次
+  window.addEventListener('pagehide', () => {
+    if (!noteDirty) return;
+    clearTimeout(noteTimer);
+    navigator.sendBeacon(noteUrl, noteBody());
+  });
+}
 
 
 // ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
@@ -745,17 +856,6 @@ const ORDER_STATUS_TEXT = {
   PAID:   { text: '已結帳', className: 'tag-green' },
   CANCELLED: { text: '已取消', className: 'tag-gray' }
 };
-
-
-/* ========== B-3. 主頁的「重設示範資料」 ========== */
-const resetDemoBtn = document.getElementById('resetDemo');
-if (resetDemoBtn) {
-  resetDemoBtn.addEventListener('click', () => {
-    if (!confirm('確定要把訂單回復成一開始的示範資料嗎？')) return;
-    StaffStore.reset();
-    staffToast('已重設示範資料');
-  });
-}
 
 
 /* ========== B-4. 主頁「訂候位管理」長條的示範數字 ==========

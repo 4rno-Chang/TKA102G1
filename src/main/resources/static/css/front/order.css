@@ -111,6 +111,9 @@
 .order-cat:hover, .order-cat:active { background: var(--lux-ink); border-color: var(--lux-ink); color: var(--lux-gold-light); }
 /* 最前面的「活動商品」：金色的底，和一般的類別分開 */
 .order-cat-promo { background: var(--lux-gold-gradient); border-color: transparent; color: var(--lux-ink); font-weight: 500; }
+/* 目前看到的類別（order.js 的 A-9 加上 is-current）：跟點下去時一樣，深墨色底、淺金色字；「活動商品」也一樣 */
+.order-cat.is-current,
+.order-cat-promo.is-current { background: var(--lux-ink); border-color: var(--lux-ink); color: var(--lux-gold-light); }
 
 
 /* ========== 4. 菜單：直式卡片排成格子 ========== */
@@ -447,7 +450,8 @@
   font-size: 26px; line-height: 1;
   cursor: pointer;
 }
-.order-item-photo { flex: none; width: 100%; aspect-ratio: 16 / 10; max-height: 36vh; background: var(--color-placeholder); overflow: hidden; }
+/* 照片：比例 4:3（原本 16:10，上下稍微拉高），最高不超過畫面高度的 46%，下面的數量、備註、按鈕才放得下 */
+.order-item-photo { flex: none; width: 100%; aspect-ratio: 4 / 3; max-height: 46vh; background: var(--color-placeholder); overflow: hidden; }
 /* 表單：中間的內容可以捲動，下面的按鈕固定 */
 .order-item-form { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .order-item-body { flex: 1; min-height: 0; display: grid; gap: 12px; align-content: start; padding: 16px 18px; overflow-y: auto; overscroll-behavior: contain; }

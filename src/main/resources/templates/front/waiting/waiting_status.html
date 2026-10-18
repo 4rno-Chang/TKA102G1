@@ -6,11 +6,16 @@
 
 <title>Bistroops｜當日候位</title>
 
+<link rel="icon" th:href="@{/images/logo-mark.svg}" type="image/svg+xml">
+
 <link rel="stylesheet" th:href="@{/css/front/front.css}">
 <link rel="stylesheet" th:href="@{/css/front/member.css}">
 <link rel="stylesheet" th:href="@{/css/front/waiting.css}">
+<link rel="stylesheet" th:href="@{/css/front/booking-loading.css}">
 
 <script th:src="@{/js/front/member.js}" defer></script>
+<script th:src="@{/js/front/announcement.js}" defer></script>
+<script th:src="@{/js/front/booking-loading.js}" defer></script>
 <script th:src="@{/js/front/waiting.js}" defer></script>
 </head>
 
@@ -41,13 +46,13 @@
          aria-label="查詢當日候位"
          th:if="${not manage}">
 
-    <form class="waiting-lookup-form"
-          th:action="@{/bistroops/waiting}"
-          method="get">
+    <!-- 排法和預約訂位的「查詢訂位」相同：標題在上，輸入框和按鈕同一排 -->
+    <form th:action="@{/bistroops/waiting}"
+          method="get" data-loading>
 
-        <div class="waiting-lookup-field">
-            <label for="lookupPhone">候位電話</label>
+        <label for="lookupPhone" class="waiting-lookup-label">候位電話</label>
 
+        <div class="waiting-lookup-row">
             <input type="tel"
                    id="lookupPhone"
                    name="lookupPhone"
@@ -56,14 +61,12 @@
                    maxlength="10"
                    inputmode="numeric"
                    autocomplete="tel"
-                   placeholder="09XXXXXXXX"
+                   placeholder="請輸入候位電話"
                    required
                    th:value="${lookupPhone}">
-        </div>
 
-        <button type="submit" class="btn-outline">
-            查詢候位
-        </button>
+            <button type="submit" class="btn-outline">查詢候位號碼</button>
+        </div>
     </form>
 
     <div class="waiting-lookup-results"
@@ -86,7 +89,7 @@
     </div>
 </section>
 
-			<section class="waiting-bar">
+			<section class="waiting-bar" th:classappend="${!open} ? 'is-closed'">
 				<div>
 					<p class="waiting-bar-title"
 						th:text="${open}
@@ -122,7 +125,7 @@
 						</p>
 
 						<form th:if="${manage and open}"
-							th:action="@{/bistroops/waiting/manage/action}" method="post">
+							th:action="@{/bistroops/waiting/manage/action}" method="post" data-loading=".queue-card">
 
 							<input type="hidden" name="operation" value="NOTIFY"> <input
 								type="hidden" name="tableType" th:value="${q.tableType}">
@@ -156,7 +159,7 @@
 
 					<form th:if="${t.active}"
 						th:action="@{/bistroops/waiting/manage/action}" method="post"
-						data-confirm="確定執行所選候位操作嗎？">
+						data-confirm="確定執行所選候位操作嗎？" data-loading=".record-item">
 
 						<input type="hidden" name="tableType" th:value="${t.tableType}">
 

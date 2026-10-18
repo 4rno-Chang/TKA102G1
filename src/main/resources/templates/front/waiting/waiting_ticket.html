@@ -6,11 +6,16 @@
 
 <title>Bistroops｜候位號碼牌</title>
 
+<link rel="icon" th:href="@{/images/logo-mark.svg}" type="image/svg+xml">
+
 <link rel="stylesheet" th:href="@{/css/front/front.css}">
 <link rel="stylesheet" th:href="@{/css/front/member.css}">
 <link rel="stylesheet" th:href="@{/css/front/waiting.css}">
+<link rel="stylesheet" th:href="@{/css/front/booking-loading.css}">
 
 <script th:src="@{/js/front/member.js}" defer></script>
+<script th:src="@{/js/front/announcement.js}" defer></script>
+<script th:src="@{/js/front/booking-loading.js}" defer></script>
 <script th:src="@{/js/front/waiting.js}" defer></script>
 </head>
 
@@ -81,7 +86,7 @@
 
 				<form th:if="${ticket.active}"
 					th:action="@{/bistroops/waiting/cancel}" method="post"
-					data-confirm="確定要取消這張候位號碼牌嗎？">
+					data-confirm="確定要取消這張候位號碼牌嗎？" data-loading=".booking-result">
 
 					<input type="hidden" name="date" th:value="${ticket.date}">
 

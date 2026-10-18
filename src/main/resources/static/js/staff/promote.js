@@ -12,6 +12,7 @@
      2. 送出表單前先檢查一次，有問題就把訊息顯示在表單上方、不送出
      3. 選了圖片之後，檢查檔案並在預覽框顯示新選的那一張
      4. 日期選擇：自己做的月曆（只選年月日，不能選今天以前，結束日期最早是開始日期的隔天）
+     5. 活動詳細的對話框：打開、關閉都不重新載入整頁（列表頁）
    2～4 是表單頁用的，列表頁用不到。頁面上沒有對應的東西時，那一段什麼都不會做。
 
    ★ 這些檢查只是方便使用者，可以被跳過，所以 Java（PromoteController、PromoteService）收到資料後都會再檢查一次。
@@ -416,5 +417,91 @@ document.addEventListener('keydown', e => {
 
 // 頁面載入時：Thymeleaf 已經把日期放進隱藏欄位了，先把按鈕上的文字顯示出來，並把要送出的完整時間準備好
 refreshDatePickers(document);
+
+
+/* ---------- 5. 活動詳細的對話框：打開、關閉都不重新載入整頁（列表頁） ----------
+   卡片的「詳細」（data-detail-open）：在背景向它的網址（/staff/promote/detail?promoteNo=…）要頁面，
+     只取出裡面的對話框（.promote-modal）放到目前的畫面上，卡片和分頁都不動。
+   對話框的 ×、「關閉」、背景（data-detail-close）、Esc：直接把對話框拿掉，不用連到伺服器。
+   網址：打開時改成「詳細」的網址、關閉時改回列表的網址（history.pushState，只改網址、不重新載入），所以：
+     開著對話框按 F5、把網址貼給別人，一樣會打開那個活動；按瀏覽器的「上一頁」就是關閉對話框。
+   背景要不到（登入過期、斷線、活動已經被刪掉…）：照原本的連結整頁換過去，功能不會壞。
+   對話框裡的「刪除」「修改」照原本的做法（表單送出、連結換頁）。
+   只在列表頁（有「詳細」按鈕的頁面）啟用：表單頁的「套用已有活動」也是 .promote-modal，不能被這裡關掉。 */
+const DETAIL_PATH = '/promote/detail';
+const onListPage = document.querySelector('[data-detail-open]') !== null || location.pathname.includes(DETAIL_PATH);
+let detailLoading = false;
+
+// 一般的左鍵點擊才自己處理；按著 Ctrl／Shift 點（想開新分頁）就交給瀏覽器
+const plainClick = e => e.button === 0 && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey;
+
+function removeDetail() {
+  const modal = document.querySelector('.promote-modal');
+  if (modal) modal.remove();
+}
+
+// 在背景要「詳細」的頁面，取出對話框放上來；push 是 true 時順便把網址改成詳細的網址
+async function showDetail(url, push) {
+  if (detailLoading) return;
+  detailLoading = true;
+  try {
+    const res = await fetch(url);
+    // 被轉到別的頁面（res.url 不是詳細的網址）：例如登入過期到登入頁、活動不存在回到列表
+    if (!res.ok || !res.url.includes(DETAIL_PATH)) throw new Error(res.status);
+    const doc = new DOMParser().parseFromString(await res.text(), 'text/html');
+    const modal = doc.querySelector('.promote-modal');
+    if (!modal) throw new Error('沒有對話框');
+    removeDetail();
+    document.body.insertBefore(modal, document.getElementById('staffToast'));
+    if (push) history.pushState({ promoteDetail: true }, '', url);
+    const close = modal.querySelector('.promote-close');
+    if (close) close.focus();   // 用鍵盤的人可以直接按 Enter 關閉
+  } catch (err) {
+    location.href = url;        // 背景要不到：照原本的連結整頁換過去
+  } finally {
+    detailLoading = false;
+  }
+}
+
+// 關閉：如果是這次用 JS 打開的，就「上一頁」（網址回到列表，下面 popstate 會拿掉對話框）；
+//       一開始就打開著的（例如 F5），就把網址改成列表的網址再拿掉
+function closeDetail(listUrl) {
+  if (!document.querySelector('.promote-modal')) return;
+  if (history.state && history.state.promoteDetail) {
+    history.back();
+  } else {
+    if (listUrl) history.pushState({}, '', listUrl);
+    removeDetail();
+  }
+}
+
+if (onListPage) {
+document.addEventListener('click', e => {
+  const opener = e.target.closest('[data-detail-open]');
+  if (opener && plainClick(e)) {
+    e.preventDefault();
+    showDetail(opener.href, true);
+    return;
+  }
+  const closer = e.target.closest('.promote-modal [data-detail-close]');
+  if (closer && plainClick(e)) {
+    e.preventDefault();
+    closeDetail(closer.href);
+  }
+});
+
+// Esc：關閉對話框（上面還開著確認刪除的小視窗時不處理，那個視窗自己會擋 Esc）
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape' || document.querySelector('dialog[open]')) return;
+  const closer = document.querySelector('.promote-modal [data-detail-close]');
+  if (closer) closeDetail(closer.href);
+});
+
+// 瀏覽器的「上一頁」「下一頁」：網址是詳細的就打開那一筆，不是就關掉對話框
+window.addEventListener('popstate', () => {
+  if (location.pathname.includes(DETAIL_PATH)) showDetail(location.href, false);
+  else removeDetail();
+});
+}
 
 })();

@@ -214,7 +214,7 @@ public class FrontOrderController {
 	    cartWebSocketHandler.notifyCartChanged(frontSeatService.getSeatingKey(seat));
 	    workboardWS.notifyChanged();
 	    ra.addFlashAttribute("message", "訂單已送出，餐點製作中");
-	    return BACK + "?open=ordered";               // 回來之後直接打開「已點餐點」
+	    return BACK;
 	}
 
 	

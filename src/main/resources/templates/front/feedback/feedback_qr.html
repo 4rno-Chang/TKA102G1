@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Bistroops｜用餐回饋</title>
   <link rel="icon" th:href="@{/images/logo-mark.svg}" type="image/svg+xml">
+  <!-- booking-loading：送出中防止重複點擊（按鈕顯示等待圖示、表單蓋上 20% 白色） -->
+  <link rel="stylesheet" th:href="@{/css/front/booking-loading.css}">
+  <script th:src="@{/js/front/booking-loading.js}" defer></script>
   <style>
     * { box-sizing: border-box; margin: 0; }
     body { background: #f7f1e8; color: #3b2f2a; font-family: "Noto Sans TC", "PingFang TC", sans-serif; padding: 24px 16px; }
@@ -54,7 +57,7 @@
     </p>
     <p th:if="${order.member == null}"><span class="tag">非會員</span></p>
 
-    <form th:action="@{/bistroops/feedback/qr}" method="post">
+    <form th:action="@{/bistroops/feedback/qr}" method="post" data-loading>
       <input type="hidden" name="token" th:value="${token}">
 
       <th:block th:if="${order.member == null}">
