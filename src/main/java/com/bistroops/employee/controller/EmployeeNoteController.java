@@ -18,9 +18,7 @@ import com.bistroops.employee.model.EmployeeNoteRedisService;
 import jakarta.servlet.http.HttpSession;
 
 // 撰寫by陳巧馨
-// 後台首頁（templates/staff/staff_index.html）的「工作備忘錄」用：每位員工各自一份，存在 Redis（EmployeeNoteRedisService）
-//   畫面上的填寫框由 staff.js 的 A-9 用 fetch 呼叫下面兩個網址，回傳的是純文字，不是整個頁面
-//   員工編號從登入時存在 session 的 "employeeNo" 取得；網址在 /staff 底下，所以要先登入員工才能用
+// 後台首頁（templates/staff/staff_index.html）的「工作備忘錄」用：每位員工各自一份，存在 Redis
 @Controller
 @RequestMapping("/staff/worknote")
 public class EmployeeNoteController {
