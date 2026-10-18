@@ -40,13 +40,16 @@ import org.springframework.http.ResponseEntity;
 public class EmployeeController {
 
 	private final EmployeeService employeeService;
+	private final com.bistroops.employee.model.EmployeeAccountService employeeAccountService;
 	private final EmployeeAuthenticationService employeeAuthenticationService;
 
 	public EmployeeController(
 	        EmployeeService employeeService,
-	        EmployeeAuthenticationService employeeAuthenticationService) {
+	        EmployeeAuthenticationService employeeAuthenticationService,
+	        com.bistroops.employee.model.EmployeeAccountService employeeAccountService) {
 
 	    this.employeeService = employeeService;
+	    this.employeeAccountService = employeeAccountService;
 	    this.employeeAuthenticationService = employeeAuthenticationService;
 	}
 
@@ -82,7 +85,7 @@ public class EmployeeController {
 
 	    if (authentication == null) {
 	        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-	                .body(Map.of("message", "員工編號或密碼錯誤，或帳號已停用"));
+	                .body(Map.of("message", "員工編號或密碼錯誤、帳號已停用，或臨時密碼已過期；請聯絡主管協助"));
 	    }
 
 	    // 3. 取得員工資料
@@ -124,7 +127,7 @@ public class EmployeeController {
 
 	// 只有後臺管理權限的主管可以重設員工密碼
 	@PostMapping("/{empNo}/reset-password")
-	public ResponseEntity<Map<String, String>> resetPassword(
+	public ResponseEntity<?> resetPassword(
 	        @PathVariable Integer empNo, HttpSession session) {
 	    Integer loginEmpNo = (Integer) session.getAttribute("employeeNo");
 	    if (loginEmpNo == null) {
@@ -137,8 +140,7 @@ public class EmployeeController {
 	        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "找不到員工"));
 	    }
 	    try {
-	        employeeService.resetPassword(empNo);
-	        return ResponseEntity.ok(Map.of("message", "密碼已重設為目前儲存的手機號碼，下次登入須重新設定密碼"));
+	        return ResponseEntity.ok(employeeAccountService.resetPassword(empNo));
 	    } catch (IllegalArgumentException e) {
 	        return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
 	    }
@@ -351,7 +353,7 @@ public class EmployeeController {
 
 	// 新增員工
 	@PostMapping
-	public ResponseEntity<Integer> addEmployee(@RequestBody EmployeeVO employee) {
+	public ResponseEntity<?> addEmployee(@RequestBody EmployeeVO employee) {
 
 		// 檢查姓名
 		if (employee.getEmpName() == null || employee.getEmpName().isBlank()) {
@@ -360,13 +362,13 @@ public class EmployeeController {
 
 		try {
 			// 新增員工
-			EmployeeVO savedEmployee = employeeService.addEmployee(employee);
+			var result = employeeAccountService.createEmployee(employee);
 
 			// 回傳 MySQL 自動產生的員工編號
-			return ResponseEntity.status(HttpStatus.CREATED).body(savedEmployee.getEmpNo());
+			return ResponseEntity.status(HttpStatus.CREATED).body(result);
 
 		} catch (IllegalArgumentException e) {
-			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
+			return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
 		}
 	}
 

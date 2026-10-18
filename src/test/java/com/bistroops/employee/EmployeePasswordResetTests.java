@@ -20,36 +20,38 @@ class EmployeePasswordResetTests {
             mock(com.bistroops.permission.model.PermissionRepository.class), encoder);
 
     @Test
-    void resetUsesStoredPhoneAndRequiresPasswordChangeOnNextLogin() {
+    void resetUsesTemporaryPasswordAndRequiresPasswordChangeOnNextLogin() {
         EmployeeVO employee = new EmployeeVO();
         employee.setEmpTel("0912345678");
+        employee.setEmpEmail("employee@example.com");
         employee.setEmpStatus("1");
         employee.setEmpPassword(encoder.encode("oldPassword123"));
         employee.setEmpPwdChanged(true);
         when(repository.findById(2)).thenReturn(Optional.of(employee));
+        when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
-        service.resetPassword(2);
+        service.resetPassword(2, "TempPass12345");
 
-        assertTrue(encoder.matches("0912345678", employee.getEmpPassword()));
+        assertTrue(encoder.matches("TempPass12345", employee.getEmpPassword()));
         assertFalse(encoder.matches("oldPassword123", employee.getEmpPassword()));
         assertFalse(employee.getEmpPwdChanged());
-        assertNotNull(service.login(2, "0912345678"));
+        assertNotNull(service.login(2, "TempPass12345"));
         assertNull(service.login(2, "oldPassword123"));
         service.changePassword(2, "newPassword123");
         assertTrue(employee.getEmpPwdChanged());
         assertNotNull(service.login(2, "newPassword123"));
-        assertNull(service.login(2, "0912345678"));
+        assertNull(service.login(2, "TempPass12345"));
     }
 
     @Test
-    void invalidPhoneDoesNotChangePassword() {
+    void invalidEmailDoesNotChangePassword() {
         EmployeeVO employee = new EmployeeVO();
         employee.setEmpStatus("1");
-        employee.setEmpTel("invalid");
+        employee.setEmpEmail("invalid");
         employee.setEmpPassword("existingHash");
         employee.setEmpPwdChanged(true);
         when(repository.findById(2)).thenReturn(Optional.of(employee));
-        assertThrows(IllegalArgumentException.class, () -> service.resetPassword(2));
+        assertThrows(IllegalArgumentException.class, () -> service.resetPassword(2, "TempPass12345"));
         assertEquals("existingHash", employee.getEmpPassword());
         assertTrue(employee.getEmpPwdChanged());
         verify(repository, never()).save(any());
@@ -60,25 +62,26 @@ class EmployeePasswordResetTests {
         EmployeeVO employee = new EmployeeVO();
         employee.setEmpStatus("2");
         when(repository.findById(2)).thenReturn(Optional.of(employee));
-        assertThrows(IllegalArgumentException.class, () -> service.resetPassword(2));
-        assertThrows(IllegalArgumentException.class, () -> service.resetPassword(99));
+        assertThrows(IllegalArgumentException.class, () -> service.resetPassword(2, "TempPass12345"));
+        assertThrows(IllegalArgumentException.class, () -> service.resetPassword(99, "TempPass12345"));
         verify(repository, never()).save(any());
     }
 
     @Test
     void onlyAuthenticatedManagerCanResetPassword() {
         EmployeeService employeeService = mock(EmployeeService.class);
-        EmployeeController controller = new EmployeeController(employeeService, null);
+        EmployeeAccountService accounts = mock(EmployeeAccountService.class);
+        EmployeeController controller = new EmployeeController(employeeService, null, accounts);
         MockHttpSession session = new MockHttpSession();
         assertEquals(401, controller.resetPassword(2, session).getStatusCode().value());
         session.setAttribute("employeeNo", 1);
         assertEquals(403, controller.resetPassword(2, session).getStatusCode().value());
-        verify(employeeService, never()).resetPassword(any());
+        verify(accounts, never()).resetPassword(any());
 
         when(employeeService.hasPermission(1, 7)).thenReturn(true);
         when(employeeService.getEmployeeById(2)).thenReturn(Optional.of(new EmployeeVO()));
         assertEquals(200, controller.resetPassword(2, session).getStatusCode().value());
-        verify(employeeService).resetPassword(2);
+        verify(accounts).resetPassword(2);
         assertEquals(404, controller.resetPassword(99, session).getStatusCode().value());
     }
 }

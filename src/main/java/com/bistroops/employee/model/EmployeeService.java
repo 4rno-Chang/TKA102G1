@@ -36,7 +36,7 @@ public class EmployeeService {
 
 	// 新增員工
 	@Transactional
-	public EmployeeVO addEmployee(EmployeeVO employee) {
+	public EmployeeVO addEmployee(EmployeeVO employee, String temporaryPassword) {
 
 		// 1. 檢查手機號碼
 		String phone = employee.getEmpTel();
@@ -45,11 +45,14 @@ public class EmployeeService {
 			throw new IllegalArgumentException("請輸入正確的10碼手機號碼");
 		}
 
+		employee.setEmpEmail(validateEmail(employee.getEmpEmail()));
+
 		// 2. 新增員工，讓 MySQL 自動產生員工編號
 		employee.setEmpNo(null);
 
-		// 3. 設定預設密碼為手機號碼（BCrypt 雜湊）
-		employee.setEmpPassword(passwordEncoder.encode(phone));
+		// 3. 儲存臨時密碼的雜湊，明文僅用於寄送通知信
+		employee.setEmpPassword(passwordEncoder.encode(temporaryPassword));
+		employee.setEmpTempPasswordExpiresAt(java.time.Instant.now().plus(java.time.Duration.ofHours(24)));
 
 		// 4. 新增員工預設為在職
 		employee.setEmpStatus("1");
@@ -77,6 +80,11 @@ public class EmployeeService {
 		if (!"1".equals(employee.getEmpStatus())) {
 			return null;
 		}
+		if (!Boolean.TRUE.equals(employee.getEmpPwdChanged())
+		        && employee.getEmpTempPasswordExpiresAt() != null
+		        && !java.time.Instant.now().isBefore(employee.getEmpTempPasswordExpiresAt())) {
+		    return null;
+		}
 
 		// 4. 驗證員工密碼
 		String storedPassword = employee.getEmpPassword();
@@ -95,21 +103,19 @@ public class EmployeeService {
 		return employee;
 	}
 
-	// 主管重設密碼，使用資料庫目前儲存的手機號碼
+	// 主管重設密碼，寄送到資料庫目前儲存的信箱
 	@Transactional
-	public void resetPassword(Integer empNo) {
+	public EmployeeVO resetPassword(Integer empNo, String temporaryPassword) {
 	    EmployeeVO employee = employeeRepository.findById(empNo)
 	            .orElseThrow(() -> new IllegalArgumentException("找不到員工"));
 	    if (!"1".equals(employee.getEmpStatus())) {
 	        throw new IllegalArgumentException("此員工已停用");
 	    }
-	    String phone = employee.getEmpTel();
-	    if (phone == null || !phone.matches("^09\\d{8}$")) {
-	        throw new IllegalArgumentException("員工目前儲存的手機號碼不正確，請先儲存正確的手機號碼");
-	    }
-	    employee.setEmpPassword(passwordEncoder.encode(phone));
+	    validateEmail(employee.getEmpEmail());
+	    employee.setEmpPassword(passwordEncoder.encode(temporaryPassword));
 	    employee.setEmpPwdChanged(false);
-	    employeeRepository.save(employee);
+	    employee.setEmpTempPasswordExpiresAt(java.time.Instant.now().plus(java.time.Duration.ofHours(24)));
+	    return employeeRepository.save(employee);
 	}
 
 	// 員工修改密碼
@@ -144,6 +150,7 @@ public class EmployeeService {
 
 	    // 6. 標記已完成首次密碼修改
 	    employee.setEmpPwdChanged(true);
+	    employee.setEmpTempPasswordExpiresAt(null);
 
 	    // 7. 更新資料庫
 	    employeeRepository.save(employee);
@@ -270,7 +277,9 @@ public class EmployeeService {
 			throw new IllegalArgumentException("此員工已停用，無法修改資料");
 		}
 
+		String email = validateEmail(data.getEmpEmail());
 		employee.setEmpName(data.getEmpName());
+		employee.setEmpEmail(email);
 		employee.setEmpTel(data.getEmpTel());
 		employee.setEmpIce(data.getEmpIce());
 		employee.setEmpIcetel(data.getEmpIcetel());
@@ -278,6 +287,14 @@ public class EmployeeService {
 		employee.setEmpSal(data.getEmpSal());
 
 		return employeeRepository.save(employee);
+	}
+
+	private String validateEmail(String value) {
+	    if (value == null || value.isBlank() || value.length() > 254
+	            || !value.trim().matches("^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?(?:\\.[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)+$")) {
+	        throw new IllegalArgumentException("請輸入正確的員工 Email，並先儲存後再寄送臨時密碼");
+	    }
+	    return value.trim();
 	}
 
 	// 停用員工
