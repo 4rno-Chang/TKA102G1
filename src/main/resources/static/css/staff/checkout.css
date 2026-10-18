@@ -121,6 +121,11 @@
                 background: #fff; border: 1px solid var(--st-border); border-radius: 12px;
                 font-size: 22px; letter-spacing: 2px; text-align: center; }
 .member-input:focus { outline: none; border-color: var(--st-text); }
+/* 這張訂單目前的會員（徽章 + 名稱） */
+.member-current { display: flex; justify-content: center; align-items: center; gap: 8px;
+                  margin-top: 8px; color: var(--st-muted); font-size: 14px; }
+.member-current strong { color: var(--st-text); font-size: 16px; }
+
 /* 查詢結果：查詢中是灰色，找到會員是綠色，查無此會員是紅色 */
 .member-result { margin-top: 14px; padding: 10px 14px;
                  background: var(--st-soft); border-radius: 12px;

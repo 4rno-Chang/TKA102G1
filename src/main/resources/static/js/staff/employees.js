@@ -1,5 +1,11 @@
 /* ===== 員工停用／恢復在職確認視窗 ===== */
 
+function showEmployeeDeliveryStatus(result) {
+    const status = document.getElementById("employeeDeliveryStatus");
+    status.textContent = `員工 ${result.empNo}：${result.message}`;
+    status.hidden = false;
+}
+
 function employeeConfirm(message) {
     return new Promise((resolve) => {
         const modal = document.getElementById("employeeConfirmModal");
@@ -384,6 +390,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
             document.getElementById("empName").value = emp.empName ?? "";
             document.getElementById("empTel").value = emp.empTel ?? "";
+            document.getElementById("empEmail").value = emp.empEmail ?? "";
             document.getElementById("empIce").value = emp.empIce ?? "";
             document.getElementById("empIcetel").value = emp.empIcetel ?? "";
             document.getElementById("empAdd").value = emp.empAdd ?? "";
@@ -413,7 +420,7 @@ document.addEventListener("DOMContentLoaded", () => {
         resetPasswordBtn.disabled = true;
         try {
             if (!await employeeConfirm(
-                `確定要重設員工 ${empNo} 的密碼嗎？重設後，請使用目前已儲存的手機號碼登入，並重新設定密碼。此操作不會儲存本視窗尚未儲存的資料。`
+                `確定要重設員工 ${empNo} 的密碼嗎？舊密碼將立即失效，新的臨時密碼會寄到目前已儲存的 Email，須於 24 小時內登入並修改密碼。若剛修改信箱，請先取消並儲存員工資料，再重新操作。`
             )) return;
             const response = await fetch(`/api/employees/${empNo}/reset-password`, {
                 method: "POST"
@@ -424,7 +431,9 @@ document.addEventListener("DOMContentLoaded", () => {
                     response.status === 401 ? "請先登入" : "重設密碼失敗，請稍後再試"));
                 return;
             }
-            staffToast(result.message);
+            showEmployeeDeliveryStatus(result);
+            closeModal();
+            staffToast(result.emailSent ? "臨時密碼已寄至員工信箱" : "通知信寄送失敗，請查看員工列表上方的說明");
         } catch (error) {
             console.error("重設員工密碼失敗：", error);
             staffToast("重設密碼失敗，請稍後再試");
@@ -762,6 +771,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const employee = {
             empName: document.getElementById("empName").value.trim(),
             empTel: document.getElementById("empTel").value.trim(),
+            empEmail: document.getElementById("empEmail").value.trim(),
             empIce: document.getElementById("empIce").value.trim(),
             empIcetel: document.getElementById("empIcetel").value.trim(),
             empAdd: document.getElementById("empAdd").value.trim(),
@@ -769,6 +779,7 @@ document.addEventListener("DOMContentLoaded", () => {
         };
 
         let createdEmpNo = null;
+        let deliveryResult = null;
 
         try {
             // 1. 判斷新增或修改員工
@@ -788,16 +799,21 @@ document.addEventListener("DOMContentLoaded", () => {
             );
 
             if (!response.ok) {
+                const errorResult = await response.json().catch(() => ({}));
                 throw new Error(
-                    (isEditing ? "修改" : "新增") +
+                    errorResult.message || (isEditing ? "修改" : "新增") +
                     "員工失敗，HTTP " + response.status
                 );
             }
 
             // 新增時取得新編號，修改時沿用原編號
-            createdEmpNo = isEditing
-                ? editingEmpNo
-                : await response.json();
+            if (isEditing) {
+                createdEmpNo = editingEmpNo;
+            } else {
+                deliveryResult = await response.json();
+                createdEmpNo = deliveryResult.empNo;
+                showEmployeeDeliveryStatus(deliveryResult);
+            }
 
 
             // 2. 如果有選擇照片，再上傳照片
@@ -840,7 +856,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
 			// 統一使用 Bistroops 後台 Toast
 			staffToast(
-			    isEditing ? "✓ 員工修改成功" : "✓ 員工新增成功"
+			    isEditing ? "✓ 員工修改成功" : deliveryResult.emailSent
+                    ? "✓ 員工已新增，臨時密碼已寄出"
+                    : "員工已新增，但通知信寄送失敗，請查看列表上方的說明"
 			);
             closeModal();
             await loadEmployees();
@@ -859,8 +877,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 await loadEmployees();
             } else {
 				staffToast(
-				    (editingEmpNo !== null ? "修改" : "新增") +
-				    "員工失敗，請檢查資料或後端服務"
+				    error.message || "員工儲存失敗，請稍後再試"
 				);
             }
 

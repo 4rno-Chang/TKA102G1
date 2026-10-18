@@ -200,6 +200,129 @@ document.addEventListener('submit', e => {
     window.open('', 'ecpayWin', 'width=500,height=700');
 });
 
+  document.addEventListener('DOMContentLoaded', () => {
+    const btn = document.getElementById('btnFeedbackQr');
+    const dialog = document.getElementById('qrDialog');
+    if (!btn || !dialog) return;   // 沒選訂單時沒有按鈕
+
+    btn.addEventListener('click', async () => {
+      const res = await fetch(btn.dataset.url, {
+        method: 'POST',
+        body: new URLSearchParams({ order: btn.dataset.order })
+      });
+      const data = await res.json();
+      // 有錯誤（例如找不到訂單）→ 用 msgDialog 對話框顯示，取代原本的 alert
+      if (data.error) {
+        document.getElementById('msgDialogText').textContent = data.error;
+        document.getElementById('msgDialog').showModal();
+        return;
+      }
+
+      document.getElementById('qrOrder').textContent = data.orders;
+      const memberTag = document.getElementById('qrMember');
+      memberTag.textContent = data.member ? `會員：${data.customer}` : '非會員';
+
+      const box = document.getElementById('qrBox');
+      box.innerHTML = '';   // 清掉上一次的 QR
+      new QRCode(box, { text: data.url, width: 220, height: 220 });
+      dialog.showModal();
+    });
+
+    document.getElementById('btnQrClose').addEventListener('click', () => dialog.close());
+
+    // 列印：目前沒有接印表機，按了就當作已經印好，直接關掉 QR 對話框並顯示提示
+    // （之後要真的列印，在 dialog.close() 前面加 window.print(); 即可）
+    document.getElementById('btnQrPrint').addEventListener('click', () => {
+      dialog.close();
+      staffToast('回饋 QR Code 已列印');   // staffToast 在 staff.js
+    });
+    document.getElementById('btnMsgClose').addEventListener('click',
+      () => document.getElementById('msgDialog').close());
+  });
+
+  // 結帳頁「會員」：打開輸入手機號碼的 memberDialog（checkout.html）
+  document.addEventListener('DOMContentLoaded', () => {
+    const btn = document.getElementById('btnMember');
+    const dialog = document.getElementById('memberDialog');
+    if (!btn || !dialog) return;   // 不是結帳頁或沒選訂單時沒有這個按鈕
+
+    const form = document.getElementById('memberForm');
+    const phone = document.getElementById('memberPhone');
+    const error = document.getElementById('memberError');
+    const result = document.getElementById('memberResult');
+    const submitBtn = form.querySelector('.btn-member-submit');
+    let lookupSeq = 0;   // 第幾次查詢：打字很快、連續查好幾次時，只採用最後一次的結果
+
+    // 顯示查詢結果；className：'' 查詢中／'is-found' 找到／'is-error' 查不到或失敗
+    function showResult(html, className) {
+      result.innerHTML = html;
+      result.className = 'member-result ' + className;
+      result.hidden = false;
+    }
+
+    // 清掉查詢結果（號碼改了、還沒滿 10 碼時）
+    function clearResult() {
+      lookupSeq++;   // 還在路上的查詢回來也不要顯示
+      result.hidden = true;
+      submitBtn.disabled = false;
+    }
+
+    // 向 Java 查詢這個手機號碼是不是會員（OrdersController 的 /staff/checkout/member/lookup）
+    async function lookupMember(tel) {
+      const seq = ++lookupSeq;
+      showResult('查詢中…', '');
+      submitBtn.disabled = true;   // 查到會員之前先不能按確認
+      try {
+        const res = await fetch(form.dataset.lookupUrl + '?phone=' + encodeURIComponent(tel));
+        const data = await res.json();
+        if (seq !== lookupSeq) return;   // 號碼已經改了，這個結果作廢
+        if (data.found) {
+          // textContent 再放進 strong：會員名稱不會被當成 HTML
+          const name = document.createElement('strong');
+          name.textContent = data.name || '（未填姓名）';
+          showResult('會員：', 'is-found');
+          result.append(name);
+          submitBtn.disabled = false;
+        } else {
+          showResult('查無此會員', 'is-error');
+        }
+      } catch (e) {
+        if (seq !== lookupSeq) return;
+        showResult('查詢失敗，請再試一次', 'is-error');   // 例如網路斷線、沒有權限被轉到登入頁
+        submitBtn.disabled = false;   // 查不到結果時還是讓員工可以送出，交給 Java 判斷
+      }
+    }
+
+    btn.addEventListener('click', () => {
+      form.reset();
+      error.hidden = true;
+      clearResult();
+      dialog.showModal();
+      phone.focus();
+    });
+
+    // × 和「取消」都是關閉
+    document.getElementById('btnMemberClose').addEventListener('click', () => dialog.close());
+    document.getElementById('btnMemberCancel').addEventListener('click', () => dialog.close());
+
+    // 只能輸入數字；輸入滿 10 碼而且格式正確，就查詢會員
+    phone.addEventListener('input', () => {
+      phone.value = phone.value.replace(/\D/g, '');
+      error.hidden = true;
+      if (/^09\d{8}$/.test(phone.value)) lookupMember(phone.value);
+      else clearResult();
+    });
+
+    // 送出前檢查格式：09 開頭、10 碼（Java 那邊也要再檢查一次）
+    form.addEventListener('submit', e => {
+      if (!/^09\d{8}$/.test(phone.value)) {
+        e.preventDefault();
+        error.hidden = false;
+        phone.focus();
+      }
+    });
+  });
+
 
 
 
