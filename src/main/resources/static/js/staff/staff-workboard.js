@@ -221,6 +221,14 @@ window.addEventListener('load', function () {
 	   }, 1000);
 	 }
 
+	 // 從背景切回來時（螢幕打開、切回這個分頁），如果中間有收到通知就整理
+	 document.addEventListener('visibilitychange', () => {
+	   if (needRefresh && document.visibilityState === 'visible') {
+	     needRefresh = false;
+	     refreshBoard();
+	   }
+	 });
+
 	 // 連線（寫法參考 front/order.js）；斷線 3 秒後自動重連
 	 function connectBoardSocket(isReconnect) {
 	   const protocol = location.protocol === 'https:' ? 'wss://' : 'ws://';
@@ -234,6 +242,5 @@ window.addEventListener('load', function () {
 	   socket.addEventListener('close', () => setTimeout(() => connectBoardSocket(true), 3000));
 	 }
 	 if (dbBoardCards) connectBoardSocket(false);
-	
 
 })();

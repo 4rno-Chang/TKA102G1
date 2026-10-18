@@ -346,3 +346,6 @@ a.edit-close { display: grid; place-items: center; }
     max-height: max(220px, calc(100dvh - 330px));
   }
 }
+/* ========== 送出中（staff.js 的 A-8 加上 is-loading；共用的樣式在 staff.css） ========== */
+/* 餐點按鈕：上下的 margin 抵銷圖示的高度，按鈕才不會突然變高 */
+.dish-state .cloche-loader { margin: -9px 0; }

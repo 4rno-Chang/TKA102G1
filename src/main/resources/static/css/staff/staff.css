@@ -413,3 +413,56 @@ button { cursor: pointer; }
   .home-grid { grid-template-columns: 1fr; }
   .home-tile { min-height: 110px; }
 }
+
+/* 等待圖示：用 CSS 畫的餐盤蓋（照 images/code_generated_image.gif）
+   --size 決定大小，其他尺寸都跟著等比例縮放（--u 是 GIF 裡的 1px） */
+.cloche-loader {
+  --size: 96px;
+  --u: calc(var(--size) / 140);
+  --c-line: #2e4033;   /* 深綠：外圈、蓋子、底盤 */
+  --c-knob: #8c2a2a;   /* 酒紅：蓋子上的把手 */
+  position: relative;
+  width: var(--size); height: var(--size);
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 calc(6 * var(--u)) var(--c-line);   /* 外圈（用陰影畫，不會佔掉裡面的位置） */
+  animation: cloche-bob 1.84s ease-in-out infinite;
+}
+/* 蓋子：只有上、左、右邊框的半圓 */
+.cloche-loader::before {
+  content: ""; position: absolute; box-sizing: border-box;
+  left: calc(35 * var(--u)); top: calc(40 * var(--u));
+  width: calc(70 * var(--u)); height: calc(36 * var(--u));
+  border: calc(6 * var(--u)) solid var(--c-line); border-bottom: 0;
+  border-radius: calc(35 * var(--u)) calc(35 * var(--u)) 0 0;
+}
+/* 底盤：一條橫線 */
+.cloche-loader::after {
+  content: ""; position: absolute;
+  left: calc(28 * var(--u)); top: calc(75 * var(--u));
+  width: calc(85 * var(--u)); height: calc(6 * var(--u));
+  background: var(--c-line); border-radius: calc(3 * var(--u));
+}
+/* 把手：紅色圓點，蓋在蓋子頂端上面 */
+.cloche-loader i {
+  position: absolute; z-index: 1;
+  left: calc(62 * var(--u)); top: calc(27 * var(--u));
+  width: calc(17 * var(--u)); height: calc(17 * var(--u));
+  background: var(--c-knob); border-radius: 50%;
+}
+/* 整個圖示上下浮動 */
+@keyframes cloche-bob {
+  0%, 100% { transform: translateY(calc(-7 * var(--u))); }
+  50%      { transform: translateY(calc(7 * var(--u))); }
+}
+/* 使用者在系統設定裡關掉動畫的話：不浮動 */
+@media (prefers-reduced-motion: reduce) {
+  .cloche-loader { animation: none; }
+}
+
+/* 送出中（staff.js 的 A-8 加上 is-loading）：按下去的按鈕不能再按，裡面顯示等待圖示 */
+.is-loading { pointer-events: none; white-space: nowrap; }   /* nowrap：結帳按鈕比較窄時，「處理中…」不要換行 */
+.is-loading .cloche-loader { --size: 32px; display: inline-block; vertical-align: middle; }
+/* 一般按鈕（現金、儲存變更、會員的確認…）：圖示小一點、和文字同色，放在「處理中…」前面 */
+.staff-btn.is-loading .cloche-loader { flex-shrink: 0; --size: 24px; --c-line: currentColor; --c-knob: currentColor; margin: -6px 8px -6px 0; }
+/* 刷卡的付款中（staff.js 的 staffCardPaying）：按鈕還可以點，點了會把綠界的付款視窗叫到最前面 */
+.is-loading.is-paying { pointer-events: auto; cursor: pointer; }
