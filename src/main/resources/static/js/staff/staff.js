@@ -183,6 +183,13 @@ const staffConfirm = (text, warn) => staffDialog(text, true, warn);
      <form th:action="..." method="post" data-confirm="確定要刪除嗎？" data-confirm-warn> */
 document.addEventListener('submit', e => {
   const form = e.target;
+  // 刷卡的付款視窗還開著（A-8 的 staffCardPaying）：先不要做其他付款，避免一邊刷卡一邊收現金
+  if (form.dataset.paying) {
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    staffAlert('刷卡付款視窗還開著，請先完成付款或關閉付款視窗');
+    return;
+  }
   const question = form.dataset.confirm;
   if (question && !form.dataset.confirmed) {
     e.preventDefault();             // 先不送出，等員工按按鈕
@@ -196,8 +203,77 @@ document.addEventListener('submit', e => {
     return;
   }
   // 按的是刷卡按鈕（formtarget="ecpayWin"）：確認後才開小視窗，表單結果會顯示在這個視窗裡
-  if (e.submitter && e.submitter.formTarget === 'ecpayWin')
-    window.open('', 'ecpayWin', 'width=500,height=700');
+  if (e.submitter && e.submitter.formTarget === 'ecpayWin') {
+    const win = window.open('', 'ecpayWin', 'width=500,height=700');
+    staffCardPaying(form, e.submitter, win);   // A-8：付款視窗開著時，刷卡按鈕顯示「付款中…」
+  }
+});
+
+/* ========== A-8. 送出中：防止重複點擊，在按下去的按鈕裡顯示等待圖示 ==========
+   後台所有表單共用（結帳、工作面板…）。表單送出後，在換頁之前再按都不會重複送出。
+     工作面板的餐點按鈕：右側的「出餐 →」等文字換成等待圖示
+     其他按鈕（現金、儲存變更、會員的確認…）：換成「等待圖示＋處理中…」
+   刷卡（formtarget="ecpayWin"）另外處理：結果開在綠界小視窗，這一頁不會換頁，所以改成看小視窗關了沒（staffCardPaying）。
+   等待圖示是 staff.css 的 .cloche-loader。不是表單的按鈕（例如回饋 QR）直接呼叫 staffBtnLoading／staffBtnDone。
+   註：監聽 window 而不是 document，是為了排在最後執行：
+       前面的程式（確認視窗按了取消、會員手機格式錯誤）擋下來的，e.defaultPrevented 是 true，就不會轉圈卡住。 */
+function staffBtnLoading(btn, text = '處理中…') {
+  if (!btn || btn.classList.contains('is-loading')) return;
+  btn.dataset.html = btn.innerHTML;   // 記住原本的內容，結束或上一頁回來時還原
+  btn.classList.add('is-loading');
+  const loader = '<span class="cloche-loader"><i></i></span>';   // 按鈕裡只能放 span 這類的行內元素，不能放 div
+  const state = btn.querySelector('.dish-state');
+  if (state) state.innerHTML = loader;
+  else btn.innerHTML = loader + text;
+}
+function staffBtnDone(btn) {
+  if (!btn || !btn.classList.contains('is-loading')) return;
+  btn.innerHTML = btn.dataset.html;
+  delete btn.dataset.html;
+  btn.classList.remove('is-loading');
+}
+
+/* 刷卡：綠界的付款小視窗開著的時候
+     刷卡按鈕顯示「付款中…」，點它會把付款視窗叫到最前面（小視窗很容易被結帳頁蓋到後面）
+     同一張表單的現金先不能按（上面「送出前先確認」看 form.dataset.paying 擋下來）
+   每 0.5 秒檢查一次小視窗關了沒：關掉（付款完成會自己關、或員工按 × 取消）就恢復。
+   付款成功時，小視窗會把結帳頁換成新的頁面（OrdersController 的 ecpayResult），按鈕本來就會變回原狀。 */
+function staffCardPaying(form, btn, win) {
+  if (!btn || !win) return;   // 小視窗被瀏覽器擋掉了：不鎖
+  staffBtnLoading(btn, '付款中…');
+  btn.classList.add('is-paying');   // staff.css：付款中的按鈕還可以點（點了叫出小視窗）
+  form.dataset.paying = 'yes';
+  const focusWin = ev => { ev.preventDefault(); win.focus(); };   // preventDefault：不要再送出一次表單
+  btn.addEventListener('click', focusWin);
+  const timer = setInterval(() => {
+    if (!win.closed) return;
+    clearInterval(timer);
+    btn.removeEventListener('click', focusWin);
+    btn.classList.remove('is-paying');
+    delete form.dataset.paying;
+    staffBtnDone(btn);
+  }, 500);
+}
+
+window.addEventListener('submit', e => {
+  if (e.defaultPrevented) return;                        // 被擋下來的不用等待
+  if (e.submitter && e.submitter.formTarget) return;     // 刷卡：送到別的視窗
+  const form = e.target;
+  if (form.dataset.submitting) {                         // 已經在送了：第二次點擊直接擋掉
+    e.preventDefault();
+    return;
+  }
+  form.dataset.submitting = 'yes';
+  staffBtnLoading(e.submitter || form.querySelector('[type="submit"]'));
+});
+
+// 按「上一頁」回來時，瀏覽器可能直接拿出之前的畫面（按鈕還在轉），要恢復
+window.addEventListener('pageshow', e => {
+  if (!e.persisted) return;
+  document.querySelectorAll('form[data-submitting]').forEach(f => delete f.dataset.submitting);
+  document.querySelectorAll('form[data-paying]').forEach(f => delete f.dataset.paying);
+  document.querySelectorAll('.is-paying').forEach(btn => btn.classList.remove('is-paying'));
+  document.querySelectorAll('.is-loading').forEach(staffBtnDone);
 });
 
   document.addEventListener('DOMContentLoaded', () => {
@@ -206,26 +282,31 @@ document.addEventListener('submit', e => {
     if (!btn || !dialog) return;   // 沒選訂單時沒有按鈕
 
     btn.addEventListener('click', async () => {
-      const res = await fetch(btn.dataset.url, {
-        method: 'POST',
-        body: new URLSearchParams({ order: btn.dataset.order })
-      });
-      const data = await res.json();
-      // 有錯誤（例如找不到訂單）→ 用 msgDialog 對話框顯示，取代原本的 alert
-      if (data.error) {
-        document.getElementById('msgDialogText').textContent = data.error;
-        document.getElementById('msgDialog').showModal();
-        return;
+      staffBtnLoading(btn);   // 等 QR 資料的時候：按鈕顯示等待圖示，也不能再按（A-8）
+      try {
+        const res = await fetch(btn.dataset.url, {
+          method: 'POST',
+          body: new URLSearchParams({ order: btn.dataset.order })
+        });
+        const data = await res.json();
+        // 有錯誤（例如找不到訂單）→ 用 msgDialog 對話框顯示，取代原本的 alert
+        if (data.error) {
+          document.getElementById('msgDialogText').textContent = data.error;
+          document.getElementById('msgDialog').showModal();
+          return;
+        }
+
+        document.getElementById('qrOrder').textContent = data.orders;
+        const memberTag = document.getElementById('qrMember');
+        memberTag.textContent = data.member ? `會員：${data.customer}` : '非會員';
+
+        const box = document.getElementById('qrBox');
+        box.innerHTML = '';   // 清掉上一次的 QR
+        new QRCode(box, { text: data.url, width: 220, height: 220 });
+        dialog.showModal();
+      } finally {
+        staffBtnDone(btn);    // 成功、失敗都要把按鈕還原
       }
-
-      document.getElementById('qrOrder').textContent = data.orders;
-      const memberTag = document.getElementById('qrMember');
-      memberTag.textContent = data.member ? `會員：${data.customer}` : '非會員';
-
-      const box = document.getElementById('qrBox');
-      box.innerHTML = '';   // 清掉上一次的 QR
-      new QRCode(box, { text: data.url, width: 220, height: 220 });
-      dialog.showModal();
     });
 
     document.getElementById('btnQrClose').addEventListener('click', () => dialog.close());
