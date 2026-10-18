@@ -147,26 +147,20 @@
   background-size: cover; background-position: center;
   border: 1px solid var(--color-gold);
   box-shadow: 0 14px 34px rgba(90, 70, 30, .14);
-  transition: transform var(--transition), box-shadow var(--transition);
 }
 /* 底部深墨色漸層，讓文字看得清楚 */
 .menu-card::before {
   content: "";
   position: absolute; inset: 0;
   background: linear-gradient(to top, rgba(35, 32, 28, .86), rgba(35, 32, 28, 0) 62%);
-  transition: opacity var(--transition);
 }
-/* 內縮金框，呼應 Hero；滑過時往外擴 */
+/* 內縮金框，呼應 Hero（卡片只是展示，滑過不會動） */
 .menu-card::after {
   content: "";
   position: absolute; inset: 14px;
   border: 1px solid var(--lux-gold-light);
   pointer-events: none;
-  transition: inset var(--transition);
 }
-.menu-card:hover { transform: translateY(-10px); box-shadow: 0 28px 60px rgba(90, 70, 30, .24); }
-.menu-card:hover::before { opacity: .8; }
-.menu-card:hover::after { inset: 8px; }
 
 .menu-card-text {
   position: relative;
