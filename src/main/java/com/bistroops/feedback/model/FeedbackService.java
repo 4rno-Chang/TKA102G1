@@ -86,6 +86,16 @@ public class FeedbackService {
 		return deadline != null && LocalDateTime.now().isBefore(deadline);
 	}
 
+	// 這筆回饋是不是這位會員自己填的（用手機比對：回饋存的 feeCustomerTel ＝ 會員的手機）
+	// 會員自己從歷史訂單填、或會員訂單用 QR 填，存的都是會員手機 → true，可以編輯
+	// 非會員先用 QR 填了回饋（存的是那位客人的手機）、之後員工才在結帳頁綁定會員 → false，
+	// 會員不能修改別人寫的內容，歷史訂單只顯示「已回饋」
+	// HTML 也會用到：${@feedbackService.isOwner(fb, member)}（member_modals.html 的 mine）
+	public boolean isOwner(FeedbackVO fb, MemberVO member) {
+		return fb != null && member != null && member.getMemTel() != null
+				&& member.getMemTel().equals(fb.getFeeCustomerTel());
+	}
+
 	
 	// 前台會員從歷史訂單填寫回饋：用餐後 7 天內，沒回饋過就新增、回饋過就修改
 	// 回傳要顯示給會員看的訊息（成功和失敗都是）
@@ -106,6 +116,11 @@ public class FeedbackService {
 
 	    FeedbackVO fb = feedbackRepository.findFirstByOrders_Orders(ordersNo);
 	    boolean isNew = (fb == null);
+	    // 已經有回饋、但不是這位會員填的（例如非會員先用 QR 填，之後才綁定會員）：不能改別人的內容
+	    // 畫面上已經不會出現「編輯回饋」，這裡是防有人直接送表單
+	    if (!isNew && !isOwner(fb, member)) {
+	        return "這張訂單的回饋是由其他人填寫的，無法修改";
+	    }
 	    if (!isWritable(order)) {
 	        return "用餐超過 " + FeedbackVO.FEEDBACK_DAYS + " 天，已經不能" + (isNew ? "填寫" : "修改") + "回饋了";
 	    }

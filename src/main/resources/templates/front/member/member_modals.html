@@ -551,6 +551,7 @@
 								<div class="record-item" th:each="order : ${orders}"
 									th:with="fb=${feedbackMap == null ? null : feedbackMap.get(order.orders)},
 									        canWrite=${@feedbackService.isWritable(order)},
+									        mine=${@feedbackService.isOwner(fb, member)},
 									        deadline=${#temporals.format(@feedbackService.writeDeadline(order), 'yyyy/MM/dd HH:mm')}">
 									<!-- 按鈕裡面不能再放按鈕，所以用 record-row 把「展開明細」和「填寫回饋」兩顆按鈕並排 -->
 									<div class="record-row">
@@ -568,8 +569,11 @@
 									<!-- 回饋按鈕：用餐後 7 天內可以填寫，也可以修改；超過 7 天就不能再動
 									     fb       這張訂單的回饋，沒回饋過是 null（MemberOrdersController 的 feedbackMap）
 									     canWrite 現在是否還在用餐後 7 天內（FeedbackService 的 isWritable；天數是 FeedbackVO.FEEDBACK_DAYS）
-									     7 天內：沒回饋過 → 填寫回饋；回饋過 → 編輯回饋（帶入原本的評分和內容）
+									     mine     這筆回饋是不是這位會員自己填的（FeedbackService 的 isOwner：回饋的手機＝會員手機）
+									              非會員先用 QR 填了回饋、之後員工才幫這張訂單綁定會員 → false，會員不能改別人寫的內容
+									     7 天內：沒回饋過 → 填寫回饋；自己的回饋 → 編輯回饋（帶入原本的評分和內容）
 									     超過 7 天：沒回饋過 → 回饋已截止；回饋過 → 已回饋
+									     回饋是別人填的（mine 是 false）：不管有沒有超過 7 天 → 已回饋
 									     「填寫」和「編輯」點了都會打開下面的 feedbackModal（member.js 的「歷史訂單：填寫回饋」） -->
 									<button type="button" class="btn-small btn-feedback" data-feedback-open
 										th:if="${canWrite and fb == null}"
@@ -577,14 +581,15 @@
 										th:data-order-label="${#numbers.formatInteger(order.orders,8)}"
 										th:data-deadline="${deadline}">填寫回饋</button>
 									<button type="button" class="btn-small btn-feedback" data-feedback-open
-										th:if="${canWrite and fb != null}"
+										th:if="${canWrite and fb != null and mine}"
 										th:data-orders="${order.orders}"
 										th:data-order-label="${#numbers.formatInteger(order.orders,8)}"
 										th:data-deadline="${deadline}"
 										th:data-rating="${fb.feeRating}"
 										th:data-content="${fb.feeContent}">編輯回饋</button>
 									<span class="btn-small btn-feedback is-done"
-										th:if="${!canWrite}" th:text="${fb == null} ? '回饋已截止' : '已回饋'">已回饋</span>
+										th:if="${!canWrite or (fb != null and !mine)}" th:text="${fb == null} ? '回饋已截止' : '已回饋'">已回饋</span>
+									<!-- ↑ 超過 7 天，或回饋是別人填的，都只顯示文字（不能點） -->
 									</div>
 									<div class="record-body" hidden>
 										<table class="order-table">
