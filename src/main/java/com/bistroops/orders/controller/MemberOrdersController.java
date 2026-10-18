@@ -79,9 +79,15 @@ public class MemberOrdersController {
 	
     //===========歷史訂單的回饋（訂單編號 → 回饋）===========
     // member_modals.html 用它決定每筆訂單顯示「填寫回饋」「編輯回饋」還是「已回饋」
+    // 參數直接拿上面 memberOrders 放進 Model 的 orders，不用再查一次資料庫
+    // （原本這裡又呼叫一次 memberOrders(request)，每個前台頁面都會多查一次會員的訂單）
+    //   @ModelAttribute("orders")：Spring 看到 feedbackMap 需要 orders，會先執行 memberOrders 再把結果傳進來，
+    //                              所以兩個方法在檔案裡的前後順序不影響
+    //   binding = false：只拿來用，不要把網址上的參數綁到這份清單上
     @ModelAttribute("feedbackMap")
-    public Map<Integer, FeedbackVO> memberFeedbacks(HttpServletRequest request) {
-            return feedbackService.getMapByOrders(memberOrders(request));
+    public Map<Integer, FeedbackVO> memberFeedbacks(
+            @ModelAttribute(name = "orders", binding = false) List<OrdersVO> orders) {
+            return feedbackService.getMapByOrders(orders);
     }
 	
 	

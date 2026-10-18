@@ -51,6 +51,9 @@
                 <span class="checkout-row-id" th:text="${o.orders}">訂單編號</span>
                 <span class="tag" th:classappend="${o.status=='DONE'} ? 'tag-red' : 'tag-yellow'"
                       th:text="${o.status=='DONE'} ? '待結帳' : '用餐中'">用餐中</span>
+                <!-- 有沒有輸入會員：訂單的 member 有值 → 綠色「會員」；null → 灰色「非會員」（樣式是 staff.css 的 .tag-green、.tag-gray） -->
+                <span class="tag" th:classappend="${o.member != null} ? 'tag-green' : 'tag-gray'"
+                      th:text="${o.member != null} ? '會員' : '非會員'">非會員</span>
               </span>
               <span class="checkout-row-amount" th:text="'$' + ${#numbers.formatInteger(o.ordersActualPrice,1,'COMMA')}">$1,246</span>
               <a class="staff-btn btn-pay" th:href="@{/staff/checkout(order=${o.orders})}">結帳</a>
@@ -74,6 +77,13 @@
             </div>
             <p class="receipt-meta">訂單編號：<span th:text="${#numbers.formatInteger(order.orders,8)}"></span></p>
             <p class="receipt-meta">下單時間：<span th:text="${order.ordersTime}"></span></p>
+            <!-- 這張訂單的會員：結帳前再確認一次有沒有綁對人
+                 有會員 → 綠色標籤顯示名字（沒填姓名就顯示手機）；沒有 → 灰色「非會員」 -->
+            <p class="receipt-meta">會員：
+              <span class="tag tag-green" th:if="${order.member != null}"
+                    th:text="${order.member.memName != null and !order.member.memName.isBlank()} ? ${order.member.memName} : ${order.member.memTel}">王小明</span>
+              <span class="tag tag-gray" th:if="${order.member == null}">非會員</span>
+            </p>
 
             <table class="receipt-table">
               <thead>

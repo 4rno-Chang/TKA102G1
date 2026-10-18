@@ -259,6 +259,7 @@ window.addEventListener('submit', e => {
   if (e.defaultPrevented) return;                        // 被擋下來的不用等待
   if (e.submitter && e.submitter.formTarget) return;     // 刷卡：送到別的視窗
   const form = e.target;
+  if (form.method === 'dialog') return;                  // <form method="dialog">：只是關掉對話框，不會換頁（例如訂候位的簡訊選擇）
   if (form.dataset.submitting) {                         // 已經在送了：第二次點擊直接擋掉
     e.preventDefault();
     return;
