@@ -52,6 +52,7 @@
 				</div>
 			</div>
 
+			<p id="employeeDeliveryStatus" class="employee-delivery-status" role="status" hidden></p>
 			<div style="overflow-x: auto;">
 				<table class="receipt-table">
 					<thead>
@@ -124,6 +125,12 @@
 				<div class="employee-form-group">
 					<label for="empTel">手機號碼 *</label> <input type="tel" id="empTel"
 						name="empTel" maxlength="10" pattern="09[0-9]{8}" required>
+				</div>
+
+				<div class="employee-form-group">
+					<label for="empEmail">Email *</label>
+					<input type="email" id="empEmail" name="empEmail" maxlength="254" autocomplete="off" required>
+					<small>臨時密碼會寄至此信箱；修改信箱後請先儲存，再按「忘記密碼」寄送。</small>
 				</div>
 
 				<div class="employee-form-group">
