@@ -163,18 +163,47 @@ public class MemberController {
 		}
 
 		// ===== 開發測試用驗證碼 =====
-		Random random = new Random();
-		String code = String.format("%06d", random.nextInt(1000000));
+        String action;
 
-		// 把驗證碼與對應手機暫存在 Session
-		session.setAttribute("smsCode", code);
-		session.setAttribute("smsPhone", phone);
+        switch (purpose) {
+            case "change":
+                action = "更改密碼";
+                break;
+            case "forgot":
+                action = "忘記密碼";
+                break;
+            case "register":
+                action = "註冊";
+                break;
+            default:
+                return "不支援的驗證用途";
+        }
 
-		// 先印在 Eclipse Console，方便測試
-		System.out.println("驗證碼發送至：" + phone);
-		System.out.println("測試驗證碼：" + code);
+        SecureRandom random = new SecureRandom();
 
-		return "OK";
+        String code = String.format(
+                java.util.Locale.ROOT,
+                "%06d",
+                random.nextInt(1_000_000));
+
+        try {
+            smsService.send(
+                    phone,
+                    "【Bistroops】您的"
+                            + action
+                            + "驗證碼為 "
+                            + code
+                            + "，請勿提供給他人。");
+
+        } catch (SmsSendException ex) {
+            return "簡訊暫時無法發送，請稍後再試";
+        }
+
+        // 發送成功後才保存，維持既有驗證流程。
+        session.setAttribute("smsCode", code);
+        session.setAttribute("smsPhone", phone);
+
+        return "OK";
 	}
 
 	// 驗證手機驗證碼

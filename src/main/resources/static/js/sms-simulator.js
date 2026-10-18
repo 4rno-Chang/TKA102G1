@@ -44,12 +44,20 @@
     root.innerHTML = `
         <link rel="stylesheet">
 
-        <button type="button"
-                class="sms-launcher"
-                aria-label="開啟模擬手機"
-                hidden>
-            模擬手機
-        </button>
+		<div class="sms-launcher-group" hidden>
+		    <button type="button"
+		            class="sms-launcher"
+		            aria-label="開啟模擬手機">
+		        模擬手機
+		    </button>
+
+		    <button type="button"
+		            class="sms-dismiss"
+		            aria-label="關閉模擬手機通知"
+		            title="關閉，收到新簡訊時再次顯示">
+		        ×
+		    </button>
+		</div>
 
         <section class="sms-phone"
                  role="dialog"
@@ -93,24 +101,51 @@
 
     root.querySelector('link').href = cssUrl;
 
-    const launcher = root.querySelector('.sms-launcher');
-    const phone = root.querySelector('.sms-phone');
-    const closeButton = root.querySelector('.sms-close');
-    const recipient = root.querySelector('select');
-    const chat = root.querySelector('.sms-chat');
+	const launcherGroup = root.querySelector('.sms-launcher-group');
+	const launcher = root.querySelector('.sms-launcher');
+	const dismissButton = root.querySelector('.sms-dismiss');
+	const phone = root.querySelector('.sms-phone');
+	const closeButton = root.querySelector('.sms-close');
+	const recipient = root.querySelector('select');
+	const chat = root.querySelector('.sms-chat');
 
-    function openPhone() {
-        phone.hidden = false;
-        launcher.hidden = true;
-    }
+	const dismissedKey = `${storageKey}:dismissed`;
+	let dismissed = false;
 
-    function closePhone() {
-        phone.hidden = true;
-        launcher.hidden = messages.length === 0;
-    }
+	try {
+	    dismissed = sessionStorage.getItem(dismissedKey) === 'true';
+	} catch (_) {
+	    // 無法使用儲存空間時，仍可在目前頁面關閉。
+	}
 
-    launcher.addEventListener('click', openPhone);
-    closeButton.addEventListener('click', closePhone);
+	function setDismissed(value) {
+	    dismissed = value;
+
+	    try {
+	        sessionStorage.setItem(dismissedKey, String(value));
+	    } catch (_) {
+	        // 不影響目前頁面的操作。
+	    }
+	}
+
+	function openPhone() {
+	    phone.hidden = false;
+	    launcherGroup.hidden = true;
+	}
+
+	function closePhone() {
+	    phone.hidden = true;
+	    launcherGroup.hidden = dismissed || messages.length === 0;
+	}
+
+	launcher.addEventListener('click', openPhone);
+	closeButton.addEventListener('click', closePhone);
+
+	dismissButton.addEventListener('click', () => {
+	    setDismissed(true);
+	    phone.hidden = true;
+	    launcherGroup.hidden = true;
+	});
 
     function renderChat() {
         chat.replaceChildren();
@@ -161,13 +196,21 @@
             ? data.messages
             : [];
 
-        const incoming = messages.filter(
-            item => !seen.has(String(item.id))
-        );
+			// 編號可能在重新啟動後重複，
+			// 加上產生時間與電話，避免將新訊息當成已讀。
+			const messageKey = item => JSON.stringify([
+			    String(item.id),
+			    String(item.createdAt),
+			    String(item.phone)
+			]);
 
-        for (const item of messages) {
-            seen.add(String(item.id));
-        }
+			const incoming = messages.filter(
+			    item => !seen.has(messageKey(item))
+			);
+
+			for (const item of messages) {
+			    seen.add(messageKey(item));
+			}
 
         while (seen.size > 250) {
             seen.delete(seen.values().next().value);
@@ -205,14 +248,20 @@
 
         renderChat();
 
-        if (messages.length === 0) {
-            phone.hidden = true;
-            launcher.hidden = true;
-            return;
-        }
+		if (messages.length === 0) {
+		    phone.hidden = true;
+		    launcherGroup.hidden = true;
+		    return;
+		}
 
-        if (phone.hidden) launcher.hidden = false;
-        if (incoming.length) openPhone();
+		// 只有新訊息可以解除關閉狀態並自動展開。
+		if (incoming.length) {
+		    setDismissed(false);
+		    openPhone();
+		    return;
+		}
+
+		launcherGroup.hidden = dismissed || !phone.hidden;
     }
 
     // 一般表單送出後等待重新導向，

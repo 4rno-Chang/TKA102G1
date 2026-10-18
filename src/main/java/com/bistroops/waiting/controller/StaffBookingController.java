@@ -69,7 +69,7 @@ public class StaffBookingController {
 			@RequestParam(name = "meal", defaultValue = "") String meal,
 
 			@RequestParam(name = "keyword", defaultValue = "") String keyword,
-
+			@RequestParam(name = "status", defaultValue = "") String status,
 			@RequestParam(name = "seatType", required = false) Integer seatType,
 
 			HttpSession session, Model model) {
@@ -91,7 +91,7 @@ public class StaffBookingController {
 
 		String selectedMeal = normalizeMeal(meal);
 		String selectedKeyword = keyword.trim();
-
+		String selectedStatus = normalizeReservationStatus(status);
 		if (selectedKeyword.length() > 100) {
 			selectedKeyword = selectedKeyword.substring(0, 100);
 		}
@@ -104,6 +104,7 @@ public class StaffBookingController {
 		model.addAttribute("date", selectedDate);
 		model.addAttribute("meal", selectedMeal);
 		model.addAttribute("keyword", selectedKeyword);
+		model.addAttribute("status", selectedStatus);
 		model.addAttribute("seatType", selectedSeatType);
 
 		model.addAttribute("bookingToken", bookingActionToken(session));
@@ -118,42 +119,59 @@ public class StaffBookingController {
 			loadWaiting(selectedSeatType, model);
 
 		} else {
-			loadReservations(selectedDate, selectedMeal, selectedKeyword, model);
+			loadReservations(
+			        selectedDate, selectedMeal, selectedKeyword, selectedStatus, model);
 		}
 
 		return "staff/reservation/booking";
 	}
 
-	private void loadReservations(LocalDate date, String meal, String keyword, Model model) {
+    private String normalizeReservationStatus(String status) {
+        String value = status == null ? "" : status.trim();
 
-		List<ReservationVO> reservations = reservationService.search(date, null).stream()
+        return switch (value) {
+            case "預約", "實到", "未到", "取消" -> value;
+            default -> "";
+        };
+    }
 
-				.filter(reservation -> !"取消".equals(reservation.getRsvStatus()))
+    private void loadReservations(
+            LocalDate date,
+            String meal,
+            String keyword,
+            String status,
+            Model model) {
 
-				.filter(reservation -> {
-					LocalTime time = reservation.getRsvDt().getRsvDtDatetime().toLocalTime();
+        List<ReservationVO> reservations = reservationService
+                .search(date, status.isEmpty() ? null : status)
+                .stream()
+                .filter(reservation -> {
+                    LocalTime time = reservation.getRsvDt()
+                            .getRsvDtDatetime().toLocalTime();
 
-					boolean lunch = time.isBefore(LocalTime.of(15, 0));
+                    boolean lunch = time.isBefore(LocalTime.of(15, 0));
 
-					return "lunch".equals(meal) ? lunch : !lunch;
-				})
+                    return "lunch".equals(meal) ? lunch : !lunch;
+                })
+                .filter(reservation -> {
+                    if (keyword.isEmpty()) {
+                        return true;
+                    }
 
-				.filter(reservation -> {
-					if (keyword.isEmpty()) {
-						return true;
-					}
+                    String reservationNo =
+                            String.valueOf(reservation.getRsvNo());
 
-					String reservationNo = String.valueOf(reservation.getRsvNo());
+                    String phone = reservation.getMember() == null
+                            ? null
+                            : reservation.getMember().getMemTel();
 
-					String phone = reservation.getMember().getMemTel();
+                    return reservationNo.equals(keyword)
+                            || (phone != null && phone.contains(keyword));
+                })
+                .toList();
 
-					return reservationNo.equals(keyword) || (phone != null && phone.contains(keyword));
-				})
-
-				.toList();
-
-		model.addAttribute("rsvList", reservations);
-	}
+        model.addAttribute("rsvList", reservations);
+    }
 
 	private void loadWaiting(Integer selectedSeatType, Model model) {
 
@@ -350,7 +368,7 @@ public class StaffBookingController {
 			note = reservation.getRsvComment();
 		}
 
-		booking("rsv", selectedDate, meal, "", null, session, model);
+		booking("rsv", selectedDate, meal, "", "", null, session, model);
 
 		prepareReservationEditor(model,
 				reservationEditorValues(rsvNo, selectedDate, tableType, slotNo, phone, name, note), rsvNo);
@@ -385,7 +403,7 @@ public class StaffBookingController {
 
 			var diningTime = reservation.getRsvDt().getRsvDtDatetime();
 
-			redirect.addAttribute("date", diningTime.toLocalDate());
+			redirect.addAttribute("date", diningTime.toLocalDate().toString());
 			redirect.addAttribute("meal", diningTime.toLocalTime().isBefore(LocalTime.of(15, 0)) ? "lunch" : "dinner");
 
 			redirect.addFlashAttribute("message", (rsvNo == null ? "新增" : "修改") + "訂位成功，編號：" + reservation.getRsvNo());
@@ -393,7 +411,7 @@ public class StaffBookingController {
 			return "redirect:/staff/booking";
 
 		} catch (IllegalArgumentException ex) {
-			booking("rsv", date, "", "", null, session, model);
+			booking("rsv", date, "", "", "", null, session, model);
 
 			model.addAttribute("staffRsvError", ex.getMessage());
 
@@ -404,30 +422,53 @@ public class StaffBookingController {
 		}
 	}
 
-	@PostMapping("/booking/rsv/cancel")
-	public String cancelStaffReservation(@RequestParam(name = "rsvNo") Long rsvNo,
-			@RequestParam(name = "date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
-			@RequestParam(name = "meal", defaultValue = "") String meal,
-			@RequestParam(name = "keyword", defaultValue = "") String keyword,
-			@RequestParam(name = "bookingToken") String token, HttpSession session, RedirectAttributes redirect) {
+    @PostMapping({
+        "/booking/rsv/cancel",
+        "/booking/rsv/status"
+})
+public String changeStaffReservationStatus(
+        @RequestParam(name = "rsvNo") Long rsvNo,
+        @RequestParam(name = "operation", defaultValue = "cancel")
+        String operation,
+        @RequestParam(name = "date")
+        @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+        LocalDate date,
+        @RequestParam(name = "meal", defaultValue = "") String meal,
+        @RequestParam(name = "keyword", defaultValue = "") String keyword,
+        @RequestParam(name = "status", defaultValue = "") String status,
+        @RequestParam(name = "bookingToken") String token,
+        HttpSession session,
+        RedirectAttributes redirect) {
 
-		requireBookingEmployee(session);
-		checkBookingActionToken(session, token);
+    requireBookingEmployee(session);
+    checkBookingActionToken(session, token);
 
-		try {
-			reservationService.cancelByStaff(rsvNo);
-			redirect.addFlashAttribute("message", "訂位已取消");
+    try {
+        switch (operation) {
+            case "cancel" -> {
+                reservationService.cancelByStaff(rsvNo);
+                redirect.addFlashAttribute("message", "訂位已取消");
+            }
+            case "no-show" -> {
+                reservationService.markNoShowByStaff(rsvNo);
+                redirect.addFlashAttribute("message", "訂位已標記為未到");
+            }
+            default -> throw new IllegalArgumentException(
+                    "不支援的訂位操作");
+        }
 
-		} catch (IllegalArgumentException ex) {
-			redirect.addFlashAttribute("error", ex.getMessage());
-		}
+    } catch (IllegalArgumentException ex) {
+        redirect.addFlashAttribute("error", ex.getMessage());
+    }
 
-		redirect.addAttribute("date", date);
-		redirect.addAttribute("meal", normalizeMeal(meal));
-		redirect.addAttribute("keyword", keyword);
+    redirect.addAttribute("date", date.toString());
+    redirect.addAttribute("meal", normalizeMeal(meal));
+    redirect.addAttribute("keyword", keyword);
+    redirect.addAttribute(
+            "status", normalizeReservationStatus(status));
 
-		return "redirect:/staff/booking";
-	}
+    return "redirect:/staff/booking";
+}
 
 	private void checkWaitingBusinessDate(String submittedDate) {
 		String today = LocalDate.now(BUSINESS_ZONE).toString();

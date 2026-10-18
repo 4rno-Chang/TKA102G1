@@ -88,7 +88,7 @@
 				訂位資料尚未載入，請重新整理頁面。</p>
 
 			<div class="source-block" th:if="${rsvList != null}"
-				th:with="shownRsv=${rsvList.?[rsvStatus != '取消']}">
+     th:with="shownRsv=${rsvList}">
 
 				<form class="booking-tools" th:action="@{/staff/booking}"
 					method="get">
@@ -119,23 +119,42 @@
 					</div>
 
 					<div class="booking-tool">
-						<span>餐期</span>
+    <span>餐期</span>
 
-						<div class="chips booking-meals">
-							<a class="chip"
-								th:href="@{/staff/booking(
-                               date=${date},
-                               meal='lunch',
-                               keyword=${keyword})}"
-								th:classappend="${meal == 'lunch'} ? 'active'"> 午餐 </a> <a
-								class="chip"
-								th:href="@{/staff/booking(
-                               date=${date},
-                               meal='dinner',
-                               keyword=${keyword})}"
-								th:classappend="${meal == 'dinner'} ? 'active'"> 晚餐 </a>
-						</div>
-					</div>
+    <div class="chips booking-meals">
+        <a class="chip"
+           th:href="@{/staff/booking(
+               date=${date},
+               meal='lunch',
+               keyword=${keyword},
+               status=${status})}"
+           th:classappend="${meal == 'lunch'} ? 'active'">
+            午餐
+        </a>
+
+        <a class="chip"
+           th:href="@{/staff/booking(
+               date=${date},
+               meal='dinner',
+               keyword=${keyword},
+               status=${status})}"
+           th:classappend="${meal == 'dinner'} ? 'active'">
+            晚餐
+        </a>
+    </div>
+</div>
+
+<label class="booking-tool">
+    <span>狀態</span>
+
+    <select name="status" class="staff-input">
+        <option value="" th:selected="${status == ''}">全部狀態</option>
+        <option value="預約" th:selected="${status == '預約'}">預約</option>
+        <option value="實到" th:selected="${status == '實到'}">實到</option>
+        <option value="未到" th:selected="${status == '未到'}">未到</option>
+        <option value="取消" th:selected="${status == '取消'}">取消</option>
+    </select>
+</label>
 
 					<label class="booking-tool booking-tool-grow"> <span>搜尋</span>
 						<input type="search" class="staff-input" name="keyword"
@@ -203,32 +222,49 @@
 
 								<!-- 你貼的整段操作欄，放在這裡 -->
 								<td class="booking-col-act">
-									<div class="booking-actions">
-										<a class="staff-btn booking-btn-sm"
-											th:if="${r.rsvStatus == '預約'
+    <div class="booking-actions">
+
+        <a class="staff-btn booking-btn-sm"
+           th:if="${r.rsvStatus == '預約'
                and r.rsvDt.rsvDtDatetime.isAfter(bookingNow)}"
-											th:href="@{/staff/booking/rsv/form(rsvNo=${r.rsvNo})}">
-											編輯 </a>
+           th:href="@{/staff/booking/rsv/form(rsvNo=${r.rsvNo})}">
+            編輯
+        </a>
 
-										<form th:if="${r.rsvStatus == '預約'}"
-											th:action="@{/staff/booking/rsv/cancel}" method="post"
-											th:attr="data-confirm=|確定取消訂位 #${r.rsvNo} 嗎？|">
+        <form th:if="${r.rsvStatus == '預約'}"
+              th:action="@{/staff/booking/rsv/status}"
+              method="post"
+              th:attr="data-confirm=|確定變更訂位 #${r.rsvNo} 的狀態嗎？|">
 
-											<input type="hidden" name="rsvNo" th:value="${r.rsvNo}">
-											<input type="hidden" name="date" th:value="${date}">
-											<input type="hidden" name="meal" th:value="${meal}">
-											<input type="hidden" name="keyword" th:value="${keyword}">
-											<input type="hidden" name="bookingToken"
-												th:value="${bookingToken}">
+            <input type="hidden" name="rsvNo" th:value="${r.rsvNo}">
+            <input type="hidden" name="date" th:value="${date}">
+            <input type="hidden" name="meal" th:value="${meal}">
+            <input type="hidden" name="keyword" th:value="${keyword}">
+            <input type="hidden" name="status" th:value="${status}">
+            <input type="hidden" name="bookingToken"
+                   th:value="${bookingToken}">
 
-											<button type="submit"
-												class="staff-btn btn-danger-outline booking-btn-sm">
-												取消訂位</button>
-										</form>
+            <div class="booking-actions">
+                <button type="submit"
+                        name="operation"
+                        value="no-show"
+                        class="staff-btn booking-btn-sm"
+                        th:if="${!r.rsvDt.rsvDtDatetime.isAfter(bookingNow)}">
+                    標記未到
+                </button>
 
-										<span th:if="${r.rsvStatus != '預約'}">—</span>
-									</div>
-								</td>
+                <button type="submit"
+                        name="operation"
+                        value="cancel"
+                        class="staff-btn btn-danger-outline booking-btn-sm">
+                    取消訂位
+                </button>
+            </div>
+        </form>
+
+        <span th:if="${r.rsvStatus != '預約'}">—</span>
+    </div>
+</td>
 							</tr>
 						</tbody>
 					</table>
