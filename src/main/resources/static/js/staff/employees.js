@@ -331,6 +331,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const openBtn = document.getElementById("addEmployeeBtn");
     const closeBtn = document.getElementById("closeEmployeeModal");
     const cancelBtn = document.getElementById("cancelEmployeeBtn");
+    const resetPasswordBtn = document.getElementById("resetEmployeePasswordBtn");
     const modalTitle = document.getElementById("employeeModalTitle");
     const tbody = document.getElementById("employeeTableBody");
 
@@ -340,6 +341,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // 開啟新增員工視窗
     openBtn.addEventListener("click", () => {
         editingEmpNo = null;
+        resetPasswordBtn.hidden = true;
         modalTitle.textContent = "新增員工";
 
         form.reset();
@@ -374,6 +376,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
             // 設定目前為編輯模式
             editingEmpNo = empNo;
+            resetPasswordBtn.hidden = false;
             modalTitle.textContent = "編輯員工";
 
             // 帶入原本資料
@@ -403,6 +406,32 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
+
+    resetPasswordBtn.addEventListener("click", async () => {
+        if (editingEmpNo === null || resetPasswordBtn.disabled) return;
+        const empNo = editingEmpNo;
+        resetPasswordBtn.disabled = true;
+        try {
+            if (!await employeeConfirm(
+                `確定要重設員工 ${empNo} 的密碼嗎？重設後，請使用目前已儲存的手機號碼登入，並重新設定密碼。此操作不會儲存本視窗尚未儲存的資料。`
+            )) return;
+            const response = await fetch(`/api/employees/${empNo}/reset-password`, {
+                method: "POST"
+            });
+            const result = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                staffToast(result.message || (response.status === 403 ? "權限不足" :
+                    response.status === 401 ? "請先登入" : "重設密碼失敗，請稍後再試"));
+                return;
+            }
+            staffToast(result.message);
+        } catch (error) {
+            console.error("重設員工密碼失敗：", error);
+            staffToast("重設密碼失敗，請稍後再試");
+        } finally {
+            resetPasswordBtn.disabled = false;
+        }
+    });
 
     // 點擊權限按鈕，開啟員工權限設定視窗
     tbody.addEventListener("click", async (event) => {
