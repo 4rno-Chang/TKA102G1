@@ -1,7 +1,9 @@
-package com.bistroops.feedback;
+package com.bistroops.feedback.controller;
 
 import java.time.LocalDate;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -11,10 +13,16 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
+import com.bistroops.feedback.model.FeedbackQrService;
 import com.bistroops.feedback.model.FeedbackService;
 import com.bistroops.feedback.model.FeedbackVO;
+import com.bistroops.member.model.MemberVO;
+import com.bistroops.orders.model.OrdersService;
+import com.bistroops.orders.model.OrdersVO;
 
 @Controller
 @RequestMapping("/staff")
@@ -24,9 +32,15 @@ public class FeedbackController {
 	@Autowired
 	FeedbackService feedbackService;
 	
+	@Autowired
+    OrdersService ordersService;
+	
+	 @Autowired
+     FeedbackQrService feedbackQrService;
+	
 	private static final int PAGE_SIZE = 10;
 	
-	
+	//=========後台===========	
 	@GetMapping("/feedback")
 	public String feedback(@RequestParam(required = false)Integer orders,
 						   @RequestParam(required = false)String tel,
@@ -63,6 +77,33 @@ public class FeedbackController {
 	        ra.addFlashAttribute("successMsg", "已刪除回饋 #" + feedbackNo);
 	        return "redirect:/staff/feedback";
 	}
+	
+	
+    // 結帳頁按「回饋 QR」：產生隨機 token，回傳 QR 網址和會員狀態（JSON）
+    @PostMapping("/feedback/qr")
+    @ResponseBody
+    public Map<String, Object> createQr(@RequestParam Integer order) {
+            Map<String, Object> result = new LinkedHashMap<>();
+            OrdersVO o = ordersService.getOne(order);
+            if (o == null) {
+                    result.put("error", "找不到這張訂單");
+                    return result;
+            }
+            String token = feedbackQrService.createToken(order);
+            String url = ServletUriComponentsBuilder.fromCurrentContextPath()
+                            .path("/bistroops/feedback/qr").queryParam("token", token).toUriString();
+
+            MemberVO m = o.getMember();
+            result.put("url", url);
+            result.put("orders", String.format("%08d", o.getOrders()));
+            result.put("member", m != null);
+            result.put("customer", m == null ? "非會員"
+                            : (m.getMemName() == null || m.getMemName().isBlank() ? m.getMemTel() : m.getMemName()));
+            return result;
+    }
+	
+	
+	
 	
 	
 }

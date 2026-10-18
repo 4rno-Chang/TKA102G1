@@ -66,9 +66,10 @@
                 <h3 class="menu-item-name" th:text="${m.mealName}">義式烤麵包</h3>
                 <span class="menu-item-leader" aria-hidden="true"></span>
                 <p class="menu-item-price">
-                  <!-- 活動價：原價用小字劃掉（不特別強調）；價錢和原價一樣（沒有活動、或活動沒填價錢）就只顯示一個 -->
+                  <!-- 活動價：原價用小字劃掉，價錢後面加「（活動價）」；價錢和原價一樣（沒有活動、或活動沒填價錢）就只顯示一個 -->
                   <s class="menu-item-was" th:if="${m.price != m.origPrice}" th:text="${#numbers.formatInteger(m.origPrice, 1, 'COMMA')}">160</s>
                   <span th:text="|NT$ ${#numbers.formatInteger(m.price, 1, 'COMMA')}|">NT$ 120</span>
+                  <small class="menu-item-promo" th:if="${m.price != m.origPrice}">（活動價）</small>
                 </p>
               </div>
               <p class="menu-item-desc" th:if="${!#strings.isEmpty(m.mealExp)}" th:text="${m.mealExp}">新鮮番茄粒搭配羅勒與初榨橄欖油</p>
@@ -79,7 +80,7 @@
         <p class="menu-empty" th:if="${#lists.isEmpty(menuSections)}">菜單整理中，敬請期待。</p>
       </th:block>
 
-      <p class="menu-note">價格皆為新台幣。劃線的金額為原價，活動期間以活動價供應。</p>
+      <p class="menu-note">價格皆為新台幣。標示「活動價」的餐點，劃線的金額為原價，活動期間以活動價供應。</p>
       <p class="menu-actions">
         <a class="btn-outline" th:href="@{/bistroops/reservation}">立即訂位</a>
       </p>

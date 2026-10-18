@@ -2,7 +2,7 @@
    Bistroops 員工後台：共用程式（每個後台頁面都要載入，而且要放在最前面）
 
    這個檔案分成兩區：
-     A. 共用程式（保留）：小工具、小提示、尚未開放的按鈕、選單的摺疊、時鐘、送出前先確認
+     A. 共用程式（保留）：小工具、小提示、尚未開放的按鈕、選單的摺疊、時鐘、對話框、送出前先確認
      B. 假資料：示範訂單 StaffStore、訂單狀態的對照表、重設示範資料、主頁訂候位的示範數字
 
    對應的 CSS：static/css/staff/staff.css（共用）＋各頁自己的 CSS（checkout.css、orders.css、workboard.css、staff_index.css）
@@ -134,22 +134,73 @@ if (staffClock) {
 }
 
 
-/* ========== A-6. 送出前先確認 ==========
-   表單寫了 data-confirm="要顯示的問句" 的話，送出前會先跳出確認視窗，按「取消」就不送出。
-   用在資料庫版本的表單，例如結帳（checkout.html）、把餐點退回製作中（workboard.html）：
-     <form th:action="..." method="post" data-confirm="確定結帳嗎？"> */
-/*document.addEventListener('submit', e => {
-  const question = e.target.dataset.confirm;
-  if (question && !confirm(question)) e.preventDefault();
-});*/
+/* ========== A-6. 對話框（取代瀏覽器原本的 alert／confirm） ==========
+   畫面中上方跳出對話框，一定要按按鈕才會關（按旁邊、按 Esc 都不會關）。樣式在 staff.css 的「對話框」。
+     staffAlert('跟原價一樣，請改折數');                         → 只有「確認」，黃色驚嘆號
+     staffConfirm('確定結帳嗎？').then(ok => { if (ok) … });     → 「取消」「確認」，紅色問號，按確認 ok 是 true
+     staffConfirm('確定要刪除嗎？', true)                         → 刪除這種收不回來的事：紅色警告三角形 */
+// 圖示（SVG）：驚嘆號＝一條直線＋一個點；問號＝一個彎鉤＋一個點
+//   刪除的警告（danger）：圓角的實心三角形，中間的驚嘆號用卡片的底色畫，看起來像挖空的
+const DIALOG_ICON = {
+  warn: '<svg viewBox="0 0 24 24"><path d="M12 6v8" /><circle cx="12" cy="18" r="1.4" /></svg>',
+  ask: '<svg viewBox="0 0 24 24"><path d="M9 9a3 3 0 1 1 4.5 2.6c-.9.5-1.5 1.2-1.5 2.2v.4" /><circle cx="12" cy="18" r="1.4" /></svg>',
+  danger: '<svg viewBox="0 0 48 44"><path class="tri" d="M24 5 43.5 39.5h-39z" /><path class="mark" d="M24 16v11.5" /><circle class="mark" cx="24" cy="33.4" r="2.5" /></svg>'
+};
+function staffDialog(text, withCancel, warn) {
+  return new Promise(resolve => {
+    const box = document.createElement('dialog');
+    box.className = 'staff-dialog' + (withCancel ? ' is-confirm' : '') + (withCancel && warn ? ' is-danger' : '');
+    const icon = !withCancel ? DIALOG_ICON.warn : warn ? DIALOG_ICON.danger : DIALOG_ICON.ask;
+    box.innerHTML = `<span class="staff-dialog-icon" aria-hidden="true">${icon}</span>
+      <p class="staff-dialog-text"></p>
+      <div class="staff-dialog-btns">
+        ${withCancel ? '<button type="button" class="staff-btn" value="no">取消</button>' : ''}
+        <button type="button" class="staff-btn btn-pay" value="ok">確認</button>
+      </div>`;
+    box.querySelector('.staff-dialog-text').textContent = text;   // 用 textContent，文字裡有 < > 也不會被當成 HTML
+    box.addEventListener('cancel', e => e.preventDefault());       // 按 Esc 不會關
+    box.addEventListener('keydown', e => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); } });
+    box.addEventListener('click', e => {
+      const btn = e.target.closest('button');
+      if (!btn) return;
+      box.close();
+      box.remove();
+      resolve(btn.value === 'ok');
+    });
+    document.body.append(box);
+    box.showModal();   // showModal：蓋在所有東西上面（包括菜品管理的對話框），後面的畫面點不到
+    box.querySelector(withCancel ? '[value=no]' : '[value=ok]').focus();   // 要確認的事先停在「取消」，按 Enter 不會誤送
+  });
+}
+const staffAlert = text => staffDialog(text, false);
+const staffConfirm = (text, warn) => staffDialog(text, true, warn);
 
+/* ========== A-7. 送出前先確認 ==========
+   表單寫了 data-confirm="要顯示的問句" 的話，送出前會先跳出上面的對話框，按「取消」就不送出。
+   用在資料庫版本的表單，例如結帳（checkout.html）、把餐點退回製作中（workboard.html）、刪除活動、刪除菜品類別：
+     <form th:action="..." method="post" data-confirm="確定結帳嗎？">
+   刪除這種收不回來的事，再加上 data-confirm-warn，圖示會換成紅色驚嘆號：
+     <form th:action="..." method="post" data-confirm="確定要刪除嗎？" data-confirm-warn> */
 document.addEventListener('submit', e => {
-  const question = e.target.dataset.confirm;
-  if (question && !confirm(question)) { e.preventDefault(); return; }  // 按「取消」就不送出
+  const form = e.target;
+  const question = form.dataset.confirm;
+  if (question && !form.dataset.confirmed) {
+    e.preventDefault();             // 先不送出，等員工按按鈕
+    e.stopImmediatePropagation();   // 也先不跑其他「送出時」的程式（例如假資料的提示）
+    staffConfirm(question, form.hasAttribute('data-confirm-warn')).then(ok => {
+      if (!ok) return;              // 按「取消」就不送出
+      form.dataset.confirmed = 'yes';            // 已經問過了：下面再送一次時不要再問
+      form.requestSubmit(e.submitter || undefined);   // 用同一顆按鈕再送一次
+      delete form.dataset.confirmed;
+    });
+    return;
+  }
   // 按的是刷卡按鈕（formtarget="ecpayWin"）：確認後才開小視窗，表單結果會顯示在這個視窗裡
   if (e.submitter && e.submitter.formTarget === 'ecpayWin')
     window.open('', 'ecpayWin', 'width=500,height=700');
 });
+
+
 
 
 

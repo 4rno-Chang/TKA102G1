@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 
 import com.bistroops.IndexController_inSpringBoot;
 import com.bistroops.announcement.controller.FrontAnnouncementController;
+import com.bistroops.meal.controller.FrontMenuController;
 import com.bistroops.member.model.MemberService;
 import com.bistroops.member.model.MemberVO;
 import com.bistroops.orders.model.OrdersService;
@@ -27,7 +28,8 @@ import jakarta.servlet.http.HttpSession;
         FrontPromoteController.class,
         FrontQaController.class,
         ReservationFrontController.class,
-        WaitingController.class
+        WaitingController.class,
+        FrontMenuController.class
 })
 public class MemberOrdersController {
 	

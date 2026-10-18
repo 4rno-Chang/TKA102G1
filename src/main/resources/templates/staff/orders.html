@@ -145,7 +145,7 @@
                   <!-- 被取消的餐點仍然列出來（整列劃線變淡） -->
                   <tr th:each="item : ${order.ordersDetails}" th:classappend="${item.odStatus == '已取消'} ? 'row-cancelled'">
                     <td>
-                      <span class="dish-tag" th:text="${item.meal.mealType.mealtypeName}">主菜</span>
+                      <span class="dish-tag" th:if="${item.meal.mealType != null}" th:text="${item.meal.mealType.mealtypeName}">主菜</span><!-- 【菜單管理】刪除的菜品類別是 null：不顯示類別標籤 -->
                       <span th:text="${item.meal.mealName}">品名</span>
                       <small class="dish-note" th:if="${!#strings.isEmpty(item.odComment)}" th:text="${item.odComment}">備註</small>
                     </td>

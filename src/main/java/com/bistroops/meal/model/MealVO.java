@@ -49,6 +49,10 @@ public class MealVO  {
 	
 	@Column(name = "meal_status_en", columnDefinition = "enum('上架', '未上架')")
 	private MealEnum mealStatusEn;
+	
+	@Column(name = "meal_promo_only", nullable = false)
+	private boolean mealPromoOnly;
+
 
 	@OneToMany(mappedBy="meal",cascade = CascadeType.ALL)
 	@OrderBy("meal asc")
@@ -60,8 +64,14 @@ public class MealVO  {
 
 	public MealVO() {
 	}
-	
-	
+
+	public boolean isMealPromoOnly() {
+		return mealPromoOnly;
+	}
+
+	public void setMealPromoOnly(boolean mealPromoOnly) {
+		this.mealPromoOnly = mealPromoOnly;
+	}
 
 	public Integer getMealNo() {
 		return mealNo;

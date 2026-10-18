@@ -96,6 +96,7 @@ button { cursor: pointer; }
 .btn-card:hover { background: #7d8a5c; }
 .btn-cash { background: var(--st-yellow); border-color: var(--st-yellow); color: #3b2f2a; }
 .btn-cash:hover { background: #cc912e; }
+
 /* 危險動作的按鈕：外框版（刪除訂單）、實心版（確認刪除） */
 .btn-danger-outline { border-color: var(--st-red); color: var(--st-red); }
 .btn-danger-outline:hover { background: #fbeee9; }
@@ -218,6 +219,46 @@ button { cursor: pointer; }
   transition: opacity .3s, transform .3s;
 }
 .staff-toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+
+/* 對話框（staff.js A-6 的 staffAlert／staffConfirm）：畫面中上方，一定要按按鈕才會關 */
+.staff-dialog {
+  width: min(380px, calc(100% - 32px));
+  margin: 14vh auto auto;
+  padding: 28px 24px 20px;
+  border: 0;
+  border-top: 5px solid var(--st-yellow);
+  border-radius: var(--st-radius);
+  background: var(--st-card);
+  color: var(--st-text);
+  text-align: center;
+  box-shadow: 0 24px 60px rgba(60, 40, 20, .28);
+  animation: staff-dialog-in .22s ease-out;
+}
+.staff-dialog.is-confirm { border-top-color: var(--st-red); }
+.staff-dialog::backdrop { background: rgba(59, 47, 42, .45); backdrop-filter: blur(2px); }
+.staff-dialog-icon {
+  display: grid; place-items: center;
+  width: 52px; height: 52px; margin: 0 auto 14px;
+  border-radius: 50%;
+  background: #fbefd6;
+  color: var(--st-yellow);
+  font: 700 26px/1 var(--st-serif);
+}
+.staff-dialog.is-confirm .staff-dialog-icon { background: #f8e3dc; color: var(--st-red); }
+.staff-dialog-icon svg { width: 38px; height: 38px; fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+.staff-dialog-icon circle { fill: currentColor; stroke: none; }   /* 驚嘆號、問號下面的點：實心 */
+/* 刪除的警告：圓角的紅色實心三角形，沒有圓框、沒有底色；驚嘆號用卡片的底色，看起來像挖空的 */
+.staff-dialog.is-danger .staff-dialog-icon { width: 64px; height: 58px; background: none; border-radius: 0; }
+.staff-dialog.is-danger .staff-dialog-icon svg { width: 64px; height: 58px; }
+.staff-dialog-icon .tri { fill: var(--st-red); stroke: var(--st-red); stroke-width: 5; }   /* 粗的同色外框＋圓角接點＝三個角變圓 */
+.staff-dialog-icon .mark { stroke: var(--st-card); stroke-width: 4.4; }
+.staff-dialog-icon circle.mark { fill: var(--st-card); stroke: none; }
+.staff-dialog-text { margin: 0 0 22px; font-size: 16px; line-height: 1.7; white-space: pre-line; }
+.staff-dialog-btns { display: flex; gap: 10px; }
+.staff-dialog-btns .staff-btn { flex: 1; justify-content: center; min-height: 44px; font-size: 15px; }
+@keyframes staff-dialog-in { from { opacity: 0; transform: translateY(-14px); } }
+
 
 
 /* ========== 3. 版面：左邊選單 + 右邊內容 ========== */

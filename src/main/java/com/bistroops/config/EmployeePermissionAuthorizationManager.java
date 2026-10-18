@@ -123,7 +123,12 @@ public class EmployeePermissionAuthorizationManager
                 // 不認識的 view：拒絕
                 return new AuthorizationDecision(false);
             }
-
+            // 工作面板的即時通知（WebSocket）：看得到工作面板的人（權限 1 或 2）就可以連
+            if (path.equals("/staff/workboard/ws")) {
+                return new AuthorizationDecision(
+                        employeeService.hasPermission(empNo, 1)
+                        || employeeService.hasPermission(empNo, 2));
+            }
             // 未列出的工作面板路徑一律拒絕
             return new AuthorizationDecision(false);
         }

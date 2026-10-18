@@ -469,6 +469,55 @@ button.record-head:hover { color: var(--color-primary); }
 
 .empty-text { padding: 40px 0; color: var(--color-text-light); text-align: center; }
 
+/* 歷史訂單：展開按鈕和「填寫回饋」並排 */
+.record-row { display: flex; align-items: center; gap: 12px; padding-right: 8px; }
+.record-row .record-head { flex: 1; min-width: 0; }
+.record-row .btn-feedback { min-width: 0; height: 36px; }
+/* 已回饋（超過 7 天不能再改）：不是按鈕，只是灰色的標籤 */
+.record-row .btn-feedback.is-done {
+  display: inline-flex; align-items: center;
+  border-color: var(--color-border); color: var(--color-muted);
+  cursor: default;
+}
+.record-row .btn-feedback.is-done:hover { background: transparent; border-color: var(--color-border); color: var(--color-muted); }
+
+/* 填寫回饋的對話框 */
+.modal-dialog-feedback {
+  width: min(100%, 520px); padding: 44px 48px 36px;
+  background: linear-gradient(180deg, var(--color-white) 55%, var(--lux-champagne) 100%);
+}
+.feedback-order { margin: -8px 0 22px; color: var(--color-text-light); font-size: 14px; text-align: center; }
+.feedback-deadline { margin: -16px 0 22px; color: var(--color-primary); font-size: 13px; text-align: center; }
+
+/* 星等：radio 藏起來，用 label 的 ★ 顯示；row-reverse 讓「滑過的星和它左邊的星」一起亮 */
+.star-rating { display: inline-flex; flex-direction: row-reverse; gap: 4px; }
+.field .star-rating input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.field .star-rating label {
+  margin: 0; letter-spacing: 0;
+  font-size: 30px; line-height: 1;
+  color: var(--color-border); cursor: pointer;
+  transition: color var(--transition);
+}
+.field .star-rating input:checked ~ label,
+.field .star-rating label:hover,
+.field .star-rating label:hover ~ label { color: var(--color-gold); }
+.field .star-rating input:focus-visible + label { outline: 1px solid var(--color-primary); outline-offset: 2px; }
+
+.field textarea {
+  width: 100%;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, .7);
+  border: 1px solid #cfc3a8;
+  border-radius: 0;
+  color: var(--color-text);
+  font: inherit; font-size: 15px; line-height: 1.6;
+  resize: vertical;
+  transition: border-color var(--transition);
+}
+.field textarea::placeholder { color: var(--color-muted); }
+.field textarea:focus { outline: none; border-color: var(--color-primary); }
+.feedback-count { margin-top: 4px; color: var(--color-muted); font-size: 12px; text-align: right; }
+
 /* 當前訂位／歷史訂位 的分頁 */
 .sub-tabs { display: flex; margin-bottom: 8px; border-bottom: 1px solid var(--color-border); }
 .sub-tabs button {
@@ -534,7 +583,8 @@ button.record-head:hover { color: var(--color-primary); }
   .member-dropdown button { padding-left: 62px; padding-right: 20px; }
 
   .modal { padding: 12px; }
-  .modal-dialog-auth { padding: 44px 22px 32px; }
+  .modal-dialog-auth,
+  .modal-dialog-feedback { padding: 44px 22px 32px; }
   .modal-title { font-size: 28px; }
 
   .member-head { padding: 22px 22px 16px; }

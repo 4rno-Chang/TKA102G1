@@ -95,6 +95,23 @@ public class EmployeeService {
 		return employee;
 	}
 
+	// 主管重設密碼，使用資料庫目前儲存的手機號碼
+	@Transactional
+	public void resetPassword(Integer empNo) {
+	    EmployeeVO employee = employeeRepository.findById(empNo)
+	            .orElseThrow(() -> new IllegalArgumentException("找不到員工"));
+	    if (!"1".equals(employee.getEmpStatus())) {
+	        throw new IllegalArgumentException("此員工已停用");
+	    }
+	    String phone = employee.getEmpTel();
+	    if (phone == null || !phone.matches("^09\\d{8}$")) {
+	        throw new IllegalArgumentException("員工目前儲存的手機號碼不正確，請先儲存正確的手機號碼");
+	    }
+	    employee.setEmpPassword(passwordEncoder.encode(phone));
+	    employee.setEmpPwdChanged(false);
+	    employeeRepository.save(employee);
+	}
+
 	// 員工修改密碼
 	@Transactional
 	public void changePassword(Integer empNo, String newPassword) {

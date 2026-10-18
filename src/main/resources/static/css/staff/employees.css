@@ -94,6 +94,14 @@
 	margin-top: 24px;
 }
 
+#resetEmployeePasswordBtn {
+	margin-right: auto;
+}
+
+#resetEmployeePasswordBtn[hidden] {
+	display: none;
+}
+
 /* ===== 員工權限勾選清單 ===== */
 #employeePermissionList {
 	display: grid;

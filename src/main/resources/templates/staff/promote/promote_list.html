@@ -20,7 +20,7 @@
 <!--
   活動管理（列表頁）：查詢活動、看活動詳細、刪除未開始的活動。
   Controller 回傳的名稱是 "staff/promote/promote_list"（這個檔案在 templates/staff/promote/ 資料夾裡）。
-  畫面上的資料全部來自資料庫（Controller 放進 Model，這裡用 Thymeleaf 顯示）；假資料已經移除。
+  畫面上的資料全部來自資料庫（Controller 放進 Model，這裡用 Thymeleaf 顯示）。
 
   活動管理有兩個頁面，都放在 templates/staff/promote/：
     promote_list.html（這一頁）  查詢（狀態、搜尋、分頁）＋ 每個活動一張卡片 ＋「活動詳細」的對話框
@@ -87,10 +87,11 @@
          工具列與活動的卡片
          Controller（GET /staff/promote）放進 Model：
            promotes    「這一頁」要顯示的活動（List<PromoteVO>），一頁最多 8 筆，
-                       依結束時間排序（結束時間晚的排前面）。
+                       排序：「全部」先依狀態分組（進行中 → 未開始 → 已結束），同一組裡開始日期晚的在前；
+                       其他狀態（未開始、進行中、已結束）依結束時間（晚的在前）。
                        ★ 搜尋、狀態、分頁、排序全部由 Java 去資料庫查，一次只查這一頁的 8 筆。
                        查不到資料時要是「空的清單」而不是 null（null 會讓下面整塊不出現）。
-           status      目前要看的狀態：空字串（全部）／未開始／進行中／已結束。
+           status      目前要看的狀態：空字串（全部）／進行中／未開始／已結束。
                        狀態不存在資料庫，所以查詢時換成「時間的條件」（寫在 PromoteRepository.java）。
            keyword     搜尋的文字（活動名稱裡有這些字）。按「搜尋」時才會送出，由 Java 去資料庫查。
            page        目前是第幾頁（從 1 開始）。網址沒有帶 page 就是第 1 頁。
@@ -118,10 +119,11 @@
         <div class="chips">
           <a class="chip" th:href="@{/staff/promote(keyword=${keyword})}"
              th:classappend="${status == null or status == ''} ? 'active'">全部</a>
-          <a class="chip" th:href="@{/staff/promote(status='未開始', keyword=${keyword})}"
-             th:classappend="${status == '未開始'} ? 'active'">未開始</a>
+          <!-- 順序跟「全部」的排序一樣：進行中 → 未開始 → 已結束 -->
           <a class="chip" th:href="@{/staff/promote(status='進行中', keyword=${keyword})}"
              th:classappend="${status == '進行中'} ? 'active'">進行中</a>
+          <a class="chip" th:href="@{/staff/promote(status='未開始', keyword=${keyword})}"
+             th:classappend="${status == '未開始'} ? 'active'">未開始</a>
           <a class="chip" th:href="@{/staff/promote(status='已結束', keyword=${keyword})}"
              th:classappend="${status == '已結束'} ? 'active'">已結束</a>
         </div>
@@ -278,11 +280,11 @@
         <footer class="promote-foot">
           <!-- 刪除：只有「未開始」的活動才有這顆按鈕（進行中、已結束的不能刪除）。
                刪除會改到資料，所以用 method="post" 的表單送到 POST /staff/promote/delete，不用連結。
-               表單上的 data-confirm 是按下去時要先問的話：staff.js（A-6. 送出前先確認）會跳出確認的視窗，按「取消」就不會送出。
+               表單上的 data-confirm 是按下去時要先問的話：staff.js（A-7. 送出前先確認）會跳出確認的對話框，按「取消」就不會送出。
                送出的欄位：promoteNo（要刪除的活動編號），以及 status、keyword、page（列表原本的查詢條件，Java 可以不收）。
                ★ 這只是把按鈕藏起來，表單還是可以自己送，所以 PromoteService 也會確認這筆活動真的是「未開始」才刪。 -->
           <form class="promote-foot-left" th:if="${detailStatus == '未開始'}" th:action="@{/staff/promote/delete}" method="post"
-                data-confirm="確定要刪除這個活動嗎？刪除之後無法復原。">
+                data-confirm="確定要刪除這個活動嗎？刪除之後無法復原。" data-confirm-warn>
             <input type="hidden" name="promoteNo" th:value="${promoteDetail.promoteNo}">
             <input type="hidden" name="status" th:value="${status}">
             <input type="hidden" name="keyword" th:value="${keyword}">

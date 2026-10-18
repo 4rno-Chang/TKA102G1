@@ -32,9 +32,6 @@ public class FeedbackVO {
 	@Column(name="fee_customer_tel")
 	private String feeCustomerTel;
 	
-	@Column(name="fee_customer_time")
-	private LocalDateTime feeCustomerTime;
-	
 	@Column(name="fee_time", updatable = false)
 	private LocalDateTime feeTime;
 	
@@ -44,6 +41,10 @@ public class FeedbackVO {
 	@Column(name="fee_rating", columnDefinition = "tinyint")
 	private Integer feeRating;
 	
+	// 用餐後幾天內可以填寫和修改回饋（從訂單的 ordersTime 開始算，填寫和修改是同一個期限）
+	// 判斷寫在 FeedbackService 的 writeDeadline()、isWritable()
+	public static final int FEEDBACK_DAYS = 7;
+
 	public FeedbackVO() {
 	}
 
@@ -77,14 +78,6 @@ public class FeedbackVO {
 
 	public void setFeeCustomerTel(String feeCustomerTel) {
 		this.feeCustomerTel = feeCustomerTel;
-	}
-
-	public LocalDateTime getFeeCustomerTime() {
-		return feeCustomerTime;
-	}
-
-	public void setFeeCustomerTime(LocalDateTime feeCustomerTime) {
-		this.feeCustomerTime = feeCustomerTime;
 	}
 
 	public LocalDateTime getFeeTime() {

@@ -1,11 +1,13 @@
 package com.bistroops.promote.controller;
 
 import java.io.IOException;
+import java.net.URI;
 import java.time.LocalDateTime;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
@@ -138,6 +140,7 @@ public class PromoteController {
 	@PostMapping("/promote/save")
 	public String UpdatePromote(@Valid @ModelAttribute("promoteForm")PromoteVO promoteVO,BindingResult result,
 						 @RequestParam(value = "upImg", required = false) MultipartFile upImg,
+						 @RequestParam(defaultValue = "false") boolean confirmOverlap,
 						 Model model,
 						 RedirectAttributes redirectAttributes) throws IOException {
 		if (result.hasErrors()) {
@@ -172,13 +175,30 @@ public class PromoteController {
 		} else { 
 			dateErrorMsg = promoteSve.checkActivePromoteDate(promoteVO, originalPromote);
 		}
-		
+
 		if (dateErrorMsg != null) {
 		    if (originalPromote != null) {
 		        promoteVO.setPromoteImg(originalPromote.getPromoteImg());
 		    }
 		    model.addAttribute("errorMsg", dateErrorMsg);
 		    return "staff/promote/promote_form";
+		}
+
+		// 改日期造成菜品的活動時間重疊：回表單顯示提醒，按「仍要儲存」（confirmOverlap=true）才存
+		if (!confirmOverlap && originalPromote != null) {
+			LocalDateTime newBegin = promoteSve.getStatus(originalPromote).equals("未開始")
+									 ? promoteVO.getPromoteBegin().toLocalDate().atStartOfDay()   // 未開始：用表單上的開始日期
+									 : originalPromote.getPromoteBegin();  // 進行中：開始日期不能改，用原本的
+			LocalDateTime newEnd = promoteVO.getPromoteEnd().toLocalDate().atTime(23, 59);
+			String overlapMsg = promoteSve.checkMealOverlap(originalPromote.getPromoteNo(), newBegin, newEnd);
+			
+			if (overlapMsg != null) { 
+				if (upImg != null && !upImg.isEmpty()) overlapMsg += "（圖片請重新選擇）";
+				
+				promoteVO.setPromoteImg(originalPromote.getPromoteImg());
+				model.addAttribute("overlapMsg", overlapMsg);
+				return "staff/promote/promote_form";
+		    }
 		}
 		
 		//4. 圖片
@@ -212,8 +232,10 @@ public class PromoteController {
 		
 		byte[] img = (promoteVO != null) ? promoteVO.getPromoteImg() : null;
 		
+
 		if( img == null || img.length == 0) {
-			return ResponseEntity.notFound().build();
+			return ResponseEntity.status(HttpStatus.FOUND)
+								 .location(URI.create("/images/no-image.svg")).build();
 		}
 		
 		return ResponseEntity.ok().contentType(MediaType.IMAGE_JPEG)

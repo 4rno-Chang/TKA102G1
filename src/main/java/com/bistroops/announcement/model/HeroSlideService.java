@@ -9,7 +9,6 @@ import java.util.Map;
 
 import org.springframework.stereotype.Service;
 
-import com.bistroops.promote.model.PromoteService;
 import com.bistroops.promote.model.PromoteVO;
 
 /*
@@ -32,12 +31,12 @@ public class HeroSlideService {
 	private static final int MAX = 5;
 
 	private final AnnouncementService announcementService;
-	private final PromoteService promoteService;
+	private final NewsArticleService newsArticleService;
 
-	// Spring 會自動注入 ishaya 的 PromoteService
-	public HeroSlideService(AnnouncementService announcementService, PromoteService promoteService) {
-		this.announcementService = announcementService;
-		this.promoteService = promoteService;
+	// 活動改用 NewsArticleService 讀（它會讀完所有分頁，ishaya 的 PromoteService 一頁只有 8 筆）
+	public HeroSlideService(AnnouncementService announcementService, NewsArticleService newsArticleService) {
+	    this.announcementService = announcementService;
+	    this.newsArticleService = newsArticleService;
 	}
 
 	public List<Map<String, Object>> getHeroSlides() {
@@ -58,7 +57,7 @@ public class HeroSlideService {
 		}
 
 		// 2. 活動：進行中的（網址在 promote/controller/FrontPromoteController，頁面和公告共用 news-detail.html）
-		List<PromoteVO> promotes = promoteService.getPromoteByStatus("進行中", "", LocalDateTime.now(), 1).getContent();
+		List<PromoteVO> promotes = newsArticleService.getActivePromotes();
 		for (PromoteVO promote : promotes) {
 			boolean hasImage = promote.getPromoteImg() != null && promote.getPromoteImg().length > 0;
 			contents.add(slide(promote.getPromoteName(),

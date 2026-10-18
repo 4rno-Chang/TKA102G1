@@ -61,8 +61,8 @@ public class NewsArticleService {
 				hasImage ? "/bistroops/promote/img?promoteNo=" + promote.getPromoteNo() : null);
 	}
 
-	// getPromoteByStatus 一頁只有 8 筆，一頁一頁讀到沒有下一頁
-	private List<PromoteVO> getActivePromotes() {
+	// 進行中的活動（全部）：getPromoteByStatus 一頁只有 8 筆，一頁一頁讀到沒有下一頁；首頁輪播也用這個
+	public List<PromoteVO> getActivePromotes() {
 		List<PromoteVO> promotes = new ArrayList<>();
 		LocalDateTime now = LocalDateTime.now();
 		int page = 1;
