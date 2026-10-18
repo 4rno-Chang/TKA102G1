@@ -250,7 +250,6 @@ dropInput.addEventListener('change', () => {
   dropPreview.src = URL.createObjectURL(file);
   dropPreview.hidden = false;
   dropText.textContent = file.name + '（再點一次可以換）';
-  $('input', $('#formRemoveImg')).checked = false;   // 選了新圖片，就不需要「刪除目前的圖片」
 });
 ['dragenter', 'dragover'].forEach(t => dropInput.addEventListener(t, () => drop.classList.add('is-over')));
 ['dragleave', 'drop'].forEach(t => dropInput.addEventListener(t, () => drop.classList.remove('is-over')));
@@ -293,7 +292,6 @@ function openDialog({ row = null, keep = false } = {}) {
 
   const hasImg = editing && row && row.dataset.hasImg === 'true';
   resetDrop(hasImg ? $('.meal-row-thumb img', row).getAttribute('src') : null);
-  $('#formRemoveImg').hidden = !hasImg;
 
   fillPromos(keep ? form.dataset.oldPromos : (row && editing ? row.dataset.promos : ''));
   promoOnlyNote.hidden = true;   // 「已經改成未上架」的說明，只在這次勾選時才出現
