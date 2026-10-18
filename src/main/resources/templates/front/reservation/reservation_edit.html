@@ -6,9 +6,12 @@
 
 <title>Bistroops｜編輯訂位</title>
 
+<link rel="icon" th:href="@{/images/logo-mark.svg}" type="image/svg+xml">
+
 <link rel="stylesheet" th:href="@{/css/front/front.css}">
 <link rel="stylesheet" th:href="@{/css/front/member.css}">
 <link rel="stylesheet" th:href="@{/css/front/reservation.css}">
+<link rel="stylesheet" th:href="@{/css/front/booking-loading.css}">
 
 <script th:inline="javascript">
 	window.bistroopsReservationAvailability =
@@ -23,6 +26,8 @@
 </script>
 
 <script th:src="@{/js/front/member.js}" defer></script>
+<script th:src="@{/js/front/announcement.js}" defer></script>
+<script th:src="@{/js/front/booking-loading.js}" defer></script>
 <script th:src="@{/js/front/reservation-date.js}" defer></script>
 </head>
 
@@ -47,7 +52,7 @@
 					<h2 class="booking-card-title" th:text="|編輯訂位 #${rsvNo}|"></h2>
 
 					<form id="resvForm" th:action="@{/bistroops/reservation/edit}"
-						method="post">
+						method="post" data-loading>
 
 						<input type="hidden" name="rsvNo" th:value="${rsvNo}"> <input
 							type="hidden" name="editToken" th:value="${editToken}"> <input

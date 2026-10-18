@@ -111,7 +111,7 @@
             <p class="receipt-warn" th:if="${order.status=='ACTIVE'}">這桌還有餐點尚未送達</p>
 
             <form class="receipt-actions" th:action="@{/staff/checkout/pay}" method="post"
-                  th:attr="data-confirm=|${order.seatNo.seatNo} 桌收款 ${order.ordersActualPrice} 元，確定結帳嗎？|">
+                  th:attr="data-confirm=|${order.seatNo.seatNo} 桌收款 ${order.ordersActualPrice} 元，確定結帳嗎？|" data-loading=".receipt">
               <input type="hidden" name="order" th:value="${order.orders}">
               
               <!-- 會員：打開下面的 memberDialog 輸入手機號碼（type="button"，不會送出結帳表單） -->
@@ -165,7 +165,7 @@
 
 		  <!-- novalidate：不用瀏覽器內建的提示泡泡，改由 staff.js 顯示下面的 memberError -->
 		  <form id="memberForm" th:action="@{/staff/checkout/member}" method="post" novalidate
-		        th:data-lookup-url="@{/staff/checkout/member/lookup}">
+		        th:data-lookup-url="@{/staff/checkout/member/lookup}" data-loading=".member-dialog">
 		    <input type="hidden" name="order" th:value="${order.orders}">
 		    <label class="member-label" for="memberPhone">會員手機</label>
 		    <input type="tel" class="member-input" id="memberPhone" name="phone"

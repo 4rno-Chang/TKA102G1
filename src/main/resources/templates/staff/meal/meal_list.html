@@ -212,7 +212,7 @@
   <div class="meal-modal" id="mealDialog" role="dialog" aria-modal="true" aria-labelledby="mealDialogTitle"
     th:attr="data-open=${formError != null}" hidden>
     <form class="meal-modal-box" id="mealForm" th:action="@{/staff/meal/save}" method="post" enctype="multipart/form-data"
-      th:attr="data-old-promos=${mealForm?.promos != null ? #strings.listJoin(mealForm.promos.?[joined].![promoteNo + ':' + (price ?: '')], ',') : ''}">
+      th:attr="data-old-promos=${mealForm?.promos != null ? #strings.listJoin(mealForm.promos.?[joined].![promoteNo + ':' + (price ?: '')], ',') : ''}" data-loading=".meal-modal-box">
       <input type="hidden" name="mealNo" th:value="${mealForm?.mealNo}">
 
       <header class="meal-modal-head">
@@ -392,7 +392,7 @@
           </nav>
 
           <!-- 右：編輯（新增和修改共用；mealtypeNo 是空的就是新增） -->
-          <form class="meal-types-edit" id="typeForm" th:action="@{/staff/meal/type/save}" method="post">
+          <form class="meal-types-edit" id="typeForm" th:action="@{/staff/meal/type/save}" method="post" data-loading=".meal-modal-box">
             <h3 class="meal-types-title" id="typeFormTitle">修改類別</h3>
             <input type="hidden" name="mealtypeNo">
             <label class="meal-field">
@@ -427,13 +427,13 @@
   </div>
 
   <!-- 刪除類別：編輯類別裡的「刪除類別」送出這個表單（mealtypeNo、確認的話由 meal.js 填） -->
-  <form id="typeDeleteForm" th:action="@{/staff/meal/type/delete}" method="post" data-confirm="確定要刪除這個類別嗎？" data-confirm-warn>
+  <form id="typeDeleteForm" th:action="@{/staff/meal/type/delete}" method="post" data-confirm="確定要刪除這個類別嗎？" data-confirm-warn data-loading=".meal-modal-box">
     <input type="hidden" name="mealtypeNo">
   </form>
 
   <!-- 刪除菜品：修改對話框左下角的「刪除菜品」送出這個表單（mealNo 由 meal.js 填）。軟刪除：類別改成 null，
        後台列表、前台菜單、點餐頁都查不到；以前的訂單還看得到這道菜 -->
-  <form id="mealDeleteForm" th:action="@{/staff/meal/delete}" method="post" data-confirm="確定要刪除這道菜嗎？" data-confirm-warn>
+  <form id="mealDeleteForm" th:action="@{/staff/meal/delete}" method="post" data-confirm="確定要刪除這道菜嗎？" data-confirm-warn data-loading=".meal-modal-box">
     <input type="hidden" name="mealNo">
   </form>
 

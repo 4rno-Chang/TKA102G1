@@ -8,21 +8,21 @@
   使用方式：在頁面的 <body> 裡
     頁首：<header th:replace="~{front/front_layout :: header('reservation')}"></header>
           括號內填「目前是哪一頁」，對應的選單項目會變成選取中的樣子。
-          可以填：announcement（最新消息）／reservation（預約訂位）／waiting（候位狀況）／menu（瀏覽菜單）；都不是就填 ''（兩個單引號）
+          可以填：announcement（最新消息）／reservation（預約訂位）／waiting（候位狀況）／menu（瀏覽菜單）／qa（常見問題）；都不是就填 ''（兩個單引號）
     頁尾：<footer th:replace="~{front/front_layout :: footer}"></footer>
     回到頂端的按鈕：<button th:replace="~{front/front_layout :: backToTop}"></button>
 
   頁面還需要自己載入：
     front.css、member.css，再加上自己的樣式（訂位用 reservation.css、候位用 waiting.css）
-    member.js（會員登入），再加上自己的程式（訂位用 reservation.js、候位用 waiting.js；選單開合、頁尾年份也寫在裡面）
+    member.js（會員登入）、announcement.js（選單開合、頁首陰影、回到頂端、頁尾年份），再加上自己的程式（訂位用 reservation-date.js、候位用 waiting.js）
     並在 <body> 最前面放會員對話框：<div th:replace="~{front/member/member_modals :: modals}"></div>
 
   【Thymeleaf 串接】這個檔案沒有假資料：
     登入狀態（顯示「登入 / 註冊」還是會員的名字）已經是讀 session 裡的 member，接上資料庫後不用改。
     「最新消息」連到前台公告列表 /bistroops/announcement（FrontAnnouncementController），頁首和頁尾各有一個。
-    「常見問題」：頁首連到首頁下方的常見問題（#faq），頁尾連到前台常見問題頁 /bistroops/qa（FrontQaController）。
+    「常見問題」：頁首和頁尾都連到前台常見問題頁 /bistroops/qa（FrontQaController → templates/front/qa/listAll.html）。
 
-  選單裡「常見問題」「關於我們」已經寫成完整網址，從哪一頁點都能回到首頁的那個區塊；「瀏覽菜單」連到菜單頁 /bistroops/menu（FrontMenuController）。
+  選單裡「關於我們」已經寫成完整網址，從哪一頁點都能回到首頁的那個區塊；「瀏覽菜單」連到菜單頁 /bistroops/menu（FrontMenuController）。
 
   ★ 「精簡的頁首」（線上點餐用，只有 logo 和會員登入）放在另一個檔案 front_simple_header.html。
     ★ 這個檔案裡只能有「一個」<header> 標籤：其他頁面用 :: header('...') 引用時，Thymeleaf 除了找名字叫 header 的片段，
@@ -44,7 +44,7 @@
         <li><a th:href="@{/bistroops/reservation}" th:classappend="${active == 'reservation'} ? 'active'">預約訂位</a></li>
         <li><a th:href="@{/bistroops/waiting}" th:classappend="${active == 'waiting'} ? 'active'">候位狀況</a></li>
         <li><a th:href="@{/bistroops/menu}" th:classappend="${active == 'menu'} ? 'active'">瀏覽菜單</a></li>
-        <li><a th:href="@{/bistroops} + '#faq'">常見問題</a></li>
+        <li><a th:href="@{/bistroops/qa}" th:classappend="${active == 'qa'} ? 'active'">常見問題</a></li>
         <li><a th:href="@{/bistroops} + '#about'">關於我們</a></li>
       </ul>
 

@@ -71,9 +71,11 @@
             <ul class="dish-list">
               <li th:each="item : ${od.ordersDetails}">
 
+                <!-- 送出中（staff.js 的 A-8）：data-loading=".dish" data-loading-mask="center"
+                     按下去的那一道菜蓋上 60% 的白色，等待圖示在正中間；其他道菜照常可以按 -->
                 <!-- （1）內場、製作中：按「出餐」→ 等待送餐 -->
                <form th:if="${view == 'kitchen' and item.odStatus == '製作中'}"
-                      th:action="@{/staff/workboard/toServe}" method="post">
+                      th:action="@{/staff/workboard/toServe}" method="post" data-loading=".dish" data-loading-mask="center">
                   <input type="hidden" name="itemId" th:value="${item.ordersDetailsNo}">
                   <button type="submit" class="dish is-cooking">
                     <th:block th:replace="~{:: dishInfo}"></th:block>
@@ -86,7 +88,7 @@
                      data-confirm：送出前先跳出確認視窗，避免不小心連點兩下（程式在 staff.js 的「送出前先確認」）。
                      Controller 要先確認這道餐點現在仍然是 等待送餐 才退回；外場已經按了「確認送達」就不要動它。 -->
                 <form th:if="${view == 'kitchen' and item.odStatus == '等待送餐'}"
-                      th:action="@{/staff/workboard/backToCooking}" method="post"
+                      th:action="@{/staff/workboard/backToCooking}" method="post" data-loading=".dish" data-loading-mask="center"
                       th:attr="data-confirm=|要把「${item.meal.mealName}」退回製作中嗎？|">
                   <input type="hidden" name="itemId" th:value="${item.ordersDetailsNo}">
                   <button type="submit" class="dish is-to-serve">
@@ -97,7 +99,7 @@
 
                 <!-- （3）外場、等待送餐：按「確認送達」→ 已送達（Controller 同時記下送達時間） -->
                 <form th:if="${view == 'floor' and item.odStatus == '等待送餐'}"
-                      th:action="@{/staff/workboard/served}" method="post">
+                      th:action="@{/staff/workboard/served}" method="post" data-loading=".dish" data-loading-mask="center">
                   <input type="hidden" name="itemId" th:value="${item.ordersDetailsNo}">
                   <button type="submit" class="dish is-to-serve">
                     <th:block th:replace="~{:: dishInfo}"></th:block>
@@ -149,7 +151,7 @@
       </header>
 
       <!-- ========== 畫面一：填寫備註、刪除單一道餐點（表單：儲存變更） ========== -->
-      <form class="edit-form" th:action="@{/staff/workboard/notes}" method="post" data-edit-view="notes">
+      <form class="edit-form" th:action="@{/staff/workboard/notes}" method="post" data-edit-view="notes" data-loading=".edit-dialog">
         <input type="hidden" name="orderId" th:value="${editOrder.orders}">
 
         <div class="edit-body">
@@ -209,7 +211,7 @@
       </form>
 
       <!-- ========== 畫面二：確認刪除（按了「刪除訂單」才會換成這個畫面；表單：確認刪除） ========== -->
-      <form class="edit-form" th:action="@{/staff/workboard/cancel}" method="post" data-edit-view="delete" hidden>
+      <form class="edit-form" th:action="@{/staff/workboard/cancel}" method="post" data-edit-view="delete" hidden data-loading=".edit-dialog">
         <input type="hidden" name="orderId" th:value="${editOrder.orders}">
 
         <div class="edit-body">

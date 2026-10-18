@@ -368,7 +368,7 @@
 			</th:block>
 
 			<form class="dialog-actions" th:action="@{/staff/seating/leave}"
-				method="post" th:data-confirm="${panel.leaveConfirm}">
+				method="post" th:data-confirm="${panel.leaveConfirm}" data-loading=".panel">
 				<input type="hidden" name="seatNo" th:value="${panel.no}"> <input
 					type="hidden" name="type" th:value="${page.filter}"> <input
 					type="hidden" name="state" th:value="${page.state}"> <input
@@ -389,7 +389,7 @@
 				<details class="pick-box st-hold" th:if="${panel.rsvCount > 0}">
 					<summary class="staff-btn btn-cash"
 						th:text="|訂位者入座（${panel.rsvCount}）|"></summary>
-					<form th:action="@{/staff/seating/reservation}" method="post">
+					<form th:action="@{/staff/seating/reservation}" method="post" data-loading=".panel">
 						<input type="hidden" name="seatNo" th:value="${panel.no}">
 						<input type="hidden" name="type" th:value="${page.filter}">
 						<input type="hidden" name="state" th:value="${page.state}">
@@ -432,7 +432,7 @@
 						th:text="|候位入座（${#lists.size(panel.waiting)}）|"> </summary>
 
 					<!-- 按一組候位就送出：ticketId 是 Redis 號碼牌的識別碼；ticketNumber（例如 2-001）只用來顯示成功訊息 -->
-					<form th:action="@{/staff/seating/waiting}" method="post">
+					<form th:action="@{/staff/seating/waiting}" method="post" data-loading=".panel">
 						<input type="hidden" name="seatNo" th:value="${panel.no}">
 						<input type="hidden" name="type" th:value="${page.filter}">
 						<input type="hidden" name="state" th:value="${page.state}">
@@ -466,7 +466,7 @@
 					disabled>候位入座（0）</button>
 
 				<form th:action="@{/staff/seating/walk-in}" method="post"
-					th:data-confirm="${panel.walkConfirm}">
+					th:data-confirm="${panel.walkConfirm}" data-loading=".panel">
 					<input type="hidden" name="seatNo" th:value="${panel.no}">
 					<input type="hidden" name="type" th:value="${page.filter}">
 					<input type="hidden" name="state" th:value="${page.state}">
@@ -475,7 +475,7 @@
 					<button type="submit" class="staff-btn btn-pay">其它者入座</button>
 				</form>
 				<form th:action="@{/staff/seating/disable}" method="post"
-					th:data-confirm="|停用 ${panel.no}？停用後這桌不會算進空桌。|">
+					th:data-confirm="|停用 ${panel.no}？停用後這桌不會算進空桌。|" data-loading=".panel">
 					<input type="hidden" name="seatNo" th:value="${panel.no}">
 					<input type="hidden" name="type" th:value="${page.filter}">
 					<input type="hidden" name="state" th:value="${page.state}">
@@ -490,7 +490,7 @@
 		<th:block th:if="${panel.mode == 'off'}">
 			<p class="notice info">這桌已停用，不會算進空桌。</p>
 			<form class="dialog-actions" th:action="@{/staff/seating/enable}"
-				method="post">
+				method="post" data-loading=".panel">
 				<input type="hidden" name="seatNo" th:value="${panel.no}"> <input
 					type="hidden" name="type" th:value="${page.filter}"> <input
 					type="hidden" name="state" th:value="${page.state}"> <input

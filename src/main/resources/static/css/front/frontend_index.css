@@ -240,16 +240,19 @@
 }
 
 
-/* ========== 4. 關於我們 ========== */
+/* ========== 4. 關於我們 ==========
+   背景是店面的插圖（images/bistroops.jpg），整張圖都看得到（16:9）。
+   標題「關於我們」在正中間：深咖啡色的字，外面一圈白色光暈，疊在圖片上也看得清楚。
+   滑鼠移入或點擊後：蓋上 80% 白底並在中間顯示理念文字（點擊在 frontend_index.js 的 aboutBox）。 */
 #about { background: var(--color-bg-light); }
 .about-box {
   position: relative;
-  max-width: 1060px; height: 380px;
+  max-width: 1060px;
+  aspect-ratio: 16 / 9;   /* 和圖片的比例相同（1672×941），不會被裁掉 */
   margin: 0 auto;
   font-family: var(--font-serif);
-  font-size: 36px; letter-spacing: 6px;
-  /* 之後放背景圖時，讓圖片填滿整個區塊並置中 */
-  background-size: cover; background-position: center;
+  background: url("../../images/bistroops.jpg") center / cover no-repeat;
+  cursor: pointer;
 }
 /* 右下錯位的金色線框 */
 .about-box::after {
@@ -260,36 +263,30 @@
 }
 #about .container { position: relative; z-index: 0; }
 
-/* 背景 Logo：放在 ::before 才能單獨調透明度（::after 已用在金色線框）；
-   平常是標準色款，滑鼠移入或點擊後換成黑色款 */
-.about-box::before {
-  content: "";
-  position: absolute; inset: 0;
-  /* 平常 Logo 偏上（垂直 25%），把下方留給標題 */
-  background: url("../../images/TibaMe-LOGO_標準色款.png") center 25% / min(60%, 406px) auto no-repeat;
-  opacity: .3;
-}
-/* 標題：疊在 Logo 上面，黑色粗體，往下移到 Logo 下方 */
+/* 標題：深咖啡色粗體，外面一圈白框＋白色光暈。
+   白框：往上下左右推 3px、四個斜角推 2px 的白色陰影（不模糊），合起來就像描了一圈白邊；
+   光暈：後面四層會模糊的白色陰影，越來越散 */
 .about-title {
   position: relative;
-  color: var(--color-text);
-  font-weight: 700;
-  transform: translateY(100px);
-}
-.about-box.active::before,
-.about-box:focus-visible::before {
-  background-image: url("../../images/TibaMe-LOGO_黑色款.png");
-  background-position: center;
+  color: #4a3222;
+  font-size: clamp(30px, 4.4vw, 52px); font-weight: 700;
+  letter-spacing: 8px; text-indent: 8px;
+  text-shadow:
+    3px 0 0 #fff, -3px 0 0 #fff, 0 3px 0 #fff, 0 -3px 0 #fff,
+    2px 2px 0 #fff, -2px 2px 0 #fff, 2px -2px 0 #fff, -2px -2px 0 #fff,
+    0 0 4px #fff,
+    0 0 10px #fff,
+    0 0 18px rgba(255, 255, 255, .95),
+    0 0 32px rgba(255, 255, 255, .8);
+  transition: opacity var(--transition);
 }
 
-/* 滑鼠移入或點擊後：蓋上 60% 白底並顯示說明文字 */
-.about-box { cursor: pointer; }
-.about-title { transition: opacity var(--transition); }
+/* 滑鼠移入或點擊後：蓋上 80% 白底並顯示理念文字，標題淡出 */
 .about-overlay {
   position: absolute; inset: 0;
   display: flex; align-items: center; justify-content: center;
   padding: 30px;
-  background: rgba(255, 255, 255, .6);
+  background: rgba(255, 255, 255, .8);
   color: var(--color-text);
   font-family: var(--font-sans);
   font-size: 22px; line-height: 2.1; letter-spacing: 2px;
@@ -304,10 +301,6 @@
 @media (hover: hover) {
   .about-box:hover .about-overlay { opacity: 1; }
   .about-box:hover .about-title { opacity: 0; }
-  .about-box:hover::before {
-    background-image: url("../../images/TibaMe-LOGO_黑色款.png");
-    background-position: center;
-  }
 }
 
 
@@ -338,9 +331,8 @@
   .menu-grid { grid-template-columns: 1fr; max-width: 500px; margin: 0 auto; }
   .faq-question { font-size: 18px; padding: 18px 18px; }
   .faq-answer p { padding: 0 18px 20px; }
-  .about-box { height: 260px; font-size: 28px; }
-  .about-title { transform: translateY(60px); }   /* 區塊變矮，標題少往下一點 */
-  .about-overlay { padding: 20px; font-size: 16px; letter-spacing: 1px; }
+  .about-title { letter-spacing: 5px; text-indent: 5px; }
+  .about-overlay { padding: 16px; font-size: 14px; line-height: 1.9; letter-spacing: 1px; }
   .about-box::after { top: 14px; left: 14px; right: -14px; bottom: -14px; }
 }
 

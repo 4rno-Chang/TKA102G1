@@ -118,12 +118,16 @@
 			</span>
 		</span> <span class="home-bar-arrow" aria-hidden="true">›</span>
 		</a>
-		<!-- ===== 【假資料】示範資料的說明與重設按鈕。
-         假資料都刪掉之後，這個 section 也整個刪掉（按鈕的程式在 staff.js 的「B. 假資料」） ===== -->
+		<!-- ===== 工作備忘錄：每位員工各自一份，存在 Redis（key：staff:worknote:員工編號），換一台平板登入也看得到。
+         讀取、儲存的網址是 data-url（EmployeeNoteController），程式在 staff.js 的 A-9 ===== -->
 		<section class="staff-card home-note">
-			<h2 class="staff-card-title">目前使用示範資料</h2>
-			<p>後台的訂單是寫在 staff.js 裡的假資料，操作結果只會暫存在這台裝置的瀏覽器。</p>
-			<button type="button" class="staff-btn" id="resetDemo">重設示範資料</button>
+			<div class="home-note-head">
+				<label class="home-note-label" for="workNote">工作備忘錄</label>
+				<small class="home-note-hint">自動儲存・僅限本人</small>
+			</div>
+			<textarea class="home-note-input" id="workNote" rows="5" maxlength="1000"
+				th:data-url="@{/staff/worknote}"></textarea>
+			<p class="home-note-status" id="workNoteStatus" aria-live="polite"></p>
 		</section>
 	</main>
 

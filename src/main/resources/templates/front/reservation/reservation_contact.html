@@ -9,8 +9,11 @@
 <link rel="stylesheet" th:href="@{/css/front/front.css}">
 <link rel="stylesheet" th:href="@{/css/front/member.css}">
 <link rel="stylesheet" th:href="@{/css/front/reservation.css}">
+<link rel="stylesheet" th:href="@{/css/front/booking-loading.css}">
 
 <script th:src="@{/js/front/member.js}" defer></script>
+<script th:src="@{/js/front/announcement.js}" defer></script>
+<script th:src="@{/js/front/booking-loading.js}" defer></script>
 </head>
 <body>
 	<div th:replace="~{front/member/member_modals :: modals}"></div>
@@ -37,7 +40,7 @@
 					<p class="form-msg error" role="alert" th:if="${error != null}"
 						th:text="${error}"></p>
 
-					<form th:action="@{/bistroops/reservation/submit}" method="post">
+					<form th:action="@{/bistroops/reservation/submit}" method="post" data-loading>
 
 						<input type="hidden" name="date" th:value="${date}"> <input
 							type="hidden" name="tableType" th:value="${tableType}"> <input

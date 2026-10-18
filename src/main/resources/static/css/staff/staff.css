@@ -466,3 +466,25 @@ button { cursor: pointer; }
 .staff-btn.is-loading .cloche-loader { flex-shrink: 0; --size: 24px; --c-line: currentColor; --c-knob: currentColor; margin: -6px 8px -6px 0; }
 /* 刷卡的付款中（staff.js 的 staffCardPaying）：按鈕還可以點，點了會把綠界的付款視窗叫到最前面 */
 .is-loading.is-paying { pointer-events: auto; cursor: pointer; }
+/* 送出中的蒙版（staff.js 的 A-8，表單有寫 data-loading 才會加）：按鈕所在的區塊蓋一層 20% 的白色，圓角跟著區塊；
+   按下去的按鈕浮在白色那一層上面，不會跟著變淡 */
+.is-submitting::after {
+  content: "";
+  position: absolute; inset: 0; z-index: 2;
+  border-radius: inherit;
+  background: rgba(255, 255, 255, .2);
+  pointer-events: none;
+}
+.is-submitting .is-loading { position: relative; z-index: 3; }
+/* data-loading-mask="center"（工作面板的出餐、退回、確認送達）：60% 的白色，等待圖示放在蒙版正中間；
+   按鈕裡的文字（菜名、「出餐 →」「● 等待送餐」）和排列都不動，只是蓋在白色下面 */
+.is-submitting.mask-center::after { background: rgba(255, 255, 255, .6); }
+.mask-loader {
+  position: absolute; inset: 0; z-index: 3;
+  display: grid; place-items: center;
+  pointer-events: none;
+}
+.mask-loader .cloche-loader { --size: 34px; }
+/* 上面 .is-loading 的 nowrap 是給「處理中…」用的；這裡按鈕內容沒換，菜名太長時要照原本的樣子換行，尺寸才不會變 */
+.mask-center.is-loading,
+.mask-center .is-loading { white-space: normal; }

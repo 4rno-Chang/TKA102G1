@@ -16,6 +16,7 @@
 <link rel="stylesheet" th:href="@{/css/front/front.css}">
 <link rel="stylesheet" th:href="@{/css/front/member.css}">
 <link rel="stylesheet" th:href="@{/css/front/reservation.css}">
+<link rel="stylesheet" th:href="@{/css/front/booking-loading.css}">
 
 <script th:inline="javascript">
 	window.bistroopsReservationAvailability =
@@ -23,6 +24,8 @@
 </script>
 
 <script th:src="@{/js/front/member.js}" defer></script>
+<script th:src="@{/js/front/announcement.js}" defer></script>
+<script th:src="@{/js/front/booking-loading.js}" defer></script>
 <script th:src="@{/js/front/reservation-date.js}" defer></script>
 </head>
 
@@ -44,7 +47,7 @@
 
 			<section id="reservationLookup" class="reservation-lookup">
 
-				<form th:action="@{/bistroops/reservation}" method="get">
+				<form th:action="@{/bistroops/reservation}" method="get" data-loading>
 
 					<label for="reservationLookupPhone"
 						class="reservation-lookup-label"> 訂位電話 </label>
@@ -96,7 +99,7 @@
 					<h2 class="booking-card-title">選擇日期與桌型</h2>
 
 					<form id="resvForm" th:action="@{/bistroops/reservation/contact}"
-						method="get">
+						method="get" data-loading>
 
 						<input type="hidden" name="date" id="resvDate" th:value="${date}">
 

@@ -152,7 +152,7 @@
           <a class="promote-back" th:href="@{/staff/promote(status=${param.status}, keyword=${param.keyword}, page=${param.page})}">← 返回活動列表</a>
         </header>
 
-        <form class="promote-form" id="promoteForm" th:action="@{/staff/promote/save}" method="post" enctype="multipart/form-data">
+        <form class="promote-form" id="promoteForm" th:action="@{/staff/promote/save}" method="post" enctype="multipart/form-data" data-loading=".promote-panel">
           <input type="hidden" name="promoteNo" th:value="${promoteForm.promoteNo}">
           <!-- 列表頁原本的查詢條件：從網址讀進來藏在表單裡，儲存時會一起送出。
                用途：(1) 儲存不通過、退回這一頁時，「返回活動列表」「取消」還是回得到原本那一頁

@@ -1,0 +1,100 @@
+/* =========================================================
+   Bistroops 前台：表單送出中的樣式
+   對應的 JS：static/js/front/booking-loading.js（送出時加上 is-submitting、is-loading）
+   用在預約訂位、現場取號、候位、點餐、用餐回饋的頁面；要放在各頁自己的 CSS 後面載入（蓋過按鈕原本的樣式）
+   ========================================================= */
+
+/* 送出後，表單所在的區塊蓋一層 20% 的白色（看得出「已經送出、不能改了」）。
+   真正擋住操作的是 JS 加上的 inert，這一層只負責外觀；圓角跟著區塊（border-radius: inherit） */
+.is-submitting::after {
+  content: "";
+  position: absolute; inset: 0; z-index: 2;
+  border-radius: inherit;
+  background: rgba(255, 255, 255, .2);
+  pointer-events: none;
+}
+
+/* 按下去的按鈕，裡面換成「等待圖示＋處理中…」；寬度由 JS 固定成原本的大小。
+   z-index 讓它浮在白色那一層上面，不會跟著變淡；各種按鈕原本的顏色先保留（下面再個別改成深色） */
+.is-loading {
+  position: relative; z-index: 3;
+  white-space: nowrap;
+  transform: none;
+  box-shadow: none;
+  opacity: 1;
+  cursor: progress;
+}
+
+/* 深墨色底、淺金色字：
+   .btn-solid       送出表單的按鈕（下一步、確認送出訂位、儲存變更、領取號碼牌）
+   .btn-outline     查詢訂位、查詢候位號碼、取消候位、候位管理的按鈕
+   .order-btn       點餐的「加入購物車」「更新購物車」「送出訂單」「清空」 */
+.btn-solid.is-loading,
+.btn-solid.is-loading:hover,
+.btn-outline.is-loading,
+.btn-outline.is-loading:hover,
+.order-btn.is-loading,
+.order-btn.is-loading:hover {
+  background:
+    linear-gradient(var(--lux-ink), var(--lux-ink)) left / 100% 100% no-repeat,
+    var(--color-white);
+  border-color: var(--lux-ink);
+  outline-color: rgba(230, 207, 156, .6);
+  color: var(--lux-gold-light);
+  transform: none;
+  box-shadow: none;
+}
+/* 查詢的按鈕比較窄：圖示小一點、字距小一點，「處理中…」才放得下 */
+.btn-outline.is-loading { padding-inline: 12px; letter-spacing: 2px; text-indent: 2px; }
+.btn-outline.is-loading .cloche-loader { --size: 22px; margin-right: 8px; }
+/* 數量的 −、＋ 這種小按鈕：只顯示圖示，不顯示文字 */
+.is-icon-only .cloche-loader { --size: 20px; margin: 0; }
+
+/* 等待圖示：用 CSS 畫的餐盤蓋（和後台 staff.css 的 .cloche-loader 同一個圖示，顏色換成前台的）。
+   --size 決定大小，其他尺寸都跟著等比例縮放（--u 是原圖的 1px） */
+.cloche-loader {
+  --size: 26px;
+  --u: calc(var(--size) / 140);
+  --c-line: currentColor;          /* 外圈、蓋子、底盤：跟著按鈕的字色 */
+  --c-knob: var(--color-gold, #c9a96a);   /* 蓋子上的把手（用餐回饋頁沒有載入 front.css，就用後面的金色） */
+  flex-shrink: 0;
+  position: relative;
+  display: inline-block;
+  vertical-align: middle;
+  width: var(--size); height: var(--size);
+  margin: -6px 12px -6px 0;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 calc(6 * var(--u)) var(--c-line);   /* 外圈 */
+  animation: cloche-bob 1.84s ease-in-out infinite;
+}
+/* 蓋子：只有上、左、右邊框的半圓 */
+.cloche-loader::before {
+  content: ""; position: absolute; box-sizing: border-box;
+  left: calc(35 * var(--u)); top: calc(40 * var(--u));
+  width: calc(70 * var(--u)); height: calc(36 * var(--u));
+  border: calc(6 * var(--u)) solid var(--c-line); border-bottom: 0;
+  border-radius: calc(35 * var(--u)) calc(35 * var(--u)) 0 0;
+}
+/* 底盤：一條橫線 */
+.cloche-loader::after {
+  content: ""; position: absolute;
+  left: calc(28 * var(--u)); top: calc(75 * var(--u));
+  width: calc(85 * var(--u)); height: calc(6 * var(--u));
+  background: var(--c-line); border-radius: calc(3 * var(--u));
+}
+/* 把手：圓點，蓋在蓋子頂端上面 */
+.cloche-loader i {
+  position: absolute; z-index: 1;
+  left: calc(62 * var(--u)); top: calc(27 * var(--u));
+  width: calc(17 * var(--u)); height: calc(17 * var(--u));
+  background: var(--c-knob); border-radius: 50%;
+}
+/* 整個圖示上下浮動 */
+@keyframes cloche-bob {
+  0%, 100% { transform: translateY(calc(-7 * var(--u))); }
+  50%      { transform: translateY(calc(7 * var(--u))); }
+}
+/* 使用者在系統設定裡關掉動畫的話：不浮動 */
+@media (prefers-reduced-motion: reduce) {
+  .cloche-loader { animation: none; }
+}

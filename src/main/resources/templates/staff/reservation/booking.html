@@ -69,9 +69,7 @@
                        tab='waiting',
                        seatType=${seatType})}">
 						刷新頁面 </a>
-
-					<a class="staff-btn btn-pay" href="#staffWaitingCreate"
-						th:if="${waitingAvailable == true}"> 新增候位 </a>
+					<!-- 新增候位：表單就在頁面上（下面的 #staffWaitingCreate），所以右上角不放按鈕 -->
 				</th:block>
 			</div>
 		</div>
@@ -234,7 +232,7 @@
         <form th:if="${r.rsvStatus == '預約'}"
               th:action="@{/staff/booking/rsv/status}"
               method="post"
-              th:attr="data-confirm=|確定變更訂位 #${r.rsvNo} 的狀態嗎？|">
+              th:attr="data-confirm=|確定變更訂位 #${r.rsvNo} 的狀態嗎？|" data-loading="td">
 
             <input type="hidden" name="rsvNo" th:value="${r.rsvNo}">
             <input type="hidden" name="date" th:value="${date}">
@@ -284,7 +282,7 @@
 				th:if="${waitingAvailable == true and waitingList != null}"
 				th:with="shownWaiting=${waitingList.?[waitingStatus != '取消']}">
 
-				<div class="staff-card" id="staffWaitingCreate">
+				<div class="staff-card booking-waiting-create" id="staffWaitingCreate">
 					<h2 class="staff-card-title">新增候位</h2>
 
 					<form class="booking-tools"
@@ -390,7 +388,7 @@
 
 										<td>
 											<form th:if="${active}"
-												th:action="@{/staff/booking/waiting/action}" method="post">
+												th:action="@{/staff/booking/waiting/action}" method="post" data-loading="td">
 
 												<input type="hidden" name="operation" value="COMMENT">
 												<input type="hidden" name="tableType"
@@ -421,7 +419,7 @@
 
 												<form th:action="@{/staff/booking/waiting/action}"
 													method="post"
-													th:attr="data-confirm=|確定操作候位 ${w.ticketDisplay} 嗎？|">
+													th:attr="data-confirm=|確定操作候位 ${w.ticketDisplay} 嗎？|" data-loading="td, .booking-board">
 
 													<input type="hidden" name="tableType"
 														th:value="${w.seatType.seatTypeNo}"> <input
@@ -458,7 +456,7 @@
 									<h3 class="booking-board-title" th:text="|${b.seatTypeNo} 人桌|"></h3>
 
 									<form th:action="@{/staff/booking/waiting/action}"
-										method="post" data-waiting-sms-choice>
+										method="post" data-waiting-sms-choice data-loading="td, .booking-board">
 
 										<input type="hidden" name="operation" value="NOTIFY">
 										<input type="hidden" name="sendSms" value=""> <input
@@ -527,7 +525,7 @@
 			</header>
 
 			<form class="booking-form" id="staffReservationEditor"
-				th:action="@{/staff/booking/rsv/save}" method="post">
+				th:action="@{/staff/booking/rsv/save}" method="post" data-loading=".booking-dialog">
 
 				<input type="hidden" name="rsvNo" th:value="${staffRsvForm.rsvNo}">
 

@@ -1,7 +1,7 @@
 /* =========================================================
    Bistroops 預約訂位 的樣式
    對應的 HTML：templates/front/reservation/*.html
-   對應的 JS  ：static/js/front/reservation.js
+   對應的 JS  ：static/js/front/reservation-date.js
 
    顏色、字型、按鈕都沿用前台共用的樣式：需要先載入 front.css 和 member.css，再載入這個檔案
      front.css   顏色變數、頁首頁尾、.container、.eyebrow、.btn-outline
@@ -17,21 +17,21 @@
 .booking { padding: 50px 0 110px; }
 
 /* ---------- 標題與數字的字體（只影響預約訂位的頁面） ----------
-   全站的標題字體是 front.css 裡的 --font-serif。這裡在 .booking（頁面內容）和 .lookup-modal（查詢的對話框）
-   重新指定它的值，所以只有這兩個範圍裡面會換字體；頁首、頁尾、首頁、會員對話框都不受影響。
+   全站的標題字體是 front.css 裡的 --font-serif。這裡在 .booking（頁面內容）
+   重新指定它的值，所以只有這個範圍裡面會換字體；頁首、頁尾、首頁、會員對話框都不受影響。
 
    下面三種都是頁面已經載入的字體，不用另外加 Google Fonts 的連結。
    想換哪一種，就把那一行前後的註解符號拿掉，並把目前使用的那一行註解起來（一次只留一行）：
 
    A. 思源宋體（目前使用）：中文、英文、數字都用同一種，筆畫方正，最端正 */
-.booking, .lookup-modal { --font-serif: "Noto Serif TC", Georgia, serif; }
+.booking { --font-serif: "Noto Serif TC", Georgia, serif; }
 
 /* B. 數字和英文用 Georgia（電腦內建的字體，數字比較圓潤古典），中文用思源宋體
-.booking, .lookup-modal { --font-serif: Georgia, "Noto Serif TC", serif; }
+.booking { --font-serif: Georgia, "Noto Serif TC", serif; }
 */
 
 /* C. 思源黑體：沒有襯線，比較現代、俐落
-.booking, .lookup-modal { --font-serif: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif; }
+.booking { --font-serif: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif; }
 */
 
 /* 想換回原本的字體：把上面 A 那一行刪掉或註解起來即可。
@@ -102,9 +102,6 @@
 /* 目前的步驟：深墨色圓圈 */
 .booking-steps li.active { color: var(--color-text); font-weight: 500; }
 .booking-steps li.active .step-no { background: var(--lux-ink); border-color: var(--lux-ink); color: var(--lux-gold-light); }
-/* 已完成的步驟：金色圓圈，數字換成打勾 */
-.booking-steps li.done .step-no { background: var(--color-gold); color: var(--color-white); font-size: 0; }
-.booking-steps li.done .step-no::after { content: "✓"; font-family: var(--font-sans); font-size: 15px; }
 
 
 /* ========== 3. 版面：左邊表單、右邊摘要 ========== */
@@ -142,15 +139,12 @@
   margin-bottom: 14px;
   font-size: 17px; font-weight: 500; letter-spacing: 2px;
 }
-.booking-label small,
-.required-note {
+.booking-label small {
   margin-left: 10px;
   color: var(--color-text-light);
   font-family: var(--font-sans);
   font-size: 13px; font-weight: 400; letter-spacing: 1px;
 }
-/* 必填的星號 */
-.required, .required-note b { color: var(--color-error); font-weight: 500; }
 
 /* 還沒有內容可以顯示時的提示（例如還沒選日期） */
 .booking-empty {
@@ -255,15 +249,13 @@
 .field textarea::placeholder { color: var(--color-muted); }
 .field textarea:focus { outline: none; border-color: var(--color-primary); box-shadow: 0 0 0 3px rgba(194, 161, 101, .18); }
 
-.booking-error { margin-top: 16px; font-size: 15px; }
-
 /* 最下面的按鈕列：上一步（外框）＋送出（佔滿剩下的寬度） */
 .booking-actions { display: flex; gap: 14px; margin-top: 26px; }
 .booking-actions .btn-outline { flex: none; min-height: 50px; }
 .booking-actions .btn-solid { flex: 1; width: auto; margin-top: 0; }
 
 
-/* ========== 6. 結果（成功的畫面、停止取號） ========== */
+/* ========== 6. 結果（訂位完成） ========== */
 .booking-result {
   max-width: 540px;
   margin: 0 auto;
@@ -275,17 +267,6 @@
   box-shadow: 0 20px 50px rgba(90, 70, 30, .12);
   text-align: center;
 }
-/* 打勾的金色圓形 */
-.result-mark {
-  display: grid; place-items: center;
-  width: 64px; height: 64px;
-  margin: 0 auto 16px;
-  border-radius: 50%;
-  background: var(--lux-gold-gradient);
-  color: var(--color-white);
-  font-size: 30px; line-height: 1;
-}
-.result-title { font-family: var(--font-serif); font-size: 30px; font-weight: 500; letter-spacing: 8px; text-indent: 8px; }
 .result-no { margin: 6px 0 26px; color: var(--color-text-light); letter-spacing: 2px; }
 .result-no strong {
   margin-left: 6px;
@@ -293,96 +274,9 @@
   font-family: var(--font-serif); font-size: 24px; font-weight: 600; letter-spacing: 3px;
 }
 .booking-result .summary-list { text-align: left; }
-.result-notice {
-  margin: 24px 0;
-  color: var(--color-text-light);
-  font-size: 14px; line-height: 1.9;
-}
 
 
-/* ========== 7. 查詢的對話框 ========== */
-/* 標題下方的查詢按鈕：比一般的外框按鈕小一點 */
-.booking-head-action { margin-top: 20px; }
-.btn-lookup { min-width: 0; min-height: 44px; padding: 8px 26px; font-size: 14px; }
-
-/* 對話框（外觀和會員登入的對話框相同：白底、金框、頂端金色粗線） */
-.lookup-modal {
-  position: fixed; inset: 0; z-index: 1800;   /* 比頁首高，比會員對話框（2000）低 */
-  display: flex;
-  padding: 24px 16px;
-  overflow-y: auto;
-}
-.lookup-backdrop {
-  position: fixed; inset: 0;
-  background: rgba(35, 32, 28, .45);
-  -webkit-backdrop-filter: blur(5px);
-  backdrop-filter: blur(5px);
-}
-.lookup-dialog {
-  position: relative;
-  width: min(100%, 560px);
-  margin: auto;
-  padding: 46px 44px 36px;
-  background: linear-gradient(180deg, var(--color-white) 60%, var(--lux-champagne) 100%);
-  border: 1px solid var(--color-gold);
-  box-shadow: 0 40px 110px rgba(60, 45, 15, .3);
-}
-.lookup-dialog::before {
-  content: "";
-  position: absolute; top: -1px; left: -1px; right: -1px;
-  height: 4px;
-  background: var(--lux-gold-gradient);
-}
-.lookup-close {
-  position: absolute; top: 12px; right: 14px;
-  width: 40px; height: 40px;
-  background: none; border: 0; cursor: pointer;
-  color: var(--color-text-light);
-  font-size: 28px; line-height: 1;
-  transition: color var(--transition);
-}
-.lookup-close:hover { color: var(--color-accent); }
-.lookup-dialog .eyebrow { font-size: 16px; text-align: center; }
-.lookup-title {
-  margin-bottom: 26px;
-  font-family: var(--font-serif);
-  font-size: 30px; font-weight: 400;
-  letter-spacing: 8px; text-indent: 8px;
-  text-align: center;
-}
-.lookup-form .field { margin-bottom: 8px; }
-
-/* 查詢結果 */
-.lookup-list { margin-top: 18px; }
-.lookup-empty {
-  padding: 22px;
-  background: var(--color-bg);
-  border: 1px dashed var(--lux-line);
-  color: var(--color-text-light);
-  font-size: 15px;
-  text-align: center;
-}
-/* 一筆訂位或一張號碼牌：左邊內容、右邊按鈕 */
-.lookup-item {
-  display: flex; align-items: center; gap: 16px;
-  padding: 16px 18px;
-  background: var(--color-white);
-  border: 1px solid var(--lux-line);
-  border-left: 3px solid var(--color-gold);
-}
-.lookup-item + .lookup-item { margin-top: 10px; }
-.lookup-item-main { flex: 1; min-width: 0; }
-.lookup-item-title { font-family: var(--font-serif); font-size: 20px; font-weight: 500; letter-spacing: 2px; }
-.lookup-item-info { color: var(--color-text-light); font-size: 14px; overflow-wrap: anywhere; }
-.lookup-item .btn-small { min-width: 96px; }
-/* 已取消的訂位：變淡、日期劃線，右邊顯示「已取消」 */
-.lookup-item.is-cancelled { border-left-color: var(--color-border); background: var(--color-bg); }
-.lookup-item.is-cancelled .lookup-item-title { color: var(--color-text-light); text-decoration: line-through; }
-.lookup-tag { flex: none; color: var(--color-text-light); font-size: 14px; letter-spacing: 2px; }
-.lookup-note { margin-top: 18px; color: var(--color-text-light); font-size: 13px; line-height: 1.8; }
-
-
-/* ========== 8. 月曆 ========== */
+/* ========== 7. 月曆 ========== */
 /* 已選日期時顯示的那一列：左邊日期、右邊「開啟日曆」 */
 .date-field {
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
@@ -464,7 +358,7 @@
 .legend-dot.legend-closed { margin-left: 14px; background: #efe9de; border-color: #efe9de; }
 
 
-/* ========== 9. 用餐時段 ==========
+/* ========== 8. 用餐時段 ==========
    做法和桌型的選項相同：radio 藏起來，看得到的是後面的方框 */
 .slot { position: relative; }
 .slot input { position: absolute; opacity: 0; pointer-events: none; }
@@ -496,12 +390,8 @@
 /* 用鍵盤選到時的外框 */
 .slot input:focus-visible + .slot-box { outline: 2px solid var(--color-primary); outline-offset: 2px; }
 
-/* 勾選「我已閱讀…」 */
-.check-row { display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 15px; }
-.check-row input { flex: none; width: 20px; height: 20px; accent-color: var(--color-primary); }
 
-
-/* ========== 10. 平板（900px 以下）：摘要移到表單下面 ========== */
+/* ========== 9. 平板（900px 以下）：摘要移到表單下面 ========== */
 @media (max-width: 900px) {
   .booking { padding: 52px 0 80px; }
   .booking-layout { grid-template-columns: 1fr; gap: 24px; }
@@ -510,7 +400,7 @@
 }
 
 
-/* ========== 11. 手機（640px 以下） ========== */
+/* ========== 10. 手機（640px 以下） ========== */
 @media (max-width: 640px) {
   .booking-title { letter-spacing: 5px; text-indent: 5px; }
   .booking-lead { font-size: 14px; }
@@ -522,7 +412,6 @@
   .booking-card { padding: 26px 18px 30px; }
   .booking-card-title { font-size: 22px; letter-spacing: 3px; }
   .booking-label small { display: block; margin: 4px 0 0; }
-  .required-note { display: inline; }
 
   /* 桌型的選項平均分配寬度 */
   .choice { flex: 1; }
@@ -535,12 +424,6 @@
   .booking-summary { padding: 26px 20px; }
   .booking-result { padding: 36px 22px 32px; }
 
-  /* 查詢的對話框：內距縮小；每一筆結果的按鈕移到下面一行 */
-  .lookup-modal { padding: 12px; }
-  .lookup-dialog { padding: 44px 20px 28px; }
-  .lookup-title { font-size: 26px; }
-  .lookup-item { flex-wrap: wrap; }
-  .lookup-item .btn-small { width: 100%; }
 
   /* 月曆與時段 */
   .calendar { padding: 14px 10px 12px; }
