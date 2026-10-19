@@ -51,7 +51,9 @@ tr:hover td { background: var(--st-bg); }
 
 /* 詳細內容彈窗（框線參照 checkout 的 .staff-card 和 .receipt-table） */
 /* staff.css 用 * { margin: 0 } 清掉了 dialog 預設的 margin: auto，要補回來才會置中 */
-dialog { margin: auto; padding: 22px 24px; width: min(520px, 92vw);
+/* 寬度從 520px 加到 640px：彈窗裡多了訂單明細的表格（5 欄）
+   max-height：明細很多時，彈窗不會超出畫面，改成彈窗裡面捲動 */
+dialog { margin: auto; padding: 22px 24px; width: min(640px, 92vw); max-height: 90vh; overflow-y: auto;
          background: var(--st-card); color: var(--st-text);
          border: 1px solid var(--st-border); border-radius: var(--st-radius); box-shadow: var(--st-shadow); }
 dialog::backdrop { background: rgba(59, 47, 42, .45); }
@@ -63,3 +65,15 @@ dialog::backdrop { background: rgba(59, 47, 42, .45); }
 .dlg-body dt { color: var(--st-muted); }
 .dlg-body dd { margin: 0; white-space: pre-wrap; word-break: break-word; }
 .dlg-foot { padding-top: 14px; text-align: right; }
+
+/* 彈窗裡的訂單明細（表格樣式用 staff.css 的 .receipt-table、備註用 .dish-note） */
+.detail-title { margin-top: 18px; font-size: 16px; font-weight: 700; }
+/* 上面「表格」那段的 table { min-width: 900px } 是給回饋列表用的，彈窗裡的表格不要套用，不然會撐出橫向捲軸 */
+#d-detail table { min-width: 0; margin-top: 6px; }
+#d-detail th, #d-detail td { padding: 8px 6px; }
+#d-detail tr:hover td { background: none; }
+.detail-sum { margin-top: 10px; text-align: right; }
+.detail-sum strong { color: var(--st-red); font-size: 17px; }
+/* 被取消的餐點：整列變淡，最後一欄（狀態）以外劃線（和訂單管理頁一樣） */
+#d-detail .row-cancelled td { color: #b3a696; }
+#d-detail .row-cancelled td:not(:last-child) { text-decoration: line-through; }
