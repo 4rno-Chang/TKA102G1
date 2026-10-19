@@ -52,11 +52,13 @@
   cursor: pointer;
 }
 
-/* 每一筆訂單：六個欄位排成一列（訂單編號、桌號、下單時間、金額、狀態、展開的 +） */
+/* 每一筆訂單：七個欄位排成一列（訂單編號、會員名稱、桌號、下單時間、金額、狀態、展開的 +）
+   會員名稱那格有「會員」標籤＋名字，寬度給最多；桌號、時間內容固定，用固定寬度；
+   gap 加大到 16px，金額（靠右）和狀態（靠左）才不會黏在一起 */
 .order-row {
   display: grid;
-  grid-template-columns: 1.5fr .7fr .9fr 1fr 1fr 28px;
-  align-items: center; gap: 10px;
+  grid-template-columns: minmax(100px, 1fr) minmax(130px, 1.6fr) 60px 70px minmax(80px, .9fr) minmax(80px, 1fr) 28px;
+  align-items: center; gap: 16px;
   width: 100%; min-height: 60px;
   padding: 8px 10px;
   background: none;
@@ -69,6 +71,8 @@
 .order-item:last-child { border-bottom: 0; }
 button.order-row:hover { background: #fbf3e2; }
 .order-id { font-size: 15px; }
+/* 會員名稱：標籤＋名字排在同一行，名字太長就用「…」截斷，不要把整列撐開 */
+.order-member { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .order-amount { font-family: var(--st-serif); font-weight: 700; }
 .order-icon { color: var(--st-red); font-size: 24px; line-height: 1; text-align: center; transition: transform .2s; }
 .order-item.open .order-icon { transform: rotate(45deg); }
@@ -87,14 +91,15 @@ button.order-row:hover { background: #fbf3e2; }
 
 /* ========== 直立的平板與較窄的畫面（900px 以下） ========== */
 @media (max-width: 900px) {
-  /* 訂單管理：每一筆改成兩行（上：編號、桌號、狀態　下：時間、金額） */
+  /* 訂單管理：每一筆改成三行（上：編號、桌號、狀態　中：會員名稱　下：時間、金額） */
   .order-row-head { display: none; }
-  .order-row { grid-template-columns: minmax(0, 1fr) auto auto 28px; row-gap: 2px; }
+  .order-row { grid-template-columns: minmax(0, 1fr) auto auto 28px; gap: 2px 10px; }
   .order-row > :nth-child(1) { grid-column: 1; grid-row: 1; }             /* 訂單編號 */
-  .order-row > :nth-child(2) { grid-column: 2; grid-row: 1 / span 2; }    /* 桌號 */
-  .order-row > :nth-child(3) { grid-column: 1; grid-row: 2; color: var(--st-muted); font-size: 14px; }   /* 下單時間 */
-  .order-row > :nth-child(4) { grid-column: 3; grid-row: 2; }             /* 金額 */
-  .order-row > :nth-child(5) { grid-column: 3; grid-row: 1; text-align: right; }   /* 狀態 */
-  .order-row > :nth-child(6) { grid-column: 4; grid-row: 1 / span 2; }    /* + */
+  .order-row > :nth-child(2) { grid-column: 1; grid-row: 2; font-size: 14px; }     /* 會員名稱 */
+  .order-row > :nth-child(3) { grid-column: 2; grid-row: 1 / span 3; }    /* 桌號 */
+  .order-row > :nth-child(4) { grid-column: 1; grid-row: 3; color: var(--st-muted); font-size: 14px; }   /* 下單時間 */
+  .order-row > :nth-child(5) { grid-column: 3; grid-row: 3; }             /* 金額 */
+  .order-row > :nth-child(6) { grid-column: 3; grid-row: 1; text-align: right; }   /* 狀態 */
+  .order-row > :nth-child(7) { grid-column: 4; grid-row: 1 / span 3; }    /* + */
   .order-detail { margin-inline: 0; padding-inline: 10px; overflow-x: auto; }
 }
