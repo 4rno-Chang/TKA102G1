@@ -34,6 +34,32 @@ public class EmployeeService {
 	    this.passwordEncoder = passwordEncoder;
 	}
 
+	// 員工與初始權限在同一交易內儲存，提交後才寄出密碼信。
+	@Transactional
+	public EmployeeVO addEmployeeWithPermissions(EmployeeVO employee, String temporaryPassword,
+	        List<Integer> permNos) {
+	    if (permNos == null || permNos.isEmpty()) {
+	        throw new IllegalArgumentException("請至少勾選一項員工權限");
+	    }
+	    if (permNos.stream().anyMatch(no -> no == null || no < 1 || no > 7)) {
+	        throw new IllegalArgumentException("包含無效的權限編號");
+	    }
+	    Set<Integer> uniquePermNos = new HashSet<>(permNos);
+	    List<PermissionVO> permissions = permissionRepository.findAllById(uniquePermNos);
+	    if (permissions.size() != uniquePermNos.size()) {
+	        throw new IllegalArgumentException("包含不存在的權限編號");
+	    }
+	    EmployeeVO saved = addEmployee(employee, temporaryPassword);
+	    for (PermissionVO permission : permissions) {
+	        EmployeePermissionVO ep = new EmployeePermissionVO();
+	        ep.setIds(new EmployeePermissionId(saved.getEmpNo(), permission.getPermNo()));
+	        ep.setEmployee(saved);
+	        ep.setPermission(permission);
+	        saved.getEmployeepermissions().add(ep);
+	    }
+	    return employeeRepository.save(saved);
+	}
+
 	// 新增員工
 	@Transactional
 	public EmployeeVO addEmployee(EmployeeVO employee, String temporaryPassword) {

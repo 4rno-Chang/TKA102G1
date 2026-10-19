@@ -344,9 +344,36 @@ document.addEventListener("DOMContentLoaded", () => {
     // null 代表新增，數字代表編輯指定員工
     let editingEmpNo = null;
 
+    const initialPermissions = document.getElementById("employeeInitialPermissions");
+    const initialPermissionList = document.getElementById("employeeInitialPermissionList");
+    const initialPermissionError = document.getElementById("employeeInitialPermissionError");
+    EMPLOYEE_PERMISSIONS.forEach(permission => {
+        const label = document.createElement("label");
+        label.className = "employee-permission-item";
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.name = "initialPermissions";
+        checkbox.value = String(permission.no);
+        label.append(checkbox, document.createTextNode(permission.name));
+        initialPermissionList.appendChild(label);
+    });
+    initialPermissionList.addEventListener("change", () => {
+        if (initialPermissionList.querySelector("input:checked")) {
+            initialPermissionError.hidden = true;
+            initialPermissions.removeAttribute("aria-invalid");
+        }
+    });
+    form.addEventListener("reset", () => {
+        initialPermissionError.hidden = true;
+        initialPermissions.removeAttribute("aria-invalid");
+    });
+
     // 開啟新增員工視窗
     openBtn.addEventListener("click", () => {
         editingEmpNo = null;
+        initialPermissions.hidden = false;
+        initialPermissions.parentElement.hidden = false;
+        initialPermissions.disabled = false;
         resetPasswordBtn.hidden = true;
         modalTitle.textContent = "新增員工";
 
@@ -382,6 +409,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
             // 設定目前為編輯模式
             editingEmpNo = empNo;
+            initialPermissions.hidden = true;
+            initialPermissions.parentElement.hidden = true;
+            initialPermissions.disabled = true;
             resetPasswordBtn.hidden = false;
             modalTitle.textContent = "編輯員工";
 
@@ -772,6 +802,17 @@ document.addEventListener("DOMContentLoaded", () => {
     form.addEventListener("submit", async (event) => {
         event.preventDefault();
 
+        const permissions = Array.from(initialPermissionList.querySelectorAll("input:checked"),
+            checkbox => Number(checkbox.value));
+        if (editingEmpNo === null && permissions.length === 0) {
+            initialPermissionError.hidden = false;
+            initialPermissions.setAttribute("aria-invalid", "true");
+            initialPermissions.scrollIntoView({ block: "center", behavior: "smooth" });
+            initialPermissionList.querySelector("input").focus({ preventScroll: true });
+            staffToast("請至少勾選一項員工權限");
+            return;
+        }
+
         const submitBtn = form.querySelector('button[type="submit"]');
         submitBtn.disabled = true;
 
@@ -784,6 +825,7 @@ document.addEventListener("DOMContentLoaded", () => {
             empAdd: document.getElementById("empAdd").value.trim(),
             empSal: Number(document.getElementById("empSal").value)
         };
+        if (editingEmpNo === null) employee.permissions = permissions;
 
         let createdEmpNo = null;
         let deliveryResult = null;
