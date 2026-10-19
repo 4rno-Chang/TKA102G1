@@ -108,7 +108,9 @@
 						<div class="field">
 							<label for="joinName">聯絡人姓名（選填）</label> <input type="text"
 								id="joinName" name="name" maxlength="30" placeholder="請輸入姓名"
-								autocomplete="name" th:value="${name}" data-summary="sumName">
+								autocomplete="name"
+th:value="${name != null ? name : (member != null ? member.memName : '')}"
+data-summary="sumName">
 						</div>
 
 						<div class="field">
@@ -116,7 +118,9 @@
 							</label> <input type="tel" id="joinPhone" name="phone"
 								inputmode="numeric" minlength="10" maxlength="10"
 								pattern="09[0-9]{8}" placeholder="09XXXXXXXX" autocomplete="tel"
-								required th:value="${phone}" data-summary="sumPhone">
+								required
+th:value="${phone != null ? phone : (member != null ? member.memTel : '')}"
+data-summary="sumPhone">
 
 							<p class="form-msg">請留意現場叫號及號碼牌狀態，叫號後一分鐘未報到將過號。</p>
 						</div>
