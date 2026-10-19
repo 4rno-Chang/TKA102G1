@@ -412,15 +412,24 @@ public class EmployeeController {
 
 	// 取消停用員工（恢復在職）
 	@PatchMapping("/{empNo}/enable")
-	public ResponseEntity<Void> enableEmployee(@PathVariable Integer empNo) {
-
-		if (employeeService.getEmployeeById(empNo).isEmpty()) {
-			return ResponseEntity.notFound().build();
+	public ResponseEntity<?> enableEmployee(@PathVariable Integer empNo, HttpSession session) {
+		Integer loginEmpNo = (Integer) session.getAttribute("employeeNo");
+		if (loginEmpNo == null) {
+			return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "請先登入"));
+		}
+		if (!employeeService.hasPermission(loginEmpNo, 7)) {
+			return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "權限不足"));
 		}
 
-		employeeService.enableEmployee(empNo);
-
-		return ResponseEntity.noContent().build();
+		try {
+			return ResponseEntity.ok(employeeAccountService.enableEmployee(empNo));
+		} catch (java.util.NoSuchElementException e) {
+			return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", e.getMessage()));
+		} catch (IllegalStateException e) {
+			return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("message", e.getMessage()));
+		} catch (IllegalArgumentException e) {
+			return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+		}
 	}
 
 	// 上傳或更換員工照片
