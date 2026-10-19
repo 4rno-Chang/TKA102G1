@@ -72,9 +72,15 @@
 						<p class="booking-tip">此電話尚無帳號時，系統會建立未驗證帳號。
 							姓名及其他會員資料，請於電話驗證後填寫。</p>
 
-						<label> <input type="checkbox" name="agree" value="yes"
-							required> 我已閱讀訂位須知及個人資料使用說明。
-						</label>
+						<div class="rsv-policy-agreement">
+							<input type="checkbox" id="reservationAgree" name="agree"
+								value="yes" required aria-labelledby="reservationPolicyOpen">
+
+							<button type="button" id="reservationPolicyOpen"
+								class="rsv-policy-link" aria-haspopup="dialog"
+								aria-controls="reservationPolicyDialog">
+								我已閱讀訂位須知及個人資料使用說明。</button>
+						</div>
 
 						<div
 							style="display: flex; gap: 12px; margin-top: 24px; flex-wrap: wrap;">
@@ -115,5 +121,165 @@
 
 	<footer th:replace="~{front/front_layout :: footer}"></footer>
 	<button th:replace="~{front/front_layout :: backToTop}"></button>
+	<dialog id="reservationPolicyDialog"
+        class="rsv-policy-dialog"
+        aria-labelledby="reservationPolicyTitle">
+
+    <header class="rsv-policy-header">
+        <h2 id="reservationPolicyTitle">
+            訂位須知及個人資料使用說明
+        </h2>
+
+        <button type="button"
+                class="rsv-policy-close"
+                data-close-reservation-policy
+                aria-label="關閉說明">
+            ×
+        </button>
+    </header>
+
+    <div class="rsv-policy-content">
+        <h3>一、訂位須知</h3>
+
+        <ol>
+            <li>
+                本系統提供含今日起算90天內的訂位，
+                可選擇2人桌、4人桌或6人桌。
+            </li>
+            <li>
+                可預約日期、時段與剩餘桌數，以系統當下顯示及送出結果為準。
+                填寫資料期間不保留桌數，顯示訂位成功及訂位編號後才算完成。
+            </li>
+            <li>
+                訂位不需登入會員。聯絡電話為必填，
+                聯絡姓名及備註為選填，請確認電話正確。
+            </li>
+            <li>
+                同一電話所對應的會員，同一時段僅能保有一筆有效訂位。
+                如需多桌或特殊安排，請洽餐廳人員。
+            </li>
+            <li>
+                可於前台透過電話查詢訂位資訊，
+                或登入會員中心查看當前與歷史訂位。
+            </li>
+            <li>
+                會員完成電話驗證後，可在用餐時間開始前，
+                編輯或取消自己仍為「預約」的訂位。
+                編輯時如新時段已額滿，原訂位仍會保留。
+            </li>
+            <li>
+                已到用餐時間，或訂位已取消、實到、未到時，
+                如需調整請洽餐廳人員。
+                如無法前來，請提前取消。
+            </li>
+            <li>
+                備註供餐廳參考，不代表已確認特殊需求，
+                實際安排請與餐廳人員確認。
+            </li>
+        </ol>
+
+        <h3>二、未驗證會員帳號</h3>
+
+        <p>
+            若訂位電話尚未建立帳號，系統會為該電話建立未驗證會員帳號。
+            訂位填寫的聯絡姓名會保存在該筆訂位，
+            不會直接覆蓋會員姓名。
+        </p>
+
+        <p>
+            未驗證會員可查看自己的訂位紀錄；
+            編輯及取消訂位，須先完成電話驗證。
+            請勿將密碼及驗證碼提供給他人。
+        </p>
+
+        <h3>三、個人資料使用說明</h3>
+
+        <ol>
+            <li>
+                <strong>蒐集單位：</strong>
+                Bistroops，實際營運單位為【待填：營運單位名稱】。
+            </li>
+            <li>
+                <strong>蒐集目的：</strong>
+                辦理訂位、聯繫用餐安排、發送服務通知、
+                建立及辨識訂位所需的會員帳號，以及處理相關客服事項。
+            </li>
+            <li>
+                <strong>資料類別：</strong>
+                聯絡電話、選填的聯絡姓名與備註，
+                以及訂位編號、日期、時段、桌型、狀態等服務紀錄。
+                請勿在備註填寫身分證號、付款卡號或其他不必要的敏感資料。
+            </li>
+            <li>
+                <strong>利用期間：</strong>
+                【待填：訂位及會員資料的保存期限與刪除原則】。
+            </li>
+            <li>
+                <strong>利用地區：</strong>
+                【待填：實際處理資料及伺服器儲存的國家或地區】。
+            </li>
+            <li>
+                <strong>利用對象與方式：</strong>
+                由餐廳業務所需的授權人員，
+                及提供系統、主機或通知服務的受託廠商，
+                在上述目的必要範圍內，以系統儲存、查詢及聯繫等方式處理。
+                實際受託服務應依營運情況更新本說明。
+            </li>
+            <li>
+                <strong>資料查詢方式：</strong>
+                本網站提供依電話查詢基本訂位資訊的功能；
+                未驗證會員登入後亦可查看該帳號的訂位明細。
+                如替他人填寫資料，請先告知對方本說明並取得其授權。
+            </li>
+            <li>
+                <strong>您的權利：</strong>
+                您可依法請求查詢或閱覽、製給複製本、
+                補充或更正，以及停止蒐集、處理、利用或刪除個人資料。
+                申請方式：【待填：客服電話、Email或其他申請管道】。
+                受理時可能需要確認您的身分。
+            </li>
+            <li>
+                <strong>不提供資料的影響：</strong>
+                未提供必要的聯絡電話，將無法使用網頁訂位功能；
+                不填姓名或備註，不影響一般訂位。
+            </li>
+        </ol>
+
+        <p class="rsv-policy-note">
+            閱讀視窗不會自動勾選同意。
+            請確認了解上述內容後，關閉視窗並自行勾選。
+        </p>
+    </div>
+
+    <footer class="rsv-policy-footer">
+        <button type="button"
+                class="btn-outline"
+                data-close-reservation-policy>
+            關閉
+        </button>
+    </footer>
+</dialog>
+
+<script>
+(() => {
+    const dialog = document.getElementById('reservationPolicyDialog');
+    const openButton = document.getElementById('reservationPolicyOpen');
+
+    if (!dialog || !openButton) return;
+
+    openButton.addEventListener('click', () => {
+        if (!dialog.open) {
+            dialog.showModal();
+        }
+    });
+
+    dialog.querySelectorAll('[data-close-reservation-policy]')
+        .forEach(button => {
+            button.addEventListener('click', () => {
+                dialog.close();
+            });
+        });
+})();
+</script>
 </body>
 </html>

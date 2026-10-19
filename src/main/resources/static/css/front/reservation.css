@@ -503,3 +503,126 @@
         padding: 12px;
     }
 }
+.rsv-policy-agreement {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+.rsv-policy-agreement input[type="checkbox"] {
+    flex-shrink: 0;
+    margin-top: 5px;
+}
+
+.rsv-policy-link {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: #967238;
+    font: inherit;
+    line-height: 1.7;
+    text-align: left;
+    text-decoration: underline;
+    text-underline-offset: 4px;
+    cursor: pointer;
+}
+
+.rsv-policy-link:hover {
+    color: #5e431e;
+}
+
+.rsv-policy-dialog {
+    box-sizing: border-box;
+    width: min(760px, calc(100vw - 32px));
+    max-height: 85dvh;
+    margin: auto;
+    padding: 0;
+    overflow: hidden;
+    border: 1px solid #c5a46a;
+    background: #fffdf8;
+    color: #302b24;
+}
+
+.rsv-policy-dialog[open] {
+    display: flex;
+    flex-direction: column;
+}
+
+.rsv-policy-dialog::backdrop {
+    background: rgb(0 0 0 / 45%);
+}
+
+.rsv-policy-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 20px 24px;
+    border-bottom: 1px solid #e1d1b7;
+}
+
+.rsv-policy-header h2 {
+    margin: 0;
+    font-size: 22px;
+    line-height: 1.5;
+}
+
+.rsv-policy-close {
+    flex-shrink: 0;
+    padding: 4px 8px;
+    border: 0;
+    background: transparent;
+    color: #786b57;
+    font-size: 30px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.rsv-policy-content {
+    min-height: 0;
+    padding: 8px 24px 24px;
+    overflow-y: auto;
+    line-height: 1.9;
+    overflow-wrap: anywhere;
+}
+
+.rsv-policy-content h3 {
+    margin-top: 24px;
+    color: #967238;
+    font-size: 18px;
+}
+
+.rsv-policy-content ol {
+    padding-left: 24px;
+}
+
+.rsv-policy-content li {
+    margin-bottom: 12px;
+}
+
+.rsv-policy-note {
+    padding: 12px 16px;
+    background: #f4eddf;
+}
+
+.rsv-policy-footer {
+    display: flex;
+    justify-content: flex-end;
+    padding: 16px 24px;
+    border-top: 1px solid #e1d1b7;
+}
+
+@media (max-width: 480px) {
+    .rsv-policy-header,
+    .rsv-policy-footer {
+        padding: 16px;
+    }
+
+    .rsv-policy-content {
+        padding: 8px 16px 16px;
+    }
+
+    .rsv-policy-header h2 {
+        font-size: 18px;
+    }
+}
