@@ -39,7 +39,8 @@ public class EmployeeMailService {
     }
 
     public boolean sendTemporaryPassword(EmployeeVO employee, String temporaryPassword) {
-        if (host.isBlank() || username.isBlank() || password.isBlank() || from.isBlank()) {
+        if (host.isBlank() || username.isBlank() || password.isBlank() || from.isBlank()
+                || employee.getEmpEmail() == null || employee.getEmpEmail().isBlank()) {
             return false;
         }
         try {
@@ -79,7 +80,7 @@ public class EmployeeMailService {
 
     String buildBody(EmployeeVO employee, String temporaryPassword) {
         return employee.getEmpName() + " 您好：\n\n"
-                + "您的員工帳號已建立或重設密碼。\n"
+                + "您的員工帳號已建立、恢復在職或重設密碼。\n"
                 + "員工登入網址：" + loginUrl + "\n"
                 + "員工帳號：" + employee.getEmpNo() + "\n"
                 + "臨時密碼：" + temporaryPassword + "\n\n"

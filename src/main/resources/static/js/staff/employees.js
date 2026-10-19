@@ -574,7 +574,7 @@ document.addEventListener("DOMContentLoaded", () => {
 		const empName = enableBtn.dataset.empName;
 
 		if (!await employeeConfirm(
-		    `確定要取消停用員工 ${empNo}－${empName}，恢復在職嗎？`
+		    `確定要恢復員工 ${empNo}－${empName} 的在職狀態嗎？舊密碼將失效，系統會寄送 24 小時內有效的臨時密碼。若寄信失敗，仍會恢復在職，可編輯信箱後按「忘記密碼」重新寄送。`
 		)) {
 		    return;
 		}
@@ -587,16 +587,23 @@ document.addEventListener("DOMContentLoaded", () => {
                 { method: "PATCH" }
             );
 
+            const result = await response.json().catch(() => ({}));
             if (!response.ok) {
-                throw new Error("HTTP " + response.status);
+                staffToast(result.message || (response.status === 403 ? "權限不足" :
+                    response.status === 401 ? "請先登入" : "恢復在職失敗"));
+                if (response.status === 409) await loadEmployees();
+                return;
             }
 
-            staffToast("員工已恢復在職！");
+            showEmployeeDeliveryStatus(result);
+            staffToast(result.emailSent ? "員工已恢復在職，臨時密碼已寄出" :
+                "已恢復在職，但寄信失敗，請查看列表上方說明並編輯信箱");
             await loadEmployees();
 
         } catch (error) {
             console.error("取消停用員工失敗：", error);
             staffToast("取消停用員工失敗，請稍後再試");
+        } finally {
             enableBtn.disabled = false;
         }
     });
