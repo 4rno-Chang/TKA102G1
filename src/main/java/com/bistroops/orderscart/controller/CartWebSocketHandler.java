@@ -50,11 +50,28 @@ public class CartWebSocketHandler extends TextWebSocketHandler {
 
     //通知這一組「購物車變了」
     public void notifyCartChanged(String seatingKey) {
+        send(seatingKey, "cart-changed");
+    }
+
+    //通知這一組「有人正在送出訂單」，同桌其他手機的購物車和加菜的表單會先鎖住
+    //送完（成功或失敗）會再送一次 cart-changed，收到就解開並更新購物車
+    public void notifySubmitting(String seatingKey) {
+        send(seatingKey, "cart-submitting");
+    }
+
+    //為了讓客人手機的「已點餐點」跟工作面板同步：通知這一組「店員改了已送出的訂單」
+    //  客人手機收到 order-changed 會在背景拿最新的點餐頁，換掉「已點餐點」和購物車（order.js 的 A-7）
+    public void notifyOrderChanged(String seatingKey) {
+        send(seatingKey, "order-changed");
+    }
+
+    //把一段文字傳給這一組的每一支手機
+    private void send(String seatingKey, String text) {
         Set<WebSocketSession> set = groups.get(seatingKey);
         if (set == null) {
             return;
         }
-        TextMessage message = new TextMessage("cart-changed");
+        TextMessage message = new TextMessage(text);
         for (WebSocketSession s : set) {
             try {
                 if (s.isOpen()) {

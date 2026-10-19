@@ -226,24 +226,67 @@ if (siteHeader) {
 
 // A-7. 同桌的手機購物車互通（WebSocket）
 
+// 為了防止重複下單：同桌有人正在送出訂單時（伺服器送來 cart-submitting），這支手機的購物車和菜品對話框的填寫表單先鎖住
+//   蓋上 20% 白色＋inert（booking-loading.js 的 bookingLock），並跳出提示；送完收到 cart-changed 就解開並更新購物車。
+//   伺服器那邊也會擋（FrontOrderController 檢查「送單中」的鎖），這裡是讓客人看得懂為什麼按不了。
+//   萬一沒收到 cart-changed（例如網路斷掉），12 秒後自動解開（伺服器的鎖 10 秒就會消失）。
+let tableSubmitTimer = 0;
+function tableSubmitAreas() {
+  return [document.querySelector('#dbCartSheet .order-sheet-panel'), document.querySelector('.order-item-form')].filter(Boolean);
+}
+function lockForTableSubmit() {
+  tableSubmitAreas().forEach(area => {
+    if (area.classList.contains('is-submitting')) return;   // 自己正在送單（已經鎖住）：不要動，交給自己的送單流程
+    bookingLock(null, area);
+    area.dataset.tableLock = 'yes';                          // 記住是這裡鎖的，解開時只解這些
+  });
+  showToast('同桌有人正在送出訂單，請稍候…');
+  clearTimeout(tableSubmitTimer);
+  tableSubmitTimer = setTimeout(unlockForTableSubmit, 12000);
+}
+function unlockForTableSubmit() {
+  clearTimeout(tableSubmitTimer);
+  document.querySelectorAll('[data-table-lock]').forEach(area => {
+    bookingUnlock(null, area);
+    delete area.dataset.tableLock;
+  });
+}
+
+// 在背景拿最新的點餐頁，換掉下方的購物車列、購物車和「已點餐點」（swapCartArea），再跳出提示 message
+//   換不了（例如用餐時間已經結束，頁面只剩提示）就整頁重新載入
+async function refreshFromServer(message) {
+  try {
+    const res = await fetch(location.pathname);
+    const result = swapCartArea(await res.text());
+    if (!result.ok) {
+      location.reload();
+      return;
+    }
+    showToast(message);
+  } catch (err) {
+    // 網路暫時有問題：下一次有通知時再更新
+  }
+}
+
 function connectCartSocket() {
   const protocol = location.protocol === 'https:' ? 'wss://' : 'ws://';
   const socket = new WebSocket(protocol + location.host + '/bistroops/order/ws');
 
   socket.addEventListener('message', async e => {
-    if (e.data !== 'cart-changed') return;
-    if (cartBusy || Date.now() - lastCartAction < 2000) return;
-    try {
-      const res = await fetch(location.pathname);
-      const result = swapCartArea(await res.text());
-      if (!result.ok) {
-        location.reload();
-        return;
-      }
-      showToast('同桌的人更新了購物車');
-    } catch (err) {
-      // 網路暫時有問題：下一次有通知時再更新
+    if (e.data === 'cart-submitting') {   // 同桌有人開始送出訂單
+      lockForTableSubmit();
+      return;
     }
+    // 店員在工作面板改了已送出的訂單（刪除、復原餐點、改備註、取消整筆訂單）：
+    //   為了讓「已點餐點」跟工作面板同步，一律更新（不管這支手機剛剛有沒有自己操作過），提示文字也不一樣
+    if (e.data === 'order-changed') {
+      refreshFromServer('餐廳已更新您的已點餐點');
+      return;
+    }
+    if (e.data !== 'cart-changed') return;
+    unlockForTableSubmit();               // 送單結束（成功或失敗）都會收到 cart-changed：先解開
+    if (cartBusy || Date.now() - lastCartAction < 2000) return;
+    refreshFromServer('同桌的人更新了購物車');
   });
 
   socket.addEventListener('close', () => setTimeout(connectCartSocket, 3000));

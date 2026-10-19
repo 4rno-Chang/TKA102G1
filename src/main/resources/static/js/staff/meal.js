@@ -401,7 +401,7 @@ function calcPromo(row) {
   $('.meal-promo-set', row).hidden = !join.checked;
   row.classList.toggle('is-joined', join.checked);
   $('[data-promo-unit]', row).textContent = byRate ? '折' : '元';
-  input.placeholder = byRate ? '例如 9、85' : '例如 199，贈送打 0';
+  input.placeholder = byRate ? '例如 9、85' : '請輸入整數';
   input.maxLength = byRate ? 2 : 5;   // 折數最多 2 位（1～99）、金額最多 5 位（跟原價的上限 99999 一樣）
 
   const base = Number(priceInput.value);
@@ -432,7 +432,11 @@ function calcPromo(row) {
   // 顯示的「幾折」就是電腦怎麼看員工打的數字：打 9 顯示 9折、打 85 顯示 85折，打錯一眼就看得出來
   const approx = base >= 1 ? Math.round(price / base * 100) : 0;   // 直接打金額時，大約是原價的百分之幾
   // 欄位是空的：下面的灰字顯示怎麼打（按儲存時跳出的提醒才用 EMPTY_MSG）
-  if (price === null && msg === EMPTY_MSG) result.textContent = byRate ? '打幾折？9折打 9、85折打 85' : '請輸入活動價（0 元＝贈送）';
+  //   直接打金額時，「（0 元＝贈送）」換到第二行
+  if (price === null && msg === EMPTY_MSG) {
+    if (byRate) result.textContent = '打幾折？9折打 9、85折打 85';
+    else result.innerHTML = '請輸入活動價<br>（0 元＝贈送）';
+  }
   else if (price === null) result.textContent = msg;
   else if (price === 0) result.innerHTML = `活動價 <b>${money(0)}</b>（贈送）`;
   else result.innerHTML = `活動價 <b>${money(price)}</b>`

@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import com.bistroops.orders.model.FrontOrderService;
 import com.bistroops.orders.model.OrdersService;
 import com.bistroops.ordersdetails.model.OrdersDetailsService;
 
@@ -28,6 +29,9 @@ public class OrdersDetailsController {
 	
 	@Autowired
 	WorkboardWebSocketHandler workboardWs;// 工作面板的即時通知
+
+	@Autowired
+	FrontOrderService frontOrderService;   // 為了讓客人手機的「已點餐點」查詢同步
 	
 	//=============修改狀態<input type="hidden" name="itemId" th:value="${item.ordersDetailsNo}">
 	@PostMapping("/workboard/toServe")
@@ -66,6 +70,7 @@ public class OrdersDetailsController {
 			odSvc.saveNotes(orderId,itemIds,itemNotes,cancelledItemIds);
 			ordersService.recalculate(orderId);   // 有取消或復原，金額要重算
 			workboardWs.notifyChanged();  //通知所有工作面板重新整理 // 成功才通知
+			frontOrderService.notifyTableOrderChanged(orderId);   // 同步客人手機的「已點餐點查詢」// 成功才通知
 		}catch(IllegalArgumentException e){
 			ra.addFlashAttribute("error",e.getMessage());
 			return "redirect:/staff/workboard/edit?orderId=" + orderId;
@@ -81,6 +86,7 @@ public class OrdersDetailsController {
 			odSvc.cancelAll(orderId);
 			ordersService.recalculateUnpaid(orderId); //全部取消金額重新算->歸0
 			workboardWs.notifyChanged();  //通知所有工作面板重新整理 // 成功才通知
+			frontOrderService.notifyTableOrderChanged(orderId);   // 同步客人手機的「已點餐點」（整筆顯示已取消）// 成功才通知
 		}catch(IllegalArgumentException e){
 			ra.addFlashAttribute("error",e.getMessage());
 			return "redirect:/staff/workboard/edit?orderId=" + orderId;
