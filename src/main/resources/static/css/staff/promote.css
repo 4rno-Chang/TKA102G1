@@ -72,16 +72,18 @@
 /* 圖片下面的文字區 */
 .promote-card-body {
   flex: 1;   
-  display: flex; flex-direction: column; gap: clamp(6px, 2.6cqi, 12px);
-  padding: clamp(12px, 4.6cqi, 22px) clamp(14px, 5.3cqi, 24px) clamp(14px, 5.3cqi, 24px);
+  display: flex; flex-direction: column; gap: clamp(4px, 2cqi, 10px);
+  padding: clamp(10px, 4cqi, 18px) clamp(12px, 4.6cqi, 20px) clamp(12px, 4.6cqi, 20px);
 }
 .promote-card-name {
   font-family: var(--st-serif); font-size: clamp(17px, 6.6cqi, 28px); font-weight: 700; line-height: 1.4;
   overflow-wrap: anywhere;
 }
 .promote-card-no { margin-left: 6px; color: var(--st-muted); font-family: var(--st-sans); font-size: clamp(12px, 4.3cqi, 18px); font-weight: 400; }
-.promote-card-period { font-size: clamp(13px, 4.6cqi, 20px); line-height: 1.6; }
-.promote-card-period small { color: var(--st-muted); font-size: clamp(12px, 4.3cqi, 18px); }
+/* 活動期間：開始～結束排在同一行，不換行（卡片窄到放不下時才會換行） */
+.promote-card-period { font-size: clamp(13px, 4.6cqi, 20px); line-height: 1.5; }
+.promote-card-period span { white-space: nowrap; }
+.promote-card-period small { margin: 0 2px; color: var(--st-muted); font-size: clamp(12px, 4.3cqi, 18px); }
 
 /* 最下面一排：左邊狀態，右邊「詳細」按鈕 */
 .promote-card-foot {
@@ -91,7 +93,7 @@
 }
 .promote-card-foot .tag { font-size: clamp(12px, 4.3cqi, 18px); padding: .15em .9em; }
 .promote-card-foot .staff-btn {
-  min-width: 0; min-height: clamp(40px, 14.5cqi, 56px);
+  min-width: 0; min-height: clamp(38px, 13cqi, 52px);
   padding: 0 clamp(14px, 6.6cqi, 28px);
   font-size: clamp(14px, 5.3cqi, 22px);
 }

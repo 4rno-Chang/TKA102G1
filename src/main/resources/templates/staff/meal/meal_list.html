@@ -227,7 +227,7 @@
         <p class="meal-flash is-error" th:if="${formError != null}" th:text="${formError}">類別名稱已經有了</p>
 
         <section class="meal-step">
-          <h3><span>1</span>類別</h3>
+          <h3><span>1</span>類別<small>必填</small></h3>
           <div class="meal-type-row">
             <label class="meal-field">
               <span class="sr-only">類別</span>
@@ -268,7 +268,7 @@
           </label>
           <div class="meal-field-row">
             <label class="meal-field">
-              <span>價格</span>
+              <span>價格<b>必填，整數</b></span>
               <span class="meal-money"><input type="number" class="staff-input" name="mealPrice" id="formPrice" min="1" max="99999" step="1" required th:value="${mealForm?.mealPrice}"></span>
             </label>
             <fieldset class="meal-field">

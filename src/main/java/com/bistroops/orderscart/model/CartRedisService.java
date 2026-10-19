@@ -112,4 +112,29 @@ public class CartRedisService {
 	public void clear(String seatingKey) {
 		redisTemplate.delete(cartKey(seatingKey));
 	}
+
+	// ===== 為了防止重複下單：每一組客人送單時放一把「送單中」的鎖 =====
+	//   鎖 3 秒後自動消失：伺服器剛好當掉、沒有解鎖，也不會永遠鎖住這一桌。
+	private static final Duration SUBMIT_LOCK_TIME = Duration.ofSeconds(3);
+
+	private String submitLockKey(String seatingKey) {
+		return "order:submitting:" + seatingKey;
+	}
+
+	// 放鎖：成功回傳 true；已經有人在送單（鎖還在）回傳 false
+	//   setIfAbsent 就是 Redis 的 SET key value NX EX 10：key 不存在才寫入，「檢查」和「寫入」一次完成，兩個人不會同時拿到
+	public boolean lockSubmit(String seatingKey) {
+		Boolean ok = redisTemplate.opsForValue().setIfAbsent(submitLockKey(seatingKey), "1", SUBMIT_LOCK_TIME);
+		return Boolean.TRUE.equals(ok);
+	}
+
+	// 解鎖：送單結束（成功或失敗）時呼叫
+	public void unlockSubmit(String seatingKey) {
+		redisTemplate.delete(submitLockKey(seatingKey));
+	}
+
+	// 這一組是不是正在送單
+	public boolean isSubmitting(String seatingKey) {
+		return Boolean.TRUE.equals(redisTemplate.hasKey(submitLockKey(seatingKey)));
+	}
 }

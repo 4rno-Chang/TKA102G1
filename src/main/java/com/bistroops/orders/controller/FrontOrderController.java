@@ -59,6 +59,7 @@ public class FrontOrderController {
     private static final String SEATING_KEY = "orderSeatingKey";  // session 裡「這一組的代號」的名字
     private static final int COMMENT_MAX = 30;                     // 備註最多 30 個字
     private static final String BACK = "redirect:/bistroops/order";
+    private static final String SUBMITTING_MSG = "同桌有人正在送出訂單，請稍候再試。";
 	
 	//進入頁面
 	@GetMapping("/order")
@@ -139,6 +140,11 @@ public class FrontOrderController {
 	        ra.addFlashAttribute("message", "這道菜目前沒有供應。");
 	        return BACK;
 	    }
+	    // 為了防止重複下單：同桌有人正在送出訂單時，先不能改購物車（送單途中加的菜可能還沒寫進訂單就被清空）
+	    if (cartRedisService.isSubmitting(frontSeatService.getSeatingKey(seat))) {
+	        ra.addFlashAttribute("message", SUBMITTING_MSG);
+	        return BACK;
+	    }
 
 	    cartRedisService.add(frontSeatService.getSeatingKey(seat), mealNo, num, cleanComment(comment));
 	    cartWebSocketHandler.notifyCartChanged(frontSeatService.getSeatingKey(seat));
@@ -156,6 +162,11 @@ public class FrontOrderController {
 	    SeatVO seat = checkedSeat(session, ra);
 	    if (seat == null) {
 	        return BACK;
+	    }
+	    // 為了防止重複下單：同桌有人正在送出訂單時，先不能改購物車（送單途中加的菜可能還沒寫進訂單就被清空）
+	    if (cartRedisService.isSubmitting(frontSeatService.getSeatingKey(seat))) {
+	        ra.addFlashAttribute("message", SUBMITTING_MSG);
+	        return BACK + "?open=cart";
 	    }
 	    if (mealNo != null && num != null) {
 	        // num 是 0 以下 → 移除；超過 10 → 10（都在 CartRedisService.update 裡處理）
@@ -175,6 +186,11 @@ public class FrontOrderController {
 	    if (seat == null) {
 	        return BACK;
 	    }
+	    // 為了防止重複下單：同桌有人正在送出訂單時，先不能改購物車（送單途中加的菜可能還沒寫進訂單就被清空）
+	    if (cartRedisService.isSubmitting(frontSeatService.getSeatingKey(seat))) {
+	        ra.addFlashAttribute("message", SUBMITTING_MSG);
+	        return BACK + "?open=cart";
+	    }
 	    if (mealNo != null) {
 	        cartRedisService.remove(frontSeatService.getSeatingKey(seat), mealNo, cleanComment(oldComment));
 	        cartWebSocketHandler.notifyCartChanged(frontSeatService.getSeatingKey(seat));
@@ -188,6 +204,11 @@ public class FrontOrderController {
 	    SeatVO seat = checkedSeat(session, ra);
 	    if (seat == null) {
 	        return BACK;
+	    }
+	    // 同桌有人正在送出訂單時，先不能改購物車
+	    if (cartRedisService.isSubmitting(frontSeatService.getSeatingKey(seat))) {
+	        ra.addFlashAttribute("message", SUBMITTING_MSG);
+	        return BACK + "?open=cart";
 	    }
 	    cartRedisService.clear(frontSeatService.getSeatingKey(seat));
 	    cartWebSocketHandler.notifyCartChanged(frontSeatService.getSeatingKey(seat));
@@ -204,14 +225,27 @@ public class FrontOrderController {
 	    
 	    Integer memNo = (Integer) session.getAttribute("memberNo");    // 沒有登入是 null
 	    MemberVO member = (memNo == null) ? null : memberService.getMemNoQuery(memNo);
-	    String error = frontOrderService.submitOrder(seat, member);
-	    
+
+	    // 為了防止重複下單：送單前先放「送單中」的鎖
+	    String seatingKey = frontSeatService.getSeatingKey(seat);
+	    if (!cartRedisService.lockSubmit(seatingKey)) {
+	        ra.addFlashAttribute("message", SUBMITTING_MSG);
+	        return BACK + "?open=cart";
+	    }
+	    cartWebSocketHandler.notifySubmitting(seatingKey);
+	    String error;
+	    try {
+	        error = frontOrderService.submitOrder(seat, member);   // 有 @Transactional：這行結束時訂單已經寫進資料庫，才解鎖
+	    } finally {
+	        cartRedisService.unlockSubmit(seatingKey);
+	        cartWebSocketHandler.notifyCartChanged(seatingKey);    // 失敗也要通知，同桌其他手機才會解開
+	    }
+
 	    if (error != null) {
 	        ra.addFlashAttribute("message", error);
 	        return BACK + "?open=cart";
 	    }
-	    
-	    cartWebSocketHandler.notifyCartChanged(frontSeatService.getSeatingKey(seat));
+
 	    workboardWS.notifyChanged();
 	    ra.addFlashAttribute("message", "訂單已送出，餐點製作中");
 	    return BACK;

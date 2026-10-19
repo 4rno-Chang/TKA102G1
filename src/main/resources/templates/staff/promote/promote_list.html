@@ -178,9 +178,11 @@
             <h3 class="promote-card-name">
               <span th:text="${p.promoteName}">活動名稱</span><span class="promote-card-no" th:text="|編號 ${p.promoteNo}|">編號 1</span>
             </h3>
+            <!-- 活動期間：開始和結束排在同一行，例如 2026/10/01 ～ 2026/10/10 -->
             <p class="promote-card-period">
-              <span th:text="${#temporals.format(p.promoteBegin, 'yyyy/MM/dd')}">2026/10/01</span> <small>起</small><br>
-              <span th:text="${#temporals.format(p.promoteEnd, 'yyyy/MM/dd')}">2026/10/10</span> <small>止</small>
+              <span th:text="${#temporals.format(p.promoteBegin, 'yyyy/MM/dd')}">2026/10/01</span>
+              <small>～</small>
+              <span th:text="${#temporals.format(p.promoteEnd, 'yyyy/MM/dd')}">2026/10/10</span>
             </p>
             <div class="promote-card-foot">
               <span class="tag"
