@@ -149,7 +149,7 @@
 
             <div class="order-detail" hidden>
               <table class="receipt-table">
-                <thead><tr><th>品項</th><th class="num">數量</th><th class="num">單價</th><th class="num">金額</th><th class="num">折扣</th><th>狀態</th></tr></thead>
+                <thead><tr><th>品項</th><th class="num">數量</th><th class="num">單價</th><th class="num">金額</th><th class="num">折扣</th><th class="col-fit">狀態</th><th class="col-fit">送達時間</th></tr></thead>
                 <tbody>
                   <!-- 被取消的餐點仍然列出來（整列劃線變淡） -->
                   <tr th:each="item : ${order.ordersDetails}" th:classappend="${item.odStatus == '已取消'} ? 'row-cancelled'">
@@ -162,7 +162,11 @@
                     <td class="num" th:text="'$'+ ${item.odDiscountPrice}">$620</td>
                     <td class="num" th:text="'$'+ ${item.odDiscountPrice *item.odMealNum}">$1240</td>
                     <td class="num discount" th:text="${item.odDiscountTotal}">0</td>
-                    <td th:text="${item.odStatus}">已送達</td>
+                    <!-- col-fit：狀態、送達時間只佔剛好的寬度，兩欄才會靠在一起（樣式在 orders.css） -->
+                    <td class="col-fit" th:text="${item.odStatus}">已送達</td>
+                    <!-- 送達時間：外場按「確認送達」時記下的時間（odServedAt），客訴上菜太慢時可以對照下單時間
+                         只有「已送達」而且有記到時間才顯示；製作中、等待送餐、已取消、舊資料沒有時間 → 「—」 -->
+                    <td class="col-fit" th:text="${item.odStatus == '已送達' and item.odServedAt != null} ? ${#temporals.format(item.odServedAt,'HH:mm')} : '—'">12:40</td>
                   </tr>
                 </tbody>
               </table>

@@ -169,6 +169,13 @@
   overflow-y: auto;
   overscroll-behavior: contain;   /* 滑到清單的頂端或底端時，不會連帶捲動整個頁面 */
 }
+/* 每張桌子卡片裡的餐點：還沒完成的在上面，已送達、已取消的移到最下面
+   order 只改「看起來」的順序，HTML 裡的順序不變（.dish-list 本來就是 grid，order 可以直接用）
+   li:has(.is-served)：裡面有 .is-served（workboard.html 已送達的按鈕）的那個 li
+   沒設定 order 的 li 預設是 0 → 製作中、等待送餐排最上面，彼此維持原本的順序
+   「已完成訂單」頁的已送達也有 is-served，一樣會排到下面 */
+.dish-list > li:has(.is-served)    { order: 1; }   /* 已送達 */
+.dish-list > li:has(.is-cancelled) { order: 2; }   /* 已取消：排在已送達後面 */
 
 /* 一道餐點 */
 .dish {
