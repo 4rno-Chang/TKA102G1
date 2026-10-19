@@ -106,7 +106,7 @@
       <section class="staff-card">
         <!-- 欄位名稱（手機寬度時隱藏） -->
         <div class="order-row order-row-head">
-          <span>訂單編號</span><span>桌號</span><span>下單時間</span><span class="num">金額</span><span>狀態</span><span></span>
+          <span>訂單編號</span><span>會員名稱</span><span>桌號</span><span>下單時間</span><span class="num">金額</span><span>狀態</span><span></span>
         </div>
 
         <!-- 每一筆訂單一列，點一下可以展開餐點明細。
@@ -125,6 +125,15 @@
           <div class="order-item" th:each="order : ${orderslistAll}">
             <button type="button" class="order-row" data-toggle-order aria-expanded="false">
               <span class="order-id" th:text="${#numbers.formatInteger(order.orders,8)}">訂單編號</span>
+              <!-- 會員名稱：標籤和名字放在同一格（同一個 span 裡，才不會多出一格、把後面的欄位擠歪），標籤就會一直貼著名字
+                   有會員 → 綠色「會員」＋名字（沒填姓名顯示手機）；沒有 → 只有灰色「非會員」
+                   樣式是 staff.css 的 .tag-green、.tag-gray -->
+              <span class="order-member">
+                <span class="tag" th:classappend="${order.member != null} ? 'tag-green' : 'tag-gray'"
+                      th:text="${order.member != null} ? '會員' : '非會員'">非會員</span>
+                <span th:if="${order.member != null}"
+                      th:text="${order.member.memName != null and !order.member.memName.isBlank()} ? ${order.member.memName} : ${order.member.memTel}">王小明</span>
+              </span>
               <span><span class="badge badge-table" th:text="${order.seatNo.seatNo}">A1</span></span>
               <span th:text="${#temporals.format(order.ordersTime,'HH:mm')}">12:30</span>
               <span class="num order-amount" th:text="'$' + ${order.ordersActualPrice}">$1,246</span>
