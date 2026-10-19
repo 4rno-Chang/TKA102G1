@@ -122,6 +122,34 @@
                                 th:data-rating="${fb.feeRating}"
                                 th:data-content="${fb.feeContent}">查看</button>
 
+                        <!-- 這張訂單的餐點明細：餐點是一整張清單，不好塞進 data-*，所以先用 Thymeleaf 畫在 <template> 裡
+                             <template> 裡的東西瀏覽器不會顯示；按「查看」時 feedback.js 複製一份放進彈窗的 #d-detail
+                             ordersDetails 是 EAGER，查回饋時就一起查出來了，Controller 不用改
+                             被取消的餐點也列出來（整列劃線變淡）：客人可能就是因為這道被取消才給低分 -->
+                        <template class="fb-detail">
+                            <table class="receipt-table">
+                                <thead><tr><th>品項</th><th class="num">數量</th><th class="num">單價</th><th class="num">金額</th><th>狀態</th></tr></thead>
+                                <tbody>
+                                <tr th:each="item : ${fb.orders.ordersDetails}" th:classappend="${item.odStatus == '已取消'} ? 'row-cancelled'">
+                                    <td>
+                                        <span th:text="${item.meal.mealName}">品名</span>
+                                        <!-- 餐點備註（例如「不要香菜」），沒有就不顯示 -->
+                                        <small class="dish-note" th:if="${!#strings.isEmpty(item.odComment)}" th:text="${item.odComment}">備註</small>
+                                    </td>
+                                    <td class="num" th:text="|× ${item.odMealNum}|">× 1</td>
+                                    <td class="num" th:text="'$' + ${item.odDiscountPrice}">$620</td>
+                                    <td class="num" th:text="'$' + ${item.odDiscountPrice * item.odMealNum}">$620</td>
+                                    <td th:text="${item.odStatus}">已送達</td>
+                                </tr>
+                                </tbody>
+                            </table>
+                            <p class="detail-sum">
+                                總價 <span th:text="'$' + ${fb.orders.ordersTotal}">$0</span>　
+                                折扣 <span th:text="'$' + ${fb.orders.ordersDiscountTotal}">$0</span>　
+                                實付 <strong th:text="'$' + ${fb.orders.ordersActualPrice}">$0</strong>
+                            </p>
+                        </template>
+
                         <form th:action="@{/staff/feedback/delete}" method="post"
                               onsubmit="return confirm('確定要刪除這筆回饋嗎？');">
                             <input type="hidden" name="feedbackNo" th:value="${fb.feedbackNo}">
@@ -164,6 +192,9 @@
                 <dt>評分</dt><dd id="d-rating" class="stars"></dd>
                 <dt>回饋內容</dt><dd id="d-content"></dd>
             </dl>
+            <!-- 訂單明細：按「查看」時 feedback.js 把那一列 <template class="fb-detail"> 的內容放進來 -->
+            <h3 class="detail-title">訂單明細</h3>
+            <div id="d-detail"></div>
         </div>
         <div class="dlg-foot">
             <button type="button" class="btn btn-light" id="btnCloseDialog">關閉</button>
