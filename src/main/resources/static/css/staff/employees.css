@@ -91,6 +91,8 @@
 	margin-bottom: 16px;
 }
 
+.employee-form-group[hidden] { display: none; }
+
 .employee-form-group input {
 	padding: 10px;
 	border: 1px solid #ddd;
@@ -121,11 +123,26 @@
 }
 
 /* ===== 員工權限勾選清單 ===== */
-#employeePermissionList {
+#employeePermissionList, #employeeInitialPermissionList {
 	display: grid;
 	grid-template-columns: repeat(2, minmax(0, 1fr));
 	gap: 12px;
 	margin: 20px 0;
+}
+
+#employeeInitialPermissions {
+    border: 0;
+    padding: 0;
+    margin: 0;
+    min-width: 0;
+}
+#employeeInitialPermissions[hidden] { display: none; }
+#employeeInitialPermissions legend { padding: 0; }
+#employeeInitialPermissions .employee-permission-item { margin: 0; }
+#employeeInitialPermissionHint { font-size: 13px; color: #666; }
+#employeeInitialPermissionError { color: #a52a2a; font-size: 14px; }
+#employeeInitialPermissions[aria-invalid="true"] .employee-permission-item {
+    border-color: #a52a2a;
 }
 
 .employee-permission-item {
@@ -146,7 +163,7 @@
 }
 
 @media ( max-width : 600px) {
-	#employeePermissionList {
+	#employeePermissionList, #employeeInitialPermissionList {
 		grid-template-columns: 1fr;
 	}
 }

@@ -154,6 +154,15 @@
 				</div>
 
 				<div class="employee-form-group">
+					<fieldset id="employeeInitialPermissions" aria-describedby="employeeInitialPermissionHint employeeInitialPermissionError">
+						<legend>初始權限 *</legend>
+						<div id="employeeInitialPermissionList"></div>
+						<p id="employeeInitialPermissionHint">至少勾選一項，日後仍可透過「權限」調整。</p>
+						<p id="employeeInitialPermissionError" role="alert" hidden>請至少勾選一項員工權限</p>
+					</fieldset>
+				</div>
+
+				<div class="employee-form-group">
 					<label for="empPhoto">員工照片（選填）</label>
 
 					<div class="employee-photo-actions">

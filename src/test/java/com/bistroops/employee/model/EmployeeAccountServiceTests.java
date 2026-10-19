@@ -11,6 +11,65 @@ import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 
 class EmployeeAccountServiceTests {
     @Test
+    void invalidInitialPermissionsNeverCreateEmployeeOrSendMail() {
+        EmployeeRepository repository = mock(EmployeeRepository.class);
+        var permissions = mock(com.bistroops.permission.model.PermissionRepository.class);
+        EmployeeService service = new EmployeeService(repository, mock(EmployeePermissionRepository.class),
+                permissions, PasswordEncoderFactories.createDelegatingPasswordEncoder());
+        EmployeeMailService mail = mock(EmployeeMailService.class);
+        EmployeeAccountService accounts = new EmployeeAccountService(service, mail);
+        for (java.util.List<Integer> selection : java.util.Arrays.asList(null,
+                java.util.List.<Integer>of(), java.util.List.of(8), java.util.Arrays.asList(1, null),
+                java.util.List.of(1))) {
+            assertThrows(IllegalArgumentException.class, () -> accounts.createEmployee(new EmployeeVO(), selection));
+        }
+        verifyNoInteractions(repository, mail);
+    }
+
+    @Test
+    void initialPermissionsAreAssignedBeforeMailAndDuplicatesAreIgnored() {
+        EmployeeRepository repository = mock(EmployeeRepository.class);
+        var permissionRepository = mock(com.bistroops.permission.model.PermissionRepository.class);
+        EmployeeService service = new EmployeeService(repository, mock(EmployeePermissionRepository.class),
+                permissionRepository, PasswordEncoderFactories.createDelegatingPasswordEncoder());
+        var permission = new com.bistroops.permission.model.PermissionVO();
+        permission.setPermNo(3);
+        when(permissionRepository.findAllById(java.util.Set.of(3))).thenReturn(java.util.List.of(permission));
+        when(repository.save(any())).thenAnswer(invocation -> {
+            EmployeeVO employee = invocation.getArgument(0);
+            employee.setEmpNo(9);
+            return employee;
+        });
+        EmployeeMailService mail = mock(EmployeeMailService.class);
+        when(mail.sendTemporaryPassword(any(), anyString())).thenAnswer(invocation -> {
+            EmployeeVO saved = invocation.getArgument(0);
+            assertEquals(1, saved.getEmployeepermissions().size());
+            var assigned = saved.getEmployeepermissions().iterator().next();
+            assertEquals(3, assigned.getIds().getPermNo());
+            assertEquals(9, assigned.getIds().getEmpNo());
+            assertSame(saved, assigned.getEmployee());
+            return true;
+        });
+        EmployeeVO employee = new EmployeeVO();
+        employee.setEmpTel("0912345678");
+        employee.setEmpEmail("employee@example.com");
+        assertTrue(new EmployeeAccountService(service, mail)
+                .createEmployee(employee, java.util.List.of(3, 3)).emailSent());
+        var order = inOrder(repository, mail);
+        order.verify(repository, times(2)).save(employee);
+        order.verify(mail).sendTemporaryPassword(eq(employee), anyString());
+    }
+
+    @Test
+    void creationRequestReadsExistingFieldsAndInitialPermissions() throws Exception {
+        var mapper = new tools.jackson.databind.json.JsonMapper();
+        var request = mapper.readValue("{\"empName\":\"測試\",\"empTel\":\"0912345678\",\"permissions\":[1,3]}",
+                com.bistroops.employee.controller.EmployeeController.CreateEmployeeRequest.class);
+        assertEquals("測試", request.employee.getEmpName());
+        assertEquals(java.util.List.of(1, 3), request.permissions);
+    }
+
+    @Test
     void gmailDefaultsSendFromConfiguredAccountWithoutNetworkAccess() throws Exception {
         try (var context = new org.springframework.context.annotation.AnnotationConfigApplicationContext()) {
             org.springframework.test.context.support.TestPropertySourceUtils.addInlinedPropertiesToEnvironment(
@@ -48,11 +107,11 @@ class EmployeeAccountServiceTests {
         EmployeeVO employee = new EmployeeVO();
         employee.setEmpNo(7);
         employee.setEmpEmail("employee@example.com");
-        when(service.addEmployee(eq(employee), anyString())).thenReturn(employee);
+        when(service.addEmployeeWithPermissions(eq(employee), anyString(), eq(java.util.List.of(1, 3)))).thenReturn(employee);
         when(mail.sendTemporaryPassword(eq(employee), anyString())).thenReturn(true);
-        var result = accounts.createEmployee(employee);
+        var result = accounts.createEmployee(employee, java.util.List.of(1, 3));
         ArgumentCaptor<String> password = ArgumentCaptor.forClass(String.class);
-        verify(service).addEmployee(eq(employee), password.capture());
+        verify(service).addEmployeeWithPermissions(eq(employee), password.capture(), eq(java.util.List.of(1, 3)));
         verify(mail).sendTemporaryPassword(employee, password.getValue());
         assertTrue(password.getValue().matches("^(?=.*[A-Za-z])(?=.*[0-9])[A-Za-z0-9]{12}$"));
         assertEquals(7, result.empNo());
@@ -70,15 +129,15 @@ class EmployeeAccountServiceTests {
         EmployeeAccountService accounts = new EmployeeAccountService(service, mail);
         EmployeeVO employee = new EmployeeVO();
         employee.setEmpNo(7);
-        when(service.addEmployee(eq(employee), anyString())).thenReturn(employee);
+        when(service.addEmployeeWithPermissions(eq(employee), anyString(), eq(java.util.List.of(1, 3)))).thenReturn(employee);
         when(service.resetPassword(eq(7), anyString())).thenReturn(employee);
-        var failed = accounts.createEmployee(employee);
+        var failed = accounts.createEmployee(employee, java.util.List.of(1, 3));
         assertFalse(failed.emailSent());
         assertTrue(failed.message().contains("員工已新增"));
         assertTrue(failed.message().contains("忘記密碼"));
         when(mail.sendTemporaryPassword(eq(employee), anyString())).thenReturn(true);
         assertTrue(accounts.resetPassword(7).emailSent());
-        verify(service, times(1)).addEmployee(eq(employee), anyString());
+        verify(service, times(1)).addEmployeeWithPermissions(eq(employee), anyString(), eq(java.util.List.of(1, 3)));
     }
 
     @Test

@@ -19,9 +19,9 @@ public class EmployeeAccountService {
 
     public record DeliveryResult(Integer empNo, boolean emailSent, String message) {}
 
-    public DeliveryResult createEmployee(EmployeeVO employee) {
+    public DeliveryResult createEmployee(EmployeeVO employee, java.util.List<Integer> permissions) {
         String password = generateTemporaryPassword();
-        EmployeeVO saved = employeeService.addEmployee(employee, password);
+        EmployeeVO saved = employeeService.addEmployeeWithPermissions(employee, password, permissions);
         return deliver(saved, password, true);
     }
 
