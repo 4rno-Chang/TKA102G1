@@ -503,8 +503,8 @@ VALUES
     (3, 3, 6, '2026-08-24 20:45:00', '預約', '6人慶生聚餐');
 
 -- 13. 員工 (employee)
--- 五位測試員工初始密碼皆為 Test1234，登入後須修改密碼。
--- emp_email 暫為 NULL；請填入可收信的真實信箱，或登入後在編輯視窗補齊，才能寄送重設通知。
+-- 五位測試員工皆模擬已設定正式密碼，測試密碼為 Test1234；在職者登入不須強制改密碼，3號仍停用不可登入。
+-- カイル、張學長與李木子已填入通知信箱；其餘員工 emp_email 暫為 NULL，需補齊才能寄送重設通知。
 INSERT INTO employee
 (emp_name, emp_password, emp_tel, emp_email, emp_pwd_changed,
  emp_temp_password_expires_at, emp_ice,
@@ -512,23 +512,23 @@ INSERT INTO employee
 VALUES
 ('陳小心',
  '{bcrypt}$2a$10$g2db.AEZVThNjtzx7H4Wn.yZ8Hd1.M3T6FtcxfVuEK5XR7sTFPjNK',
- '0987878787', NULL, FALSE, NULL, '', '', '', 30000, '1', NULL),
+ '0987878787', NULL, TRUE, NULL, '', '', '', 30000, '1', NULL),
 
 ('カイル',
  '{bcrypt}$2a$10$g2db.AEZVThNjtzx7H4Wn.yZ8Hd1.M3T6FtcxfVuEK5XR7sTFPjNK',
- '0911223344', NULL, FALSE, NULL, '愛蜜莉雅', '0987654321', '露格尼卡王國', 40000, '1', NULL),
+ '0911223344', 'kyle880729@gmail.com', TRUE, NULL, '愛蜜莉雅', '0987654321', '露格尼卡王國', 40000, '1', NULL),
 
 ('張學長',
  '{bcrypt}$2a$10$g2db.AEZVThNjtzx7H4Wn.yZ8Hd1.M3T6FtcxfVuEK5XR7sTFPjNK',
- '0987654321', NULL, FALSE, NULL, '', '', '電腦市程式碼街最強社區666號', 100000, '2', NULL),
+ '0987654321', 'kyle880729@gmail.com', TRUE, NULL, '', '', '電腦市程式碼街最強社區666號', 100000, '2', NULL),
 
 ('李木子',
  '{bcrypt}$2a$10$g2db.AEZVThNjtzx7H4Wn.yZ8Hd1.M3T6FtcxfVuEK5XR7sTFPjNK',
- '0900111222', NULL, FALSE, NULL, '', '', '快樂縣可愛鄉聰明路102號', 40000, '1', NULL),
+ '0900111222', 'simpson200023@gmail.com', TRUE, NULL, '', '', '快樂縣可愛鄉聰明路102號', 40000, '1', NULL),
 
 ('強滾滾',
  '{bcrypt}$2a$10$g2db.AEZVThNjtzx7H4Wn.yZ8Hd1.M3T6FtcxfVuEK5XR7sTFPjNK',
- '0933445566', NULL, FALSE, NULL, '張學長', '0987654321',
+ '0933445566', NULL, TRUE, NULL, '張學長', '0987654321',
  '電腦市程式碼街最強社區666號', 50000, '1', NULL);
 
 -- 14. 權限 (permission)
