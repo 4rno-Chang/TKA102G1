@@ -80,6 +80,9 @@ button.order-row:hover { background: #fbf3e2; }
 /* 展開後的餐點明細 */
 .order-detail { margin: 0 10px 16px; padding: 4px 16px 14px; background: var(--st-bg); border-radius: 14px; }
 .order-detail .receipt-table { margin-top: 0; font-size: 15px; }
+/* 明細的「狀態」「送達時間」：width: 1% 讓欄位縮到剛好放得下內容（nowrap 不換行），
+   多出來的寬度留給其他欄，兩欄就會靠在一起 */
+.order-detail .col-fit { width: 1%; white-space: nowrap; padding-left: 14px; }
 .order-detail-sum { margin-top: 12px; text-align: right; }
 .order-detail-sum strong { color: var(--st-red); font-size: 18px; }
 .order-detail-pay { display: block; color: var(--st-muted); font-size: 14px; }

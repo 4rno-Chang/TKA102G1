@@ -56,7 +56,7 @@
 
       <div class="board-cards" id="dbBoardCards">
         <p class="board-empty" th:if="${#lists.isEmpty(workboardlistAll)}"
-           th:text="${view == 'done'} ? '目前沒有待結帳的桌子' : '目前沒有進行中的訂單'">目前沒有進行中的訂單</p>
+           th:text="${view == 'done'} ? '目前沒有未結帳的桌子' : '目前沒有進行中的訂單'">目前沒有進行中的訂單</p>
 
          <article class="table-card" th:each="od : ${workboardlistAll}" th:data-order="${od.orders}"> <!-- WebSocket -->
           <!-- 點這一列可以縮小／展開卡片（由 staff-workboard.js 的 A 區處理，不需要後端） -->
@@ -107,15 +107,20 @@
                   </button>
                 </form>
 
-                <!-- （4）其他情況都不能按：已取消、已送達、外場看到的製作中。
-                     th:unless 的條件就是上面（1）（2）（3）三種情況，符合其中一種就不顯示這一顆。 -->
+                <!-- （4）其他情況都不能按：已取消、已送達、外場看到的製作中，以及「已完成訂單」頁的所有餐點（只能看）。
+                     th:unless 的條件就是上面（1）（2）（3）三種情況，符合其中一種就不顯示這一顆。
+                     顏色和內場、外場一樣：等待送餐 → 黃框（is-to-serve）；已送達 → 劃線變淡（is-served）；已取消 → 虛線（is-cancelled）
+                     等待送餐只有「已完成訂單」頁會走到這裡（內場、外場都是上面可以按的表單） -->
                 <button type="button" class="dish" disabled
                         th:unless="${(view == 'kitchen' and (item.odStatus == '製作中' or item.odStatus == '等待送餐')) or (view == 'floor' and item.odStatus == '等待送餐')}"
-                        th:classappend="${item.odStatus == '已取消'} ? 'is-cancelled' : (${item.odStatus == '已送達' and view != 'done'} ? 'is-served' : '')">
+                        th:classappend="${item.odStatus == '已取消'} ? 'is-cancelled' : (${item.odStatus == '已送達'} ? 'is-served' : (${item.odStatus == '等待送餐'} ? 'is-to-serve' : ''))">
                   <th:block th:replace="~{:: dishInfo}"></th:block>
                   <span class="dish-state" th:if="${item.odStatus == '已取消'}">✕ 已取消</span>
                   <span class="dish-state" th:if="${item.odStatus == '已送達' and view != 'done'}">✓ 已送達</span>
-                  <span class="dish-state" th:if="${item.odStatus == '已送達' and view == 'done'}" th:text="|${#temporals.format(item.odServedAt,'HH:mm')} 送達|">12:40 送達</span>
+                  <!-- 已完成訂單頁：顯示送達時間；舊資料沒有記到送達時間（odServedAt 是 null）就只顯示「已送達」 -->
+                  <span class="dish-state" th:if="${item.odStatus == '已送達' and view == 'done'}"
+                        th:text="${item.odServedAt != null} ? |✓ ${#temporals.format(item.odServedAt,'HH:mm')} 送達| : '✓ 已送達'">✓ 12:40 送達</span>
+                  <span class="dish-state" th:if="${item.odStatus == '等待送餐'}">● 等待送餐</span>
                   <span class="dish-state" th:if="${item.odStatus == '製作中'}">製作中</span>
                 </button>
               </li>

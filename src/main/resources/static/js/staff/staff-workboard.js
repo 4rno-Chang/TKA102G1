@@ -29,7 +29,7 @@
 const VIEWS = {
   kitchen: { hint: '餐點做好後，點一下該道餐點的「出餐」，通知外場送餐。未送達之餐點，再次點擊可退回製作中。' },
   floor:   { hint: '黃框的餐點已經做好，送到桌上後點一下「確認送達」。' },
-  done:    { hint: '餐點已全部送達、尚未結帳的桌子。右側是每道餐點的送達時間。' }
+  done:    { hint: '所有尚未結帳的桌子（只能查看，不能點選）。已送達的餐點右側是送達時間。' }
 };
 
 let currentView = new URLSearchParams(location.search).get('view');
