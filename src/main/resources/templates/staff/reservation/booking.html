@@ -54,12 +54,12 @@
 						th:href="@{/staff/booking/rsv/form(date=${date})}"> ＋ 新增訂位 </a>
 					<form th:if="${smsConsoleMode == true}"
 						th:action="@{/staff/booking/sms/test-reminder}" method="post"
-						data-confirm="要將今日有效訂位提醒輸出到Console嗎？同一筆已處理的提醒會略過。">
+						data-confirm="是否發送今日預約的提醒簡訊？本功能以模擬手機顯示，同一筆已發送的提醒會略過。">
 
 						<input type="hidden" name="bookingToken"
 							th:value="${bookingToken}">
 
-						<button type="submit" class="staff-btn">測試今日訂位提醒</button>
+						<button type="submit" class="staff-btn">發送今日訂位提醒</button>
 					</form>
 				</th:block>
 
