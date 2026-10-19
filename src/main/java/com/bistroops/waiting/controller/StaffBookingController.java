@@ -598,7 +598,7 @@ public String changeStaffReservationStatus(
 	    if (!reservationReminderScheduler.isConsoleMode()) {
 	        throw new ResponseStatusException(
 	                HttpStatus.FORBIDDEN,
-	                "這個入口只允許Console測試模式");
+	                "此功能僅供模擬簡訊模式使用");
 	    }
 
 	    try {
@@ -607,7 +607,7 @@ public String changeStaffReservationStatus(
 
 	        redirect.addFlashAttribute(
 	                "message",
-	                "Console測試完成："
+	                "訂位提醒處理完成："
 	                        + result.sent() + " 筆成功、"
 	                        + result.skipped() + " 筆略過、"
 	                        + result.failed() + " 筆失敗");
