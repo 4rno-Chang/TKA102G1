@@ -91,7 +91,6 @@ button.order-row:hover { background: #fbf3e2; }
 }
 .order-detail-promo-label { color: var(--st-muted); }
 .order-detail-promo-zhe { color: var(--st-red); font-weight: 700; }
-.order-detail-promo-none { color: var(--st-muted); }
 .order-detail-sum { margin-top: 12px; text-align: right; }
 .order-detail-promo + .order-detail-sum { margin-top: 4px; }   /* 有活動折扣那一行時：總金額直接接在它下面 */
 .order-detail-sum strong { color: var(--st-red); font-size: 18px; }
