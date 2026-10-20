@@ -2,7 +2,7 @@
    Bistroops 員工後台：共用程式（每個後台頁面都要載入，而且要放在最前面）
 
    這個檔案分成兩區：
-     A. 共用程式（保留）：小工具、小提示、尚未開放的按鈕、選單的摺疊、時鐘、對話框、送出前先確認、主頁的工作備忘錄
+     A. 共用程式（保留）：小工具、小提示、尚未開放的按鈕、選單的摺疊、時鐘、對話框、送出前先確認、主頁的工作備忘錄、結帳頁的整單折扣
      B. 假資料：示範訂單 StaffStore、訂單狀態的對照表、主頁訂候位的示範數字
 
    對應的 CSS：static/css/staff/staff.css（共用）＋各頁自己的 CSS（checkout.css、orders.css、workboard.css、staff_index.css）
@@ -518,6 +518,75 @@ if (workNote && workNote.dataset.url) {
     navigator.sendBeacon(noteUrl, noteBody());
   });
 }
+
+
+/* ========== A-10. 結帳頁的整單折扣（checkout.html 的「整單折扣」那一行和 #promoteDialog） ==========
+   1. 「加入折扣」打開對話框；×、「取消」關閉
+   2. 加入、取消之後的結果訊息（Controller 的 flash：promoteMsg）用小提示顯示
+   3. 加入、取消活動折扣不整頁重新整理（表單有 data-promote-ajax）：
+      在背景用 fetch 送出 → Controller 照常 redirect 回 /staff/checkout?order=…，fetch 會跟著拿到那一頁的 HTML
+      → 只把會變的幾塊換成新的：左邊的訂單清單（金額）、明細表格、活動折扣那一行、總計、結帳確認的金額
+      會員、刷卡、回饋 QR 的按鈕不換（它們的程式是直接綁在按鈕上的，換掉就失效）。Java 不用改。
+   用 (() => { ... })() 包起來：裡面的變數名稱（dialog…）不會和這個檔案其他地方衝突。 */
+(() => {
+
+// 3. 背景送出（監聽 document、寫在 A-7 後面：A-7 的「確定要取消嗎？」按了確認之後才會跑到這裡）
+const SWAP_PARTS = ['.checkout-list', '.receipt-table', '[data-promote-line]', '.receipt-sum'];
+document.addEventListener('submit', async e => {
+  const form = e.target;
+  if (!form.matches('[data-promote-ajax]')) return;
+  e.preventDefault();                        // 不要整頁送出（A-8 看到也就不會再鎖一次）
+  if (form.dataset.submitting) return;       // 送出中再按：不理它
+  form.dataset.submitting = 'yes';
+  const btn = e.submitter || form.querySelector('[type="submit"]');
+  staffBtnLoading(btn);                      // 按鈕轉圈＋區塊蓋白色（A-8）
+  staffAreaLock(form, e.submitter);
+  try {
+    const res = await fetch(form.action, { method: 'POST', body: new FormData(form) });
+    const page = new DOMParser().parseFromString(await res.text(), 'text/html');
+    if (!page.querySelector('[data-promote-line]')) {   // 拿到的不是結帳頁（例如登入過期被轉到登入頁）：整頁換過去
+      location.href = res.url;
+      return;
+    }
+    SWAP_PARTS.forEach(sel => {
+      const now = document.querySelector(sel), fresh = page.querySelector(sel);
+      if (now && fresh) now.replaceWith(fresh);
+    });
+    // 結帳表單的確認文字裡有實付金額，也要跟著換
+    const payForm = document.querySelector('.receipt-actions'), freshPay = page.querySelector('.receipt-actions');
+    if (payForm && freshPay) payForm.dataset.confirm = freshPay.dataset.confirm;
+
+    const dialog = document.getElementById('promoteDialog');
+    if (dialog && dialog.open) dialog.close();
+    if (dialog) dialog.querySelector('[data-promote-form]').reset();
+    const msg = document.querySelector('[data-promote-line]').dataset.promoteMsg;
+    if (msg) staffToast(msg);
+  } catch (err) {
+    staffAlert('連線失敗，請再試一次');
+  } finally {
+    delete form.dataset.submitting;
+    staffBtnDone(btn);
+    document.querySelectorAll('.is-submitting').forEach(staffAreaUnlock);
+  }
+});
+
+// 2. 結果訊息
+const line = document.querySelector('[data-promote-line]');
+if (line && line.dataset.promoteMsg) staffToast(line.dataset.promoteMsg);
+
+const dialog = document.getElementById('promoteDialog');
+if (!dialog) return;   // 沒選訂單時沒有對話框
+
+// 1. 打開、關閉
+document.addEventListener('click', e => {
+  if (e.target.closest('[data-promote-open]')) {
+    dialog.showModal();
+    return;
+  }
+  if (e.target.closest('[data-promote-close]')) dialog.close();
+});
+
+})();
 
 
 // ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼

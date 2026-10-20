@@ -94,6 +94,8 @@
                             使用者在畫面上只選日期，幾點幾分是 promote.js 補的；還沒選日期時送出的是空的。
                             這個值可以被改，所以 Java 存檔前會自己再把時間設成 00:00 和 23:59。
                             進行中的活動，畫面上開始日期是鎖住的，送出的是原本的開始時間，Java 不會用它。
+           promoteDisc      整單折數，百分比 10～90（80＝8 折、85＝85 折）；沒勾「有整單優惠」時送空的。畫面上打的是 1～9（每次 0.1），promote.js 乘以 10 後放進隱藏欄位
+           promoteRule      整單折扣的條件（最多 100 個字，可以空白）；沒勾「有整單優惠」或沒填折數時不會送出
            promoteContent   活動內容（可以空白）
            upImg            圖片檔案（表單有 enctype="multipart/form-data"）。沒有選檔案時是空的。
                             名稱和 VO 的 promoteImg 不一樣，不會自動放進 VO，Controller 另外用 MultipartFile 接。
@@ -249,17 +251,60 @@
                    按「套用已有活動」       → /staff/promote/add?pick=yes       表單上跳出搜尋的對話框（在這個檔案的最下面）
                    在對話框輸入名稱按搜尋   → 多帶一個 pickKeyword              對話框列出符合的「已經結束」的活動
                    按某一筆的「套用」       → /staff/promote/add?copyFrom=編號  回到表單，活動名稱和活動內容已經帶入
-                 ★ 只帶入「活動名稱」和「活動內容」，不帶圖片；存起來是一筆新的活動，不會改到原本那一個。
-                 ★ 去挑選、按套用都會重新載入頁面，使用者之前選的日期和圖片會不見，所以說明文字請他「先套用，再選擇日期」。
+                 ★ 帶入「活動名稱」「活動內容」「整單折數與條件」，不帶圖片；存起來是一筆新的活動，不會改到原本那一個。
+                   （整單折數與條件要 PromoteController.addPromote 也放進 promoteForm 才會帶入）
+                 ★ promote.js 的 7 會攔下這些連結（data-pick-open／close／apply、data-pick-search）改成在背景做，頁面不重新載入、位置不動：
+                   打開、搜尋 → 在背景要上面的網址，只取出對話框放上來；×、背景、← 返回 → 直接拿掉對話框
+                   套用 → 在背景要 copyFrom 的網址，只把名稱、內容、整單優惠填進目前的表單（日期、圖片不動）
+                   背景要不到（登入過期、斷線）時才照原本的連結整頁換過去，那時日期和圖片會不見。
                  每個連結都帶著 status、keyword、page，套用完「返回活動列表」還是回得到原本那一頁。 -->
             <div class="promote-field" th:if="${promoteForm.promoteNo == null}">
               <span class="promote-label">套用已有活動</span>
               <div class="promote-apply">
-                <a class="staff-btn" th:href="@{/staff/promote/add(pick='yes', status=${param.status}, keyword=${param.keyword}, page=${param.page})}">套用已有活動</a>
-                <span class="promote-auto">可從已經結束的活動套用其活動名稱和活動內容（不會套用圖片）。請先套用，再選擇日期。</span>
+                <a class="staff-btn" data-pick-open th:href="@{/staff/promote/add(pick='yes', copyFrom=${param.copyFrom}, status=${param.status}, keyword=${param.keyword}, page=${param.page})}">套用已有活動</a>
+                <span class="promote-auto">可從已經結束的活動套用其活動名稱、活動內容、整單優惠（不會套用日期和圖片）。</span>
               </div>
             </div>
 
+            <!-- 整單折扣：結帳時店員可以替整張訂單選這個活動打折（一張訂單只能用一個）。畫面行為在 promote.js 的 6
+                 ・勾選「有整單優惠」才展開折數和條件；沒勾 → 送出時折數清空、條件不送（Java 收到 null＝不是整單折扣活動）
+                   修改活動時，有存折數（promoteForm.promoteDisc 不是 null）就預設勾選
+                 ・展開後可以按「收合」摺疊起來，旁邊會顯示摘要（例如「8 折・條件：消費滿 1000 元」），資料不會不見
+                 ・整單折數：數字輸入框，1～9、每次 0.1（打 8＝8 折、8.5＝85 折、8.8＝88 折），可以打字或按上下箭頭；
+                   promote.js 乘以 10 換成百分比放進隱藏欄位 promoteDisc（10～90）送出
+                 ・條件：有填好折數才能寫（沒折數時鎖住，鎖住的欄位不會送出）；可以空白＝無條件（結帳時給店員看）
+                 Java 存檔前也會檢查（PromoteVO 的 @Min、@Max、@Size）：promoteDisc 是 null 或 10～90；promoteRule 最多 100 個字 -->
+            <div class="promote-field promote-disc-box" data-disc-field>
+              <div class="promote-disc-head">
+                <label class="promote-check">
+                  <input type="checkbox" data-disc-toggle th:checked="${promoteForm.promoteDisc != null}">
+                  <span>有整單優惠</span>
+                </label>
+                <span class="promote-auto" data-disc-summary hidden></span>
+                <button type="button" class="promote-fold" data-disc-fold hidden>收合</button>
+              </div>
+
+              <div class="promote-disc-panel" data-disc-panel hidden>
+                <div class="promote-field">
+                  <label class="promote-label" for="promoteDiscInput">整單折數 <b>*</b></label>
+                  <span class="promote-disc">
+                    <!-- 數字輸入框：可以打字，也可以按右邊的上下箭頭（或鍵盤上下鍵）每次加減 0.1；1～9 之間 -->
+                    <input type="number" class="staff-input" id="promoteDiscInput" min="1" max="9" step="0.1"
+                           autocomplete="off" placeholder="8.5" data-disc-input>
+                    <span>折</span>
+                    <output class="promote-disc-result" data-disc-result>1～9 折，每次 0.1（8.5＝85 折）</output>
+                  </span>
+                  <input type="hidden" name="promoteDisc" data-disc-value th:value="${promoteForm.promoteDisc}">
+                </div>
+                <div class="promote-field">
+                  <label class="promote-label" for="promoteRule">活動條件<small>最多 100 個字，空白＝無條件；結帳時給店員看</small></label>
+                  <input type="text" class="staff-input" id="promoteRule" name="promoteRule" maxlength="100" autocomplete="off"
+                         placeholder="例如：消費滿 1000 元、出示學生證" th:value="${promoteForm.promoteRule}" data-rule-input>
+                </div>
+              </div>
+            </div>
+
+            <!-- 活動內容放在最後面寫 -->
             <div class="promote-field">
               <label class="promote-label" for="promoteContent">活動內容</label>
               <textarea class="staff-input" id="promoteContent" name="promoteContent" rows="6"
@@ -315,19 +360,20 @@
        ================================================================ -->
   <div class="promote-modal" th:if="${pickList != null}">
     <!-- 半透明的背景，點一下會關閉對話框 -->
-    <a class="promote-backdrop" th:href="@{/staff/promote/add(status=${param.status}, keyword=${param.keyword}, page=${param.page})}" aria-label="關閉"></a>
+    <a class="promote-backdrop" data-pick-close th:href="@{/staff/promote/add(copyFrom=${param.copyFrom}, status=${param.status}, keyword=${param.keyword}, page=${param.page})}" aria-label="關閉"></a>
 
     <section class="promote-dialog" role="dialog" aria-modal="true" aria-labelledby="pickHeading">
       <header class="promote-head">
         <h2 class="promote-title" id="pickHeading">套用已有活動</h2>
-        <a class="promote-close" th:href="@{/staff/promote/add(status=${param.status}, keyword=${param.keyword}, page=${param.page})}" aria-label="關閉">×</a>
+        <a class="promote-close" data-pick-close th:href="@{/staff/promote/add(copyFrom=${param.copyFrom}, status=${param.status}, keyword=${param.keyword}, page=${param.page})}" aria-label="關閉">×</a>
       </header>
 
       <div class="promote-view">
         <div class="promote-body">
           <!-- 按「搜尋」或在搜尋框按 Enter 才會查 -->
-          <form class="promote-search" th:action="@{/staff/promote/add}" method="get">
+          <form class="promote-search" th:action="@{/staff/promote/add}" method="get" data-pick-search>
             <input type="hidden" name="pick" value="yes">
+            <input type="hidden" name="copyFrom" th:value="${param.copyFrom}">
             <input type="hidden" name="status" th:value="${param.status}">
             <input type="hidden" name="keyword" th:value="${param.keyword}">
             <input type="hidden" name="page" th:value="${param.page}">
@@ -344,13 +390,16 @@
             <li class="promote-pick-item" th:each="p : ${pickList}">
               <span class="promote-pick-name" th:text="${p.promoteName}">活動名稱</span>
               <span class="promote-pick-end" th:text="|${#temporals.format(p.promoteEnd, 'yyyy/MM/dd')} 結束|">2026/09/30 結束</span>
-              <a class="staff-btn" th:href="@{/staff/promote/add(copyFrom=${p.promoteNo}, status=${param.status}, keyword=${param.keyword}, page=${param.page})}">套用</a>
+              <!-- 有整單優惠的活動多一個標籤，例如「整單 8 折」 -->
+              <span class="tag tag-green" th:if="${p.promoteDisc != null}"
+                    th:text="|整單 ${p.promoteDisc % 10 == 0 ? p.promoteDisc / 10 : p.promoteDisc} 折|">整單 8 折</span>
+              <a class="staff-btn" data-pick-apply th:href="@{/staff/promote/add(copyFrom=${p.promoteNo}, status=${param.status}, keyword=${param.keyword}, page=${param.page})}">套用</a>
             </li>
           </ul>
         </div>
 
         <footer class="promote-foot">
-          <a class="staff-btn" th:href="@{/staff/promote/add(status=${param.status}, keyword=${param.keyword}, page=${param.page})}">← 返回</a>
+          <a class="staff-btn" data-pick-close th:href="@{/staff/promote/add(copyFrom=${param.copyFrom}, status=${param.status}, keyword=${param.keyword}, page=${param.page})}">← 返回</a>
         </footer>
       </div>
     </section>

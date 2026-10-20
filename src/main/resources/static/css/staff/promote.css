@@ -287,6 +287,26 @@
 
 /* 開始、結束日期左右並排（align-items: start：一邊多了一行說明時，另一邊不會被拉高） */
 .promote-field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }
+/* 整單優惠（promote.js 的 6）：外面一個框；上面一列是勾選、摘要、收合，下面是可以展開的折數和條件 */
+.promote-disc-box { padding: 14px 16px; border: 1px solid var(--st-border); border-radius: 14px; background: var(--st-card); }
+.promote-disc-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.promote-check { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; cursor: pointer; }
+.promote-check input { width: 20px; height: 20px; accent-color: var(--st-red); cursor: pointer; }
+.promote-fold {
+  margin-left: auto; padding: 4px 12px;
+  border: 1px solid var(--st-border); border-radius: 999px;
+  background: none; color: var(--st-muted); font: inherit; font-size: 14px; cursor: pointer;
+}
+.promote-fold:hover { border-color: var(--st-text); color: var(--st-text); }
+.promote-disc-panel { display: grid; gap: 14px; margin-top: 14px; padding-top: 14px; border-top: 1px dashed var(--st-border); }
+.promote-disc-panel[hidden] { display: none; }
+/* 折數：數字輸入框（右邊有上下箭頭）＋「折」，右邊即時顯示「＝ 85 折」或錯誤 */
+.promote-disc { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+.promote-disc .staff-input { width: 80px; height: 38px; padding: 0 4px 0 10px; border-radius: 10px; text-align: center; }
+/* 條件還不能寫（沒填折數）時：變灰 */
+.promote-field .staff-input:disabled { background: var(--st-soft); color: var(--st-muted); cursor: not-allowed; }
+.promote-disc-result { color: var(--st-muted); font-size: 14px; }
+.promote-disc-result.is-error { color: var(--st-red); }
 /* 欄位下面的小字提示（圖片要用 16:9） */
 .promote-hint { color: var(--st-red); font-size: 13px; line-height: 1.6; }
 

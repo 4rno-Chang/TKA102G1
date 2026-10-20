@@ -88,7 +88,7 @@
 
 
 /* 回饋 QR 對話框（staff.css 的 * { margin: 0 } 會讓 dialog 不置中，要補 margin: auto） */
-.qr-dialog { position: relative; margin: auto; padding: 22px 24px; width: min(360px, 92vw); text-align: center;
+.qr-dialog { position: fixed; margin: auto; padding: 22px 24px; width: min(360px, 92vw); text-align: center;
              background: var(--st-card); border: 1px solid var(--st-border);
              border-radius: var(--st-radius); box-shadow: var(--st-shadow); }
 .qr-dialog::backdrop { background: rgba(59, 47, 42, .45); }
@@ -109,7 +109,7 @@
 .receipt-actions .btn-feedback-qr:hover { background: #54443c; border-color: #54443c; }
 
 /* 會員：輸入手機號碼的對話框（外框和 QR 對話框一樣） */
-.member-dialog { position: relative; margin: auto; padding: 22px 24px; width: min(380px, 92vw); text-align: center;
+.member-dialog { position: fixed; margin: auto; padding: 22px 24px; width: min(380px, 92vw); text-align: center;
                  background: var(--st-card); color: var(--st-text); border: 1px solid var(--st-border);
                  border-radius: var(--st-radius); box-shadow: var(--st-shadow); }
 .member-dialog::backdrop { background: rgba(59, 47, 42, .45); }
@@ -160,3 +160,57 @@
   .no-print { display: none !important; }
 }
 
+
+/* ========== 整單折扣（明細下方的那一行、#promoteDialog 對話框；程式在 staff.js 的 A-10） ========== */
+/* 明細表格下方、總金額上方的那一行：左邊「整單折扣」，接著活動名稱、幾折、折掉的金額，最右邊是按鈕 */
+.promo-line {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px;
+  margin-top: 12px; padding: 10px 6px;
+  border-top: 1px dashed var(--st-border);
+}
+.promo-line-label { color: var(--st-muted); font-size: 14px; }
+/* 明細表格最後一列的整單折扣
+   和上面品項之間兩條虛線：一條是上一列原本的底線，另一條用背景畫在這一列頂端往下 4px 的地方
+   和下面「整單折扣」那一行之間一條虛線：這一列不要底線，只留 .promo-line 的上框線
+   上下置中：上面從第二條虛線（4px）算起留 12px、下面 .promo-line 的 margin-top 已有 12px，所以下方不留 padding */
+.receipt-table .promo-row td {
+  border-bottom: none;
+  padding-top: 16px;
+  padding-bottom: 0;
+  font-weight: 700;
+  background: repeating-linear-gradient(to right, var(--st-border) 0 3px, transparent 3px 6px) left top 4px / 100% 1px no-repeat;
+}
+/* 數量＋單價合併的格子：置中 */
+.receipt-table .promo-row-zhe { color: var(--st-red); text-align: center; }
+.promo-line-none { color: var(--st-muted); }
+.promo-line .staff-btn,
+.promo-line-form { margin-left: auto; }
+.promo-line .staff-btn { min-width: 0; min-height: 40px; padding: 0 16px; font-size: 15px; }
+.promo-line-form .staff-btn { margin-left: 0; }
+
+/* 對話框（外觀和會員的對話框相同） */
+.promo-dialog {
+  position: fixed; margin: auto;   /* 一定要 fixed（瀏覽器原本的設定）：寫 relative 的話，打開對話框時畫面會被拉到最上面 */
+  width: min(440px, 92vw); padding: 22px 24px;
+  border: none; border-radius: var(--st-radius);
+  background: var(--st-card); color: var(--st-text);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, .2);
+}
+.promo-dialog::backdrop { background: rgba(59, 47, 42, .45); }
+.promo-dialog-tip { margin: 4px 0 14px; color: var(--st-muted); font-size: 14px; }
+
+/* 每個活動一列：左邊 radio，右邊名稱、幾折、條件；選到的那一列變成黃框 */
+.promo-options { display: grid; gap: 8px; max-height: 50vh; overflow-y: auto; }
+.promo-option {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--st-border); border-radius: 12px;
+  cursor: pointer;
+}
+.promo-option:has(input:checked) { border-color: var(--st-yellow); background: #fdf6e7; }
+.promo-option input { flex: none; width: 20px; height: 20px; margin-top: 2px; accent-color: var(--st-red); }
+.promo-option-body { display: grid; gap: 2px; min-width: 0; }
+.promo-option-head { display: flex; align-items: baseline; gap: 10px; }
+.promo-option-zhe { color: var(--st-red); font-weight: 700; }
+.promo-option small { color: var(--st-muted); font-size: 13px; overflow-wrap: anywhere; }
+.promo-empty { padding: 16px; color: var(--st-muted); text-align: center; }

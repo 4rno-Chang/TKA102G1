@@ -40,6 +40,7 @@ public class PromoteService {
 	
 	// 新增一筆活動
 	@Transactional
+	// 新增活動：整單折數、條件跟著整個 VO 一起存；條件沒填（空字串）存成 null，「無條件自動套用」才判斷得出來
 	public PromoteVO addPromote(PromoteVO promote, byte[] img) throws IOException {
 	    LocalDate begin = promote.getPromoteBegin().toLocalDate();
 	    LocalDate end = promote.getPromoteEnd().toLocalDate();
@@ -48,6 +49,10 @@ public class PromoteService {
 	    promote.setPromoteName(promote.getPromoteName().trim());
 	    promote.setPromoteBegin(begin.atStartOfDay());
 	    promote.setPromoteEnd(end.atTime(23, 59));
+	    
+	    if (promote.getPromoteRule() != null && promote.getPromoteRule().isBlank()) {
+	    	promote.setPromoteRule(null);
+	    }
 	    
 	    if(promote.getPromoteContent() != null) {
 	        promote.setPromoteContent(promote.getPromoteContent().trim());
@@ -111,6 +116,7 @@ public class PromoteService {
 		
 		return promoteRepository.findById(promoteNo).orElse(null);
 	}
+
 	
 	//用編號查一筆活動的圖片
 	public byte[] getPromoteImgByNo(Integer promoteNo) {
@@ -123,10 +129,12 @@ public class PromoteService {
 	}
 	
 	//修改一筆活動
+	//   整單折數、條件也會一起改；已經被訂單用過的活動改折數不會影響那些訂單（訂單存的是當時的快照 orders_promote_disc）
 	@Transactional
 	public PromoteVO updatePromote(Integer promoteNo, String promoteName, 
 									String promoteContent, LocalDateTime promoteBegin, 
-									LocalDateTime promoteEnd, byte[] img) throws IOException{
+									LocalDateTime promoteEnd, byte[] img ,Integer promoteDisc,
+									String promoteRule) throws IOException{
 		PromoteVO promote = getPromoteByNo(promoteNo); 
 		if (promote == null) {
 			return null; // 找不到該活動，回傳 null
@@ -140,7 +148,11 @@ public class PromoteService {
 		promote.setPromoteName(promoteName.trim());
 		promote.setPromoteEnd(promoteEnd.toLocalDate().atTime(23, 59));
 		promote.setPromoteContent(promoteContent != null ? promoteContent.trim() : null);
-
+		promote.setPromoteDisc(promoteDisc);
+		
+		promote.setPromoteRule((promoteRule == null || promoteRule.isBlank())
+								? null : promoteRule.trim());
+		
 		if (status.equals("未開始")) {
 	        promote.setPromoteBegin(promoteBegin.toLocalDate().atStartOfDay());
 	    }
@@ -262,6 +274,30 @@ public class PromoteService {
 		if (names.isEmpty()) return null;
 		return "改了日期之後，「" + String.join("、", names) + "」也參加了時間重疊的其他活動，"
 		            + "重疊的期間前台會用比較低的價格。確定要儲存的話，請按下方的「仍要儲存」";
+	}
+	
+	//============整單折扣（結帳時替整張訂單打折）用：只查需要的欄位，不查圖片============
+	//查進行中且有設定活動折數的活動(訂單折價用)
+	public List<OrderPromoteOptionDTO> getDiscOptions() {
+		return promoteRepository.findPromoteOptions(LocalDateTime.now());
+	}
+	
+	//查出有設定折數但沒有設定條件的活動，依折價力度排列(訂單折價用)
+	public OrderPromoteOptionDTO getAutoApplyPromote() {
+		List<OrderPromoteOptionDTO> list = 
+				promoteRepository.findAutoApplyPromotes(LocalDateTime.now());
+		return list.isEmpty() ? null : list.get(0);   // 查詢已經排好：第一筆就是折數最多的
+	}
+	
+	//用活動編號查出一個活動的打折跟打折條件(不包含其他欄位)
+	public OrderPromoteOptionDTO getDiscInfo(Integer promoteNo) {
+		return (promoteNo == null) ? null : promoteRepository.findDiscInfoByNo(promoteNo);
+	}
+	
+	//拿活動的「參照」給訂單 setPromote 用：只知道編號、不會去資料庫查
+	//不要讀它的其他欄位（名稱、折數…），在交易外面讀會出現 LazyInitializationException
+	public PromoteVO getPromoteRef(Integer promoteNo) {
+		return promoteRepository.getReferenceById(promoteNo);
 	}
 	
 }

@@ -83,7 +83,17 @@ button.order-row:hover { background: #fbf3e2; }
 /* 明細的「狀態」「送達時間」：width: 1% 讓欄位縮到剛好放得下內容（nowrap 不換行），
    多出來的寬度留給其他欄，兩欄就會靠在一起 */
 .order-detail .col-fit { width: 1%; white-space: nowrap; padding-left: 14px; }
+/* 活動折扣那一行（總金額的上面）：靠右，和總金額對齊 */
+.order-detail-promo {
+  display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 4px 12px;
+  margin-top: 12px;
+  font-size: 15px;   /* 和上面的明細表格（.order-detail .receipt-table）一樣大 */
+}
+.order-detail-promo-label { color: var(--st-muted); }
+.order-detail-promo-zhe { color: var(--st-red); font-weight: 700; }
+.order-detail-promo-none { color: var(--st-muted); }
 .order-detail-sum { margin-top: 12px; text-align: right; }
+.order-detail-promo + .order-detail-sum { margin-top: 4px; }   /* 有活動折扣那一行時：總金額直接接在它下面 */
 .order-detail-sum strong { color: var(--st-red); font-size: 18px; }
 .order-detail-pay { display: block; color: var(--st-muted); font-size: 14px; }
 /* 明細裡被刪除的餐點：整列變淡，品名和金額劃線 */

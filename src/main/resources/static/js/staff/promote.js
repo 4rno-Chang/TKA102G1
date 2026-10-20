@@ -13,6 +13,7 @@
      3. 選了圖片之後，檢查檔案並在預覽框顯示新選的那一張
      4. 日期選擇：自己做的月曆（只選年月日，不能選今天以前，結束日期最早是開始日期的隔天）
      5. 活動詳細的對話框：打開、關閉都不重新載入整頁（列表頁）
+     6. 整單折數：畫面上打「幾折」，換算成百分比（10～90）送出（表單頁）
    2～4 是表單頁用的，列表頁用不到。頁面上沒有對應的東西時，那一段什麼都不會做。
 
    ★ 這些檢查只是方便使用者，可以被跳過，所以 Java（PromoteController、PromoteService）收到資料後都會再檢查一次。
@@ -98,6 +99,17 @@ function checkPromoteForm(form) {
   const imgInput = form.querySelector('[data-img-input]');
   const sizeError = imgInput && imgInput.files ? checkImgSize(imgInput.files[0]) : '';
   if (sizeError) return sizeError;
+  // 整單優惠（6）：沒勾就不檢查；有勾就一定要填好折數（1～9 折或兩位數的 11～89 折）。有錯時把收合的區塊展開
+  const discToggle = form.querySelector('[data-disc-toggle]');
+  if (discToggle && discToggle.checked) {
+    const disc = parseDisc(form.querySelector('[data-disc-input]').value);
+    const discError = disc.error || (disc.value === null ? '請填寫整單折數，或取消勾選「有整單優惠」' : '');
+    if (discError) {
+      delete discField.dataset.folded;
+      refreshDiscField();
+      return discError;
+    }
+  }
   return '';
 }
 
@@ -419,6 +431,93 @@ document.addEventListener('keydown', e => {
 refreshDatePickers(document);
 
 
+/* ---------- 6. 整單優惠：勾選後展開折數和條件、可以收合（表單頁） ----------
+   ・沒勾「有整單優惠」：折數的隱藏欄位送空的、條件欄位鎖住不送 → Java 收到 null＝不是整單折扣活動
+   ・折數：數字輸入框（type="number"），1～9、每次 0.1，可以打字或按上下箭頭；乘以 10 放進隱藏欄位 promoteDisc
+     8＝8 折（存 80）、8.5＝85 折（存 85）、8.8＝88 折（存 88）、1＝1 折（存 10）。資料庫存 10～90
+     習慣打「85」「88」的話，離開輸入框時會自動換成 8.5、8.8
+   ・條件：折數填好才能寫（鎖住的欄位不會送出）；有折數可以沒有條件
+   ・收合：只是把區塊摺起來、旁邊顯示摘要，填好的資料不會不見（收合的狀態記在 data-folded）
+     收合或沒勾時，折數輸入框也鎖住：藏起來的欄位如果填錯，瀏覽器會擋住送出卻沒辦法提示
+   ★ Java 存檔前也要再檢查一次（10～90 或 null），頁面上的檢查可以被跳過。 */
+const DISC_HINT = '1～9 折，每次 0.1（8.5＝85 折）';
+const DISC_ERROR = '整單折數請輸入 1～9，小數點最多一位（例如 8、8.5、8.8）；也可以按右邊的上下箭頭';
+
+// 把輸入框的數字換算成百分比：回傳 { value: 10～90 或 null（空白）, error: 有錯時的訊息 }
+function parseDisc(text) {
+  const t = String(text).trim();
+  if (t === '') return { value: null, error: '' };
+  const n = Number(t);
+  // 1～9，而且小數點最多一位（乘以 10 是整數；用四捨五入比對，避免 8.3 × 10 算出 83.00000000000001 這種誤差）
+  if (!(n >= 1 && n <= 9 && Math.abs(n * 10 - Math.round(n * 10)) < 1e-9)) return { value: null, error: DISC_ERROR };
+  return { value: Math.round(n * 10), error: '' };   // 8.5 → 85
+}
+// 百分比換成台灣的說法（結果、摘要用）：80 → "8"、85 → "85"
+const discText = v => String(v % 10 === 0 ? v / 10 : v);
+
+const discField = document.querySelector('[data-disc-field]');
+
+// 依目前的狀態更新整個區塊（有沒有勾、有沒有收合、折數對不對）。每次有變動都呼叫它
+function refreshDiscField() {
+  if (!discField) return;
+  const toggle = discField.querySelector('[data-disc-toggle]');
+  const input = discField.querySelector('[data-disc-input]');
+  const rule = discField.querySelector('[data-rule-input]');
+  const result = discField.querySelector('[data-disc-result]');
+  const summary = discField.querySelector('[data-disc-summary]');
+  const fold = discField.querySelector('[data-disc-fold]');
+
+  const disc = parseDisc(input.value);
+  const on = toggle.checked;
+  const folded = discField.dataset.folded === 'yes';
+
+  // 真正送出的折數：沒勾、或折數不對 → 空的
+  discField.querySelector('[data-disc-value]').value = on && disc.value ? disc.value : '';
+  // 折數輸入框：沒勾或收合時鎖住（理由見上面的說明）
+  input.disabled = !on || folded;
+  // 條件：有勾、而且折數填好才能寫
+  rule.disabled = !(on && disc.value);
+  rule.placeholder = rule.disabled ? '請先填寫整單折數' : '例如：消費滿 1000 元、出示學生證';
+
+  result.classList.toggle('is-error', !!disc.error);
+  result.textContent = disc.error ? DISC_ERROR : disc.value ? `＝ ${discText(disc.value)} 折` : DISC_HINT;
+
+  // 展開、收合
+  discField.querySelector('[data-disc-panel]').hidden = !on || folded;
+  fold.hidden = !on;
+  fold.textContent = folded ? '展開' : '收合';
+  summary.hidden = !(on && folded);
+  const ruleText = rule.value.trim() ? '條件：' + rule.value.trim() : '無條件';
+  summary.textContent = disc.value ? `${discText(disc.value)} 折・${ruleText}` : '尚未填寫折數';
+}
+
+if (discField) {
+  const discInput = discField.querySelector('[data-disc-input]');
+  const discValue = discField.querySelector('[data-disc-value]');
+  // 修改活動時：隱藏欄位已經有存的百分比（Thymeleaf 放的），除以 10 顯示在輸入框（85 → 8.5）
+  if (discValue.value) discInput.value = Number(discValue.value) / 10;
+
+  // 打字、按上下箭頭（折數、條件）、勾選
+  discField.addEventListener('input', e => {
+    if (e.target.matches('[data-disc-toggle]')) delete discField.dataset.folded;   // 打勾時一定是展開的
+    refreshDiscField();
+  });
+  // 離開折數輸入框時：打了「85」「88」這種台灣說法，自動換成 8.5、8.8
+  discInput.addEventListener('change', () => {
+    const n = Number(discInput.value);
+    if (n >= 10 && n <= 90 && Number.isInteger(n)) discInput.value = n / 10;
+    refreshDiscField();
+  });
+  // 收合／展開
+  discField.querySelector('[data-disc-fold]').addEventListener('click', () => {
+    if (discField.dataset.folded === 'yes') delete discField.dataset.folded;
+    else discField.dataset.folded = 'yes';
+    refreshDiscField();
+  });
+  refreshDiscField();
+}
+
+
 /* ---------- 5. 活動詳細的對話框：打開、關閉都不重新載入整頁（列表頁） ----------
    卡片的「詳細」（data-detail-open）：在背景向它的網址（/staff/promote/detail?promoteNo=…）要頁面，
      只取出裡面的對話框（.promote-modal）放到目前的畫面上，卡片和分頁都不動。
@@ -501,6 +600,101 @@ document.addEventListener('keydown', e => {
 window.addEventListener('popstate', () => {
   if (location.pathname.includes(DETAIL_PATH)) showDetail(location.href, false);
   else removeDetail();
+});
+}
+
+
+/* ---------- 7. 套用已有活動：打開、搜尋、套用、關閉都不重新載入整頁（表單頁） ----------
+   promote_form.html 的連結和表單本來都會換頁（沒有 JS 也能用），這裡把它們攔下來改成在背景做，頁面位置不動：
+     「套用已有活動」（data-pick-open）、搜尋（data-pick-search）：在背景要那個網址的頁面，只取出對話框（.promote-modal）放上來
+     ×、背景、← 返回（data-pick-close）、Esc：直接拿掉對話框
+     「套用」（data-pick-apply）：在背景要 copyFrom 的網址（Controller 已經把來源活動放進表單），
+        只把活動名稱、活動內容、整單優惠（折數和條件）填進目前的表單；使用者選好的日期、圖片都不動
+   背景要不到（登入過期、斷線…）：照原本的連結整頁換過去，功能不會壞。
+   ★ 整單優惠要 PromoteController.addPromote 也把來源活動的折數、條件放進 promoteForm 才會帶過來 */
+if (document.querySelector('[data-pick-open]')) {
+let pickLoading = false;
+
+// 在背景要頁面，回傳整理好的 HTML；被轉到別的頁面（例如登入頁）就當作失敗
+async function fetchFormPage(url) {
+  const res = await fetch(url);
+  if (!res.ok || !res.url.includes('/promote/add')) throw new Error(res.status);
+  return new DOMParser().parseFromString(await res.text(), 'text/html');
+}
+
+const closePick = () => {
+  const modal = document.querySelector('.promote-modal');
+  if (modal) modal.remove();
+};
+
+// 打開或搜尋：換上新的對話框
+async function showPick(url) {
+  if (pickLoading) return;
+  pickLoading = true;
+  try {
+    const modal = (await fetchFormPage(url)).querySelector('.promote-modal');
+    if (!modal) throw new Error('沒有對話框');
+    closePick();
+    document.body.insertBefore(modal, document.getElementById('staffToast'));
+    const input = modal.querySelector('[name="pickKeyword"]');
+    if (input) {
+      input.focus({ preventScroll: true });                     // 游標放在搜尋框，畫面不要跟著捲動
+      input.setSelectionRange(input.value.length, input.value.length);
+    }
+  } catch (err) {
+    location.href = url;
+  } finally {
+    pickLoading = false;
+  }
+}
+
+// 套用：把來源活動的名稱、內容、整單優惠填進目前的表單
+async function applyPick(url) {
+  if (pickLoading) return;
+  pickLoading = true;
+  try {
+    const src = (await fetchFormPage(url)).getElementById('promoteForm');
+    if (!src) throw new Error('沒有表單');
+    const form = document.getElementById('promoteForm');
+    const name = src.querySelector('#promoteName').value;
+    form.querySelector('#promoteName').value = name;
+    form.querySelector('#promoteContent').value = src.querySelector('#promoteContent').value;
+    // 整單優惠：來源有折數就打勾並帶入（百分比除以 10 放進輸入框），沒有就取消勾選
+    const disc = src.querySelector('[data-disc-value]').value;
+    form.querySelector('[data-disc-toggle]').checked = disc !== '';
+    form.querySelector('[data-disc-input]').value = disc ? Number(disc) / 10 : '';
+    form.querySelector('[data-rule-input]').value = src.querySelector('[data-rule-input]').value;
+    delete discField.dataset.folded;
+    refreshDiscField();
+    closePick();
+    staffToast(`已套用「${name}」`);
+  } catch (err) {
+    location.href = url;
+  } finally {
+    pickLoading = false;
+  }
+}
+
+document.addEventListener('click', e => {
+  const link = e.target.closest('[data-pick-open], [data-pick-close], [data-pick-apply]');
+  if (!link || !plainClick(e)) return;
+  e.preventDefault();
+  if (link.matches('[data-pick-open]')) showPick(link.href);
+  else if (link.matches('[data-pick-close]')) closePick();
+  else applyPick(link.href);
+});
+
+// 搜尋：用表單的欄位組出網址，在背景要
+document.addEventListener('submit', e => {
+  const form = e.target.closest('[data-pick-search]');
+  if (!form) return;
+  e.preventDefault();
+  showPick(form.action + '?' + new URLSearchParams(new FormData(form)));
+});
+
+// Esc：關閉對話框（有其他小視窗開著時不處理）
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && !document.querySelector('dialog[open]')) closePick();
 });
 }
 

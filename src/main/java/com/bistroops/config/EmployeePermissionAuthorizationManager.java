@@ -163,7 +163,9 @@ public class EmployeePermissionAuthorizationManager
         // 10. 結帳管理：權限 6
         if (path.equals("/staff/checkout")
                 || path.equals("/staff/checkout/pay")
-                || path.equals("/staff/checkout/card")) {
+                || path.equals("/staff/checkout/card")
+                || path.equals("/staff/checkout/promote")
+                || path.equals("/staff/checkout/promote/remove")) {
 
             return new AuthorizationDecision(
                     employeeService.hasPermission(empNo, 6));
