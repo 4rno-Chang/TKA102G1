@@ -177,7 +177,7 @@ public class OrdersController {
 		model.addAttribute("canCancel", editOrder.getOrdersDetails().stream()
 		            .allMatch(d -> "製作中".equals(d.getOdStatus()) || "已取消".equals(d.getOdStatus())));
 		
-		return "/staff/workboard";
+		return "staff/workboard";
 	}
 	//===========輸入會員===========
 	@PostMapping("/checkout/member")
