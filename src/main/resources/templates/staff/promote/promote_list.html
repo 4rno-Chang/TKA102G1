@@ -268,6 +268,11 @@
             <div><dt>開始日期</dt><dd th:text="${#temporals.format(promoteDetail.promoteBegin, 'yyyy/MM/dd')}">2026/10/01</dd></div>
             <div><dt>結束日期</dt><dd th:text="${#temporals.format(promoteDetail.promoteEnd, 'yyyy/MM/dd')}">2026/10/10</dd></div>
             <div><dt>活動內容</dt><dd class="promote-detail-content" th:text="${promoteDetail.promoteContent}">活動內容</dd></div>
+            <!-- 整單折扣：有設定整單折數的活動才顯示這兩列 -->
+            <div th:if="${promoteDetail.promoteDisc != null}"><dt>整單折扣</dt>
+              <dd th:text="|${promoteDetail.promoteDisc % 10 == 0 ? promoteDetail.promoteDisc / 10 : promoteDetail.promoteDisc} 折|">8 折</dd></div>
+            <div th:if="${promoteDetail.promoteDisc != null}"><dt>折扣條件</dt>
+              <dd th:text="${promoteDetail.promoteRule != null ? promoteDetail.promoteRule : '無條件'}">消費滿 1000 元</dd></div>
             <div>
               <dt>活動圖片</dt>
               <dd>

@@ -7,6 +7,7 @@ import org.springframework.data.annotation.Transient;
 
 import com.bistroops.member.model.MemberVO;
 import com.bistroops.ordersdetails.model.OrdersDetailsVO;
+import com.bistroops.promote.model.PromoteVO;
 //import com.bistroops.seat.model.SeatVO;
 import com.bistroops.seat.model.SeatVO;
 
@@ -31,6 +32,8 @@ public class OrdersVO {
 	orders_no     INT UNSIGNED '訂單編號'    AUTO_INCREMENT
 	seat_no            CHAR(3)   '桌號',NOT NULL (FK)
 	member_no INT      UNSIGNED  '會員編號',(FK)
+	promote_no INT     UNSIGNED  '活動編號',(FK)（整單折扣用的活動，沒用是 NULL）
+	orders_promote_disc TINYINT UNSIGNED '整單折數快照'（結帳當下的折數，沒用是 NULL）
 	orders_time        DATETIME  '下單時間',
 	orders_total       INT       '總金額',
 	orders_discount_total  INT '折扣金額',
@@ -52,7 +55,14 @@ public class OrdersVO {
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "member_no")
 	private MemberVO member;
-	
+
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "promote_no")
+	private PromoteVO promote;
+
+	@Column(name = "orders_promote_disc")
+	private Integer ordersPromoteDisc;
+
 	@Column(name="orders_time")
 	private LocalDateTime ordersTime;
 
@@ -108,6 +118,22 @@ public class OrdersVO {
 
 	public void setMember(MemberVO member) {
 		this.member = member;
+	}
+
+	public PromoteVO getPromote() {
+		return promote;
+	}
+
+	public void setPromote(PromoteVO promote) {
+		this.promote = promote;
+	}
+
+	public Integer getOrdersPromoteDisc() {
+		return ordersPromoteDisc;
+	}
+
+	public void setOrdersPromoteDisc(Integer ordersPromoteDisc) {
+		this.ordersPromoteDisc = ordersPromoteDisc;
 	}
 
 

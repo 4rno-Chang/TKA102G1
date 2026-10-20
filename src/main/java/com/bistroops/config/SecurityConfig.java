@@ -62,7 +62,9 @@ public class SecurityConfig {
                 .requestMatchers(
                     "/staff/checkout",
                     "/staff/checkout/pay",
-                    "/staff/checkout/card"
+                    "/staff/checkout/card",
+                    "/staff/checkout/promote",
+                    "/staff/checkout/promote/remove"
                 ).access(permissionManager)
 
                 // 權限 7：後台管理頁面

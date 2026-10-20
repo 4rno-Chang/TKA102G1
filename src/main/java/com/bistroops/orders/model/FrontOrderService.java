@@ -21,6 +21,7 @@ import com.bistroops.orderscart.controller.CartWebSocketHandler;
 import com.bistroops.orderscart.model.CartRedisService;
 import com.bistroops.ordersdetails.model.OrdersDetailsRepository;
 import com.bistroops.ordersdetails.model.OrdersDetailsVO;
+import com.bistroops.promote.model.OrderPromoteOptionDTO;
 import com.bistroops.promote.model.PromoPriceDTO;
 import com.bistroops.promote.model.PromoteService;
 import com.bistroops.seat.model.SeatVO;
@@ -129,6 +130,13 @@ public class FrontOrderService {
 	        order.setOrdersTime(LocalDateTime.now());
 	        order.setOrdersDetails(new ArrayList<>());      //空的清單，下面要放明細進去
 	        order = ordersRepository.save(order);           // 存了之後才有訂單編號
+	        // 整單折扣：無條件的活動自動套用（只在新建訂單這一刻；加點不加，店員取消過的才不會被加回去）
+	        // 不用另外重算：這個方法最後的 ordersSve.recalculate 會把整單折扣算進去
+	        OrderPromoteOptionDTO auto = promoteSve.getAutoApplyPromote();   // 進行中、沒有條件、折數最多的那一個；沒有是 null
+	        if (auto != null) {
+	            order.setPromote(promoteSve.getPromoteRef(auto.getPromoteNo()));   // 只拿參照，不查圖片
+	            order.setOrdersPromoteDisc(auto.getPromoteDisc());                // 存折數快照
+	        }
 	    } else {
 	        order = ordersRepository.findById(orderNo).orElseThrow();
 	        if (order.getMember() == null && member != null) {

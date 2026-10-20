@@ -98,8 +98,53 @@
                   <td class="num" th:text="${item.odDiscountPrice * item.odMealNum}">620</td>
                   <td class="num discount" th:text="${item.odDiscountTotal!=null and item.odDiscountTotal > 0} ? |-${item.odDiscountTotal}| : ''"></td>
                 </tr>
+                <!-- 整單折扣（有加入才顯示）：品項＝活動名稱、數量＋單價合併一格寫全單折扣幾折、折扣＝整單扣掉的金額 -->
+                <tr class="promo-row" th:if="${orderPromote != null}">
+                  <td th:text="${orderPromote.promoteName}">週年慶</td>
+                  <td class="promo-row-zhe" colspan="2"
+                      th:text="|全單折扣${orderPromote.promoteDisc % 10 == 0 ? orderPromote.promoteDisc / 10 : orderPromote.promoteDisc}折|">全單折扣8折</td>
+                  <td class="num"></td>
+                  <td class="num discount" th:text="|-${orderPromote.discountAmount}|">-200</td>
+                </tr>
               </tbody>
             </table>
+
+            <!-- ================================================================
+               整單折扣（明細表格下方、總金額上方的那一行＋下面的 promoteDialog 對話框；程式在 staff.js 的 A-10，樣式在 checkout.css 最下面）
+               【Thymeleaf 串接】Controller（結帳頁 GET /staff/checkout?order=…）要放進 Model：
+                 promoteOptions   List：進行中、而且有設定整單折數（promote_disc 不是 NULL）的活動，每一筆有
+                                  promoteNo、promoteName、promoteDisc（存的百分比 10～90，80＝8 折、85＝85 折）、promoteRule（條件，沒有是 null）
+                 orderPromote     這張訂單已經用的整單折扣，沒用就不要放（null）。要有 promoteName、promoteDisc（折數快照）、
+                                  discountAmount（整單折扣的金額，四捨五入到元）、
+                                  autoApplied（這個活動沒有條件 → true，會多顯示「活動無條件限制自動套用」）
+               ※ 沒有條件的活動，客人送單建立訂單時就會自動套用（FrontOrderService.submitOrder），
+                 店員可以取消，或改選別的活動（會換掉自動套用的那個）
+               【Thymeleaf 串接】要新增的網址（送出後 redirect 回 /staff/checkout?order=訂單編號）：
+                 POST /staff/checkout/promote          欄位 order、promoteNo：加入（或換成）這個整單折扣
+                 POST /staff/checkout/promote/remove   欄位 order：取消整單折扣
+                 加入、取消的結果訊息（flash 的 promoteMsg）放在下面的 data-promote-msg，staff.js A-10 會用小提示顯示
+               ================================================================ -->
+            <!-- 明細表格下方、總金額上方的「整單折扣」那一行 -->
+            <div class="promo-line" data-promote-line
+                 th:attr="data-promote-msg=${promoteMsg}">
+              <span class="promo-line-label">活動折扣</span>
+
+              <!-- 已經加入整單折扣（Controller 有放 orderPromote）：名稱、折數、金額顯示在上面明細表格的最後一列，這裡只留取消折扣 -->
+              <th:block th:if="${orderPromote != null}">
+                <span class="tag tag-green promo-line-auto" th:if="${orderPromote.autoApplied}">活動無條件限制自動套用</span>
+                <form class="promo-line-form" th:action="@{/staff/checkout/promote/remove}" method="post" data-promote-ajax
+                      data-confirm="確定要取消這張訂單的整單折扣嗎？" data-loading=".receipt">
+                  <input type="hidden" name="order" th:value="${order.orders}">
+                  <button type="submit" class="staff-btn">取消折扣</button>
+                </form>
+              </th:block>
+
+              <!-- 還沒加入整單折扣：顯示「未使用」和「加入折扣」（打開下面的對話框） -->
+              <th:block th:if="${orderPromote == null}">
+                <span class="promo-line-none" data-promote-none>未使用</span>
+                <button type="button" class="staff-btn promo-line-btn" data-promote-open>加入活動折扣</button>
+              </th:block>
+            </div>
 
             <dl class="receipt-sum">
               <div><dt>總價</dt><dd th:text="${order.ordersTotal}">0</dd></div>
@@ -144,6 +189,40 @@
 		</dialog>
 
 		
+		<!-- 加入整單折扣的對話框：一次只能選一個（radio），按「確認加入」送出 -->
+		<dialog class="promo-dialog" id="promoteDialog" th:if="${order != null}">
+		  <button type="button" class="member-close" data-promote-close aria-label="關閉">&times;</button>
+		  <h2 class="staff-card-title">加入整單折扣</h2>
+		  <p class="promo-dialog-tip">請先確認客人符合活動條件。一張訂單只能使用一個整單折扣。</p>
+
+		  <form th:action="@{/staff/checkout/promote}" method="post" data-promote-form data-promote-ajax data-loading=".promo-dialog">
+		    <input type="hidden" name="order" th:value="${order.orders}">
+
+		    <div class="promo-options" data-promote-options>
+		      <th:block th:if="${promoteOptions != null}">
+		        <label class="promo-option" th:each="p : ${promoteOptions}">
+		          <input type="radio" name="promoteNo" th:value="${p.promoteNo}" required>
+		          <span class="promo-option-body">
+		            <span class="promo-option-head">
+		              <strong th:text="${p.promoteName}">週年慶</strong>
+		              <span class="promo-option-zhe"
+		                    th:text="|${p.promoteDisc % 10 == 0 ? p.promoteDisc / 10 : p.promoteDisc} 折|">8 折</span>
+		            </span>
+		            <small th:text="${p.promoteRule != null ? '條件：' + p.promoteRule : '無條件'}">條件：消費滿 1000 元</small>
+		          </span>
+		        </label>
+		      </th:block>
+		    </div>
+		    <p class="promo-empty" data-promote-empty
+		       th:hidden="${promoteOptions == null or !#lists.isEmpty(promoteOptions)}">目前沒有可以使用的整單折扣活動</p>
+
+		    <div class="member-actions">
+		      <button type="button" class="staff-btn" data-promote-close>取消</button>
+		      <button type="submit" class="staff-btn btn-pay">確認加入</button>
+		    </div>
+		  </form>
+		</dialog>
+
 		<dialog id="memberDialog" class="member-dialog" th:if="${order != null}">
 		  <button type="button" class="member-close" id="btnMemberClose" aria-label="關閉">&times;</button>
 

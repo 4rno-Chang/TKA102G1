@@ -13,6 +13,7 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 
+
 @Repository
 public interface PromoteRepository extends JpaRepository<PromoteVO, Integer> {
 
@@ -64,4 +65,27 @@ public interface PromoteRepository extends JpaRepository<PromoteVO, Integer> {
 	       "FROM PromoteVO p WHERE p.promoteEnd >= :now ORDER BY p.promoteBegin")
 	List<PromoteOptionDTO> findOpenOptions(@Param("now") LocalDateTime now);
 
+	// 結帳「加入整單折扣」對話框的選項：進行中、有設定整單折數的活動，折越多排越前面
+	@Query("SELECT p.promoteNo AS promoteNo, p.promoteName AS promoteName, "+
+			"p.promoteDisc AS promoteDisc, p.promoteRule AS promoteRule " +
+           "FROM PromoteVO p WHERE p.promoteDisc IS NOT NULL " +
+           "AND p.promoteBegin <= :now AND p.promoteEnd >= :now "+
+           "ORDER BY p.promoteDisc")
+	List<OrderPromoteOptionDTO> findPromoteOptions(@Param("now") LocalDateTime now);
+
+	// 無條件自動套用要挑的活動：進行中、有整單折數、沒有條件；折數最多的排第一，一樣多就比較早結束的排前面（取第一筆用）
+	@Query("SELECT p.promoteNo AS promoteNo, p.promoteName AS promoteName, " +
+		   "p.promoteDisc AS promoteDisc, p.promoteRule AS promoteRule " +
+		   "FROM PromoteVO p WHERE p.promoteDisc IS NOT NULL AND p.promoteRule IS NULL " +
+		   "AND p.promoteBegin <= :now AND p.promoteEnd >= :now " +
+		   "ORDER BY p.promoteDisc ASC, p.promoteEnd ASC")
+	List<OrderPromoteOptionDTO> findAutoApplyPromotes(@Param("now") LocalDateTime now);
+
+	//用活動編號查名稱、條件、折數（結帳頁「整單折扣」那一行顯示用；不加日期條件，活動結束了訂單還是要顯示名稱）
+	//這裡的折數是活動「現在」的折數，訂單要顯示的是快照 orders_promote_disc
+	@Query("SELECT p.promoteNo AS promoteNo, p.promoteName AS promoteName, " +
+	       "p.promoteDisc AS promoteDisc, p.promoteRule AS promoteRule " +
+	       "FROM PromoteVO p WHERE p.promoteNo = :promoteNo")
+	OrderPromoteOptionDTO findDiscInfoByNo(@Param("promoteNo") Integer promoteNo);
+	
 }

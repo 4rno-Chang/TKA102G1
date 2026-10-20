@@ -106,6 +106,8 @@ public class PromoteController {
 		if ( pastPromote != null && promoteSve.getStatus(pastPromote).equals("已結束")) {
 			promoteVO.setPromoteName(pastPromote.getPromoteName());
 			promoteVO.setPromoteContent(pastPromote.getPromoteContent());
+			promoteVO.setPromoteDisc(pastPromote.getPromoteDisc());
+			promoteVO.setPromoteRule(pastPromote.getPromoteRule());
 		}
 		model.addAttribute("promoteForm", promoteVO);
 		
@@ -214,7 +216,9 @@ public class PromoteController {
 		else {
 			PromoteVO update = promoteSve.updatePromote(
 					promoteVO.getPromoteNo(), promoteVO.getPromoteName(), promoteVO.getPromoteContent(),
-					promoteVO.getPromoteBegin(), promoteVO.getPromoteEnd(), promoteVO.getPromoteImg());
+					promoteVO.getPromoteBegin(), promoteVO.getPromoteEnd(), promoteVO.getPromoteImg(),
+					promoteVO.getPromoteDisc(),promoteVO.getPromoteRule());
+			
 			if ( update == null ) {
 				redirectAttributes.addFlashAttribute("message", "修改活動失敗請重新輸入");				
 			} else {

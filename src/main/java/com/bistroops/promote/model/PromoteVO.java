@@ -16,6 +16,8 @@ import jakarta.persistence.Lob;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -50,6 +52,17 @@ public class PromoteVO {
 	@Lob
 	@Column(name="promote_img", columnDefinition = "mediumblob")
 	private byte[] promoteImg;
+
+	// 整單折數（結帳時替整張訂單打折）
+	@Column(name="promote_disc")
+	@Min(value = 10, message = "整單折數請輸入 1～9 折（或兩位數的折數，例如 85）")
+	@Max(value = 90, message = "整單折數請輸入 1～9 折（或兩位數的折數，例如 85）")
+	private Integer promoteDisc;
+
+
+	@Column(name="promote_rule")
+	@Size(max=100, message="整單折扣的條件不得超過 100 字")
+	private String promoteRule;
 
 	@OneToMany(mappedBy = "promote",cascade = CascadeType.REMOVE)
 	@OrderBy("promote asc")
@@ -109,6 +122,22 @@ public class PromoteVO {
 
 	public void setPromoteImg(byte[] promoteImg) {
 		this.promoteImg = promoteImg;
+	}
+
+	public Integer getPromoteDisc() {
+		return promoteDisc;
+	}
+
+	public void setPromoteDisc(Integer promoteDisc) {
+		this.promoteDisc = promoteDisc;
+	}
+
+	public String getPromoteRule() {
+		return promoteRule;
+	}
+
+	public void setPromoteRule(String promoteRule) {
+		this.promoteRule = promoteRule;
 	}
 
 	public Set<PromoteMealVO> getPromoteMeals() {

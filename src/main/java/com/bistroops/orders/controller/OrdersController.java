@@ -6,6 +6,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,6 +29,7 @@ import com.bistroops.orders.ecpay.EcpayUtil;
 import com.bistroops.orders.model.OrdersService;
 import com.bistroops.orders.model.OrdersVO;
 import com.bistroops.ordersdetails.model.OrdersDetailsService;
+import com.bistroops.promote.model.PromoteService;
 
 import jakarta.servlet.http.HttpSession;
 
@@ -47,7 +49,10 @@ public class OrdersController {
 	
 	@Autowired
 	MemberService memberService;
-	
+
+	@Autowired
+	PromoteService promoteService;
+
 
 	
 	@Autowired
@@ -82,7 +87,10 @@ public class OrdersController {
 		model.addAttribute("nextDate",day.isBefore(today)?day.plusDays(1):null);//加一天plusDays,今天的話給 null,前端就不顯示「下一天」按鈕
 		model.addAttribute("today",today);
 		
-		model.addAttribute("orderslistAll", ordersService.search(status, keyword, day));//查資料庫
+		List<OrdersVO> list = ordersService.search(status, keyword, day);   //查資料庫
+		model.addAttribute("orderslistAll", list);
+		model.addAttribute("orderPromotes", ordersService.getOrderPromotes(list));   //活動折扣那一行
+
 		return "staff/orders";
 	}
 	
@@ -91,9 +99,15 @@ public class OrdersController {
 	public String checkout(@RequestParam(required = false) Integer order, Model model) {
 		if(order != null)ordersService.recalculateUnpaid(order);//一進頁面就重新計算總金額
 	    model.addAttribute("checkoutListout", ordersService.getUnpaid());
-	    if (order != null) model.addAttribute("order", ordersService.getOne(order));
+	    if (order != null) {
+	    	OrdersVO one = ordersService.getOne(order);
+	    	model.addAttribute("order", one);
+	    	model.addAttribute("orderPromote", ordersService.getOrderPromote(one));   // 整單折扣那一行，沒用是 null
+	    }
+	    model.addAttribute("promoteOptions", promoteService.getDiscOptions());       // 加入折扣對話框的選項
 	    return "staff/checkout";
 	}
+
 	@PostMapping("/checkout/pay")
 	public String pay(@RequestParam Integer order,
 					  @RequestParam String method) {
@@ -251,7 +265,25 @@ public class OrdersController {
 	                 + "  window.close();"                                                    // 關掉小視窗
 	                 + "}, 1500);</script>";
 	}
-	
+
+	//===========整單折扣：加入（或換成）、取消===========
+	//只收編號，折數、金額都在 OrdersService 從資料庫查、重新算；訊息由 staff.js A-10 用小提示顯示
+	@PostMapping("/checkout/promote")
+	public String addPromote(@RequestParam Integer order,
+							 @RequestParam(required = false) Integer promoteNo,
+							 RedirectAttributes ra) {
+		String error = ordersService.applyPromote(order, promoteNo);
+		ra.addFlashAttribute("promoteMsg", error == null ? "已加入整單折扣" : error);
+		return "redirect:/staff/checkout?order=" + order;     // 回到同一張訂單
+	}
+
+	@PostMapping("/checkout/promote/remove")
+	public String removePromote(@RequestParam Integer order, RedirectAttributes ra) {
+		String error = ordersService.removePromote(order);
+		ra.addFlashAttribute("promoteMsg", error == null ? "已取消整單折扣" : error);
+		return "redirect:/staff/checkout?order=" + order;
+	}
+
 		
 	
 	

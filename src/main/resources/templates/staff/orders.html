@@ -170,6 +170,23 @@
                   </tr>
                 </tbody>
               </table>
+              <!-- 活動折扣（整單打折）：有沒有參加、活動名稱、幾折
+                   【Thymeleaf 串接】Controller（GET /staff/orders）要放 orderPromotes：Map，訂單編號 → OrderPromoteDTO
+                     （和結帳頁的 orderPromote 是同一個小物件：promoteName、promoteDisc 折數快照、discountAmount 折掉的錢）
+                     沒參加活動折扣的訂單不放進 Map → 這裡顯示「未參加」
+                   Controller 還沒放 orderPromotes（是 null）時整行不顯示，頁面不會壞
+                   th:if 會比 th:with 先算，所以 th:if 裡不能用 op -->
+              <p class="order-detail-promo" th:if="${orderPromotes != null}"
+                 th:with="op=${orderPromotes[order.orders]}">
+                <span class="order-detail-promo-label">活動折扣</span>
+                <th:block th:if="${op != null}">
+                  <span class="order-detail-promo-name" th:text="${op.promoteName}">母親節感恩祭</span>
+                  <span class="order-detail-promo-zhe"
+                        th:text="|全單 ${op.promoteDisc % 10 == 0 ? op.promoteDisc / 10 : op.promoteDisc} 折|">全單 85 折</span>
+                  <!-- 折掉的金額不另外顯示：已經算在下面的「折扣金額」裡 -->
+                </th:block>
+                <span class="order-detail-promo-none" th:if="${op == null}">未參加</span>
+              </p>
               <p class="order-detail-sum">
                 總金額 <span th:text="'$' +${order.ordersTotal}">$0</span>　折扣金額 <span th:text="'$' + ${order.ordersDiscountTotal}">$0</span>　
                 實付金額<strong th:text="'$' +${order.ordersActualPrice}">$0</strong>

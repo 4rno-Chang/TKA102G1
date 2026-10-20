@@ -35,11 +35,13 @@ CREATE TABLE IF NOT EXISTS orders(
   orders_no INT UNSIGNED AUTO_INCREMENT COMMENT '訂單編號',
   seat_no CHAR(3) NOT NULL COMMENT '桌號',
   member_no INT UNSIGNED COMMENT '會員編號',
+  promote_no INT UNSIGNED COMMENT '活動編號',
   orders_time DATETIME COMMENT '下單時間',
   orders_total INT COMMENT '總金額',
   orders_discount_total INT COMMENT '折扣金額',
   orders_actual_price INT COMMENT '實付金額',
   orders_pay VARCHAR(2) COMMENT '付款方式',
+  orders_promote_disc TINYINT UNSIGNED COMMENT '整單折數快照',
   PRIMARY KEY(orders_no)
 ) COMMENT '訂單';
 
@@ -89,6 +91,8 @@ CREATE TABLE IF NOT EXISTS promote(
   promote_end DATETIME COMMENT '結束時間',
   promote_content MEDIUMTEXT COMMENT '活動內容',
   promote_img MEDIUMBLOB COMMENT '活動圖片',
+  promote_rule VARCHAR(100) COMMENT '活動條件',
+  promote_disc TINYINT UNSIGNED COMMENT '活動折扣',
   PRIMARY KEY(promote_no)
 ) COMMENT '活動';
 
@@ -405,20 +409,21 @@ INSERT INTO orders (seat_no, member_no, orders_time, orders_total, orders_discou
 ('C01', 3, '2026-10-16 19:40:00', 400, 0, 400, '現金');
 
 -- 7. 活動 (promote)
-INSERT INTO promote (promote_name, promote_begin, promote_end, promote_content) VALUES
-('中秋節活動', '2026-09-20 10:00:00', '2026-10-06 22:00:00',  '中秋節限定商品優惠，數量有限送完即止'),
-('2026生日禮', '2026-01-01 00:00:00', '2026-06-30 23:59:59', '2026年上半年限定，生日當月出示身份證，即可享當月生日禮提拉米蘇一份。'),
-('情人節套餐', '2026-03-10 11:00:00', '2026-03-15 22:00:00', '浪漫情人節，餐庭提供雙人浪漫限定套餐，伴隨燭光。讓您跟另一半獲得最好的體驗'),
-('母親節感恩祭', '2026-05-01 00:00:00', '2026-05-15 23:59:59', '溫馨母親節，全家帶媽媽來店用餐~來店拍照打卡即享全單 8 折。'),
-('畢業季優惠', '2026-06-01 00:00:00', '2026-06-30 23:59:59', '憑學生證或畢業證書，可獲得抽獎資格。將會在6月30日抽出1萬元現金，若無得獎也可憑抽獎券回來兌換安慰獎糖果一份'),
-('父親節特別獻禮', '2026-08-01 00:00:00', '2026-08-10 23:59:59', '爸爸節，辛苦爸爸感念爸爸！本店祭出父親專屬優惠，提供父親節特別套餐。不來可惜！'),
-('中秋慶團圓', '2026-09-15 00:00:00', '2026-09-25 23:59:59', '中秋節期間消費每滿500即贈品牌純手工限量月餅1份，可疊加。贈完為止。'),
-('秋季溫暖祭', '2026-10-05 10:00:00', '2026-10-20 22:00:00', '點購指定湯品或熱飲，即贈送每日精選甜點乙份。'),
-('雙十連假特惠', '2026-10-07 00:00:00', '2026-10-12 23:59:59', '連假期間來店贈送可愛小國旗，一起慶國慶。'),
-('雙十節活動', '2026-10-07 00:00:00', '2026-10-31 22:00:00', '雙十國慶期間限定活動，酥炸墨魚圈、卡布里沙拉半價優惠。一直以來都只吃主餐就走了嗎？不訪來吃吃看吧'),
-('跨年特別企劃', '2026-12-31 18:00:00', '2027-01-01 02:00:00', '跨年夜限定酒精飲品暢飲活動。跨年夜狂歡夜，讓我們今日不醉不歸'),
-('春季新菜上市', '2027-03-01 00:00:00', '2027-03-31 23:59:59', '春季新品主餐登場，嘗鮮價享有 85 折優惠，走過路過千萬別錯過。'),
-('週年慶活動', '2027-09-01 10:00:00', '2027-09-30 22:00:00',  '週年慶主廚推薦菜品享優惠活動，我們主廚有著多年老經驗，推薦菜品一等一，請務必要來嘗嘗');
+INSERT INTO promote (promote_name, promote_begin, promote_end, promote_content, promote_rule, promote_disc) VALUES
+('中秋節活動', '2026-09-20 10:00:00', '2026-10-06 22:00:00',  '中秋節限定商品優惠，數量有限送完即止', null, null),
+('2026生日禮', '2026-01-01 00:00:00', '2026-06-30 23:59:59', '2026年上半年限定，生日當月出示身份證，即可享當月生日禮提拉米蘇一份。', null, null),
+('情人節套餐', '2026-03-10 11:00:00', '2026-03-15 22:00:00', '浪漫情人節，餐庭提供雙人浪漫限定套餐，伴隨燭光。讓您跟另一半獲得最好的體驗', null, null),
+('母親節感恩祭', '2026-05-01 00:00:00', '2026-05-15 23:59:59', '溫馨母親節，全家帶媽媽來店用餐~來店拍照打卡即享全單 8 折。','和媽咪拍照打卡',80),
+('畢業季優惠', '2026-06-01 00:00:00', '2026-06-30 23:59:59', '憑學生證或畢業證書，可獲得抽獎資格。將會在6月30日抽出1萬元現金，若無得獎也可憑抽獎券回來兌換安慰獎糖果一份', null, null),
+('父親節特別獻禮', '2026-08-01 00:00:00', '2026-08-10 23:59:59', '爸爸節，辛苦爸爸感念爸爸！本店祭出父親專屬優惠，提供父親節特別套餐。不來可惜！', null, null),
+('中秋慶團圓', '2026-09-15 00:00:00', '2026-09-25 23:59:59', '中秋節期間消費每滿500即贈品牌純手工限量月餅1份，可疊加。贈完為止。', null, null),
+('秋季溫暖祭', '2026-10-05 10:00:00', '2026-10-20 22:00:00', '點購指定湯品或熱飲，即贈送每日精選甜點乙份。', null, null),
+('雙十連假特惠', '2026-10-07 00:00:00', '2026-10-12 23:59:59', '連假期間來店贈送可愛小國旗，一起慶國慶。', null, null),
+('雙十節活動', '2026-10-07 00:00:00', '2026-10-31 22:00:00', '雙十國慶期間限定活動，酥炸墨魚圈、卡布里沙拉半價優惠。一直以來都只吃主餐就走了嗎？不訪來吃吃看吧', null, null),
+('跨年特別企劃', '2026-12-31 18:00:00', '2027-01-01 02:00:00', '跨年夜限定酒精飲品暢飲活動。跨年夜狂歡夜，讓我們今日不醉不歸', null, null),
+('春季新菜上市', '2027-03-01 00:00:00', '2027-03-31 23:59:59', '春季新品主餐登場，嘗鮮價享有 85 折優惠，走過路過千萬別錯過。', null, null),
+('週年慶活動', '2027-09-01 10:00:00', '2027-09-30 22:00:00',  '週年慶主廚推薦菜品享優惠活動，我們主廚有著多年老經驗，推薦菜品一等一，請務必要來嘗嘗', null, null),
+('聖誕週活動', '2026-10-19 10:00:00', '2026-10-25 22:00:00',  '找不到地方聖誕節讓我們一起開心度過，來店和聖誕樹拍照打卡即可享有75折優惠！', '和店內聖誕樹拍照打卡上傳至任一平台', 75);
 
 -- 8. 活動商品 (promote_meal)
 INSERT INTO promote_meal (promote_no, meal_no, promote_discount) VALUES
@@ -800,17 +805,18 @@ ALTER TABLE qa AUTO_INCREMENT = 1;
 -- 桌位 → 桌型
 ALTER TABLE seat ADD CONSTRAINT seat_seat_type_fk FOREIGN KEY (seat_type_no) REFERENCES seat_type(seat_type_no);
 
--- 訂單 → 桌位、會員
+-- 訂單 → 桌位、會員、活動
 ALTER TABLE orders ADD CONSTRAINT orders_seat_fk FOREIGN KEY (seat_no) REFERENCES seat(seat_no);
 ALTER TABLE orders ADD CONSTRAINT orders_member_fk FOREIGN KEY (member_no) REFERENCES member(mem_no);
+ALTER TABLE orders ADD CONSTRAINT orders_promote_fk FOREIGN KEY (promote_no) REFERENCES promote (promote_no);
 
 -- 回饋 → 訂單
 ALTER TABLE feedback ADD CONSTRAINT feedback_orders_fk FOREIGN KEY (orders_no) REFERENCES orders(orders_no);
 
--- 訂單明細 → 訂單、菜品、活動
+-- 訂單明細 → 訂單、菜品
 ALTER TABLE orders_details ADD CONSTRAINT orders_details_orders_fk FOREIGN KEY (orders_no) REFERENCES orders(orders_no);
 ALTER TABLE orders_details ADD CONSTRAINT orders_details_meal_fk FOREIGN KEY (meal_no) REFERENCES meal(meal_no);
-ALTER TABLE orders_details ADD CONSTRAINT orders_details_promote_fk FOREIGN KEY (promote_no) REFERENCES promote(promote_no);
+
 
 -- 菜品 → 菜品類別
 ALTER TABLE meal ADD CONSTRAINT meal_meal_type_fk FOREIGN KEY (meal_type_no) REFERENCES meal_type(meal_type_no);
