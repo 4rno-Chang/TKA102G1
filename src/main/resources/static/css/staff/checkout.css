@@ -26,8 +26,7 @@
 .checkout-row-amount { font-family: var(--st-serif); font-size: 18px; font-weight: 700; }
 
 /* 餐點明細 */
-/* 左右兩欄各自的外框：裡面的卡片由上到下排
-   （串接資料庫的期間，每一欄會有「資料庫」和「假資料」兩張卡片） */
+/* 左右兩欄各自的外框：裡面的卡片由上到下排 */
 .checkout-col { display: grid; gap: 20px; align-content: start; min-width: 0; }
 /* 右欄：頁面往下捲的時候停在畫面上方 */
 .checkout-col-receipt { position: sticky; top: 20px; }

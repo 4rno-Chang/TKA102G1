@@ -160,7 +160,7 @@ public class OrdersService {
 	}
 
 	//以下六個方法，撰寫by陳巧馨，線上點餐用
-	//（整筆取消的訂單不算：由 OrdersRepository 的三個查詢排除，見那裡的【線上點餐・要改】；這兩個方法不用改）
+	//（整筆取消的訂單不算：由 OrdersRepository 的三個查詢排除）
 	//查詢訂單是否都結帳，假設訂單都已結帳回傳true
 	public boolean isSeatingPaid(String seatNo, LocalDateTime since) {
 		int all = ordersRepository.countBySeatSince(seatNo, since);

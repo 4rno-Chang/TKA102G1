@@ -139,27 +139,7 @@ button { cursor: pointer; }
 .tag-green  { background: #dfe6cf; color: #4f6037; }
 .tag-gray   { background: #e6dfd5; color: #7a6d62; }
 
-/* ---------- 資料來源的標示（串接資料庫的期間使用） ----------
-   同一頁同時有「資料庫資料」和「假資料」兩份的時候，用小標籤分辨哪一份是哪一份。
-   假資料都刪掉之後，HTML 裡的小標籤拿掉，這幾條樣式也可以刪掉。 */
-.source-tag {
-  display: inline-block;
-  margin-left: 8px;
-  padding: 1px 10px;
-  background: #e6dfd5;
-  border-radius: 999px;
-  color: #7a6d62;
-  font-family: var(--st-sans);
-  font-size: 12px; font-weight: 500; line-height: 1.6;
-  letter-spacing: 0;
-  vertical-align: middle;
-  white-space: nowrap;
-}
-.source-tag.source-db { background: #dfe6cf; color: #4f6037; }   /* 資料庫：綠色 */
-/* 小標籤自己佔一行的時候（放在一整塊畫面的上方） */
-.source-line { margin-bottom: 8px; }
-.source-line .source-tag { margin-left: 0; }
-/* 上下兩大塊（資料庫、假資料）之間用虛線隔開 */
+/* 同一頁上下兩大塊之間用虛線隔開（訂候位管理頁在用） */
 .source-block + .source-block { margin-top: 32px; padding-top: 24px; border-top: 2px dashed var(--st-border); }
 
 /* 餐點分類的小標籤（前菜、主菜…） */

@@ -17,8 +17,8 @@
     member.js（會員登入）、announcement.js（選單開合、頁首陰影、回到頂端、頁尾年份），再加上自己的程式（訂位用 reservation-date.js、候位用 waiting.js）
     並在 <body> 最前面放會員對話框：<div th:replace="~{front/member/member_modals :: modals}"></div>
 
-  【Thymeleaf 串接】這個檔案沒有假資料：
-    登入狀態（顯示「登入 / 註冊」還是會員的名字）已經是讀 session 裡的 member，接上資料庫後不用改。
+  頁首的資料與連結：
+    登入狀態（顯示「登入 / 註冊」還是會員的名字）讀的是 session 裡的 member。
     「最新消息」連到前台公告列表 /bistroops/announcement（FrontAnnouncementController），頁首和頁尾各有一個。
     「常見問題」：頁首和頁尾都連到前台常見問題頁 /bistroops/qa（FrontQaController → templates/front/qa/listAll.html）。
 
