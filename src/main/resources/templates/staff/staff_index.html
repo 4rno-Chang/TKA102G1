@@ -71,23 +71,10 @@
 			</a>
 		</section>
 
-		<!-- 訂候位管理：整個長條都可以點，點了前往訂候位的畫面。
-         訂候位的頁面還沒做，所以先用 data-coming-soon（點了會跳出「尚未開放」）。
-         頁面做好後，把 <button type="button" ... data-coming-soon="訂候位"> 換成
-           <a class="staff-card home-bar" th:href="@{/staff/訂候位的網址}">
-         結尾的 </button> 換成 </a> 即可。
-
-         這個長條有「兩份」：
-           【資料庫資料】用 Thymeleaf 寫好的版本。Controller 還沒把資料放進 Model 時不會出現。
-           【假資料】    數字由 staff.js 的「B. 假資料」填入，目前看到的就是這一份。 -->
+		<!-- 訂候位管理：整個長條都可以點，點了前往訂候位的畫面。 -->
 
 		<!-- ===== 【資料庫資料】Thymeleaf 串接 =====
-         Controller（/staff 的方法）放進 Model：
-           nextRoundTime 最近一輪訂位的時間、nextRoundCount 那一輪共幾組、
-           waitingCount 目前候位幾組、callingNumber 目前叫到幾號
-         只要 nextRoundCount 不是 null，這個長條就會出現在假資料的上面。
-         ★★ 上面四個名稱目前都是「範例」★★ 要叫什麼名字請負責的組員自己決定，
-         決定後把下面 ${...} 裡的名稱（包含 th:if 裡的 nextRoundCount）改成 Controller 實際放進 Model 的名稱。 -->
+         資料是 ReservationService.getStaffReservationSummary 放進 Model 的 nextRoundTime 最近一輪訂位的時間、nextRoundCount 那一輪共幾組 -->
 		<a class="staff-card home-bar" th:if="${nextRoundCount != null}"
 			th:href="${hasBooking == true} ? @{/staff/booking} : null"
 			th:classappend="${hasBooking == true} ? '' : 'no-permission'"

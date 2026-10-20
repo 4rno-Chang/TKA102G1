@@ -20,27 +20,7 @@
 
 <!--
   訂單管理：查詢所有訂單（依狀態、日期、桌號或訂單編號）。
-
-  這一頁的畫面有「兩份」，上下排在一起，各自有自己的篩選列和清單：
-    【資料庫資料】用 Thymeleaf 寫好的版本。Controller 還沒把資料放進 Model 時，這一塊不會出現。
-    【假資料】    orders.js 用 staff.js 的假資料產生的版本，目前看到的就是這一塊。
-
-  【Thymeleaf 串接】步驟
-    1. 在 StaffPageController 的 orders 方法把 orders（查出來的訂單）放進 Model，
-       以及篩選列需要的 status、keyword、date、dateText、prevDate、nextDate、today。
-       只要 orders 不是 null，【資料庫資料】就會出現在【假資料】的上面，兩邊可以對照著看。
-       （兩份同時出現時，各自上方會多一個「資料庫資料」「假資料」的小標籤）
-    2. ★★ 欄位名稱目前都是「範例」★★
-       【資料庫資料】裡寫的 order.table、order.payAmount、order.statusText 這些名稱，只是照假資料的欄位先取的，不是規定。
-       VO 要怎麼設計、屬性要叫什麼名字，請負責的組員照自己的想法決定（例如照資料表的欄位取名）。
-       決定之後，把這個檔案【資料庫資料】裡 ${...} 用到的名稱改成你們 VO 實際的名稱即可；
-       兩邊的名稱要一樣，對不上的話頁面會出現錯誤（Thymeleaf 找不到那個屬性）。
-       Model 的名稱（orders 等）也可以改，Controller 放進去的名稱和這裡寫的相同就好。
-    3. 確認資料庫的版本沒問題後，刪除假資料：
-         a. 這個檔案最下面標示【假資料】的那個 div（到它結尾的 </div> 為止）
-         b. orders.js 的「B. 假資料」整區（從那一行到檔案最後；最後一行的 })(); 要留著）
-       刪掉之後，小標籤 <p class="source-line">...</p> 也可以一起拿掉。
-  Controller 要準備哪些資料與網址，列在 StaffPageController.java 開頭的總覽。
+  Controller：OrdersController 的 orders 方法（GET /staff/orders）；展開明細、日期月曆的程式在 orders.js。
 -->
 <body class="staff-layout">
   <nav th:replace="~{staff/staff_sidebar :: sidebar('orders')}"></nav>
@@ -56,9 +36,9 @@
 
 
     <!-- ================================================================
-         【資料庫資料】Thymeleaf 串接
-         Controller 放進 Model 的資料（名稱是範例，要和這裡寫的一致）：
-           orders    查出來的訂單清單（新的排前面）
+         Controller 放進 Model 的資料：
+           orderslistAll  查出來的訂單清單
+           orderPromotes  每張訂單的活動折扣（訂單編號 → OrderPromoteDTO），沒參加的訂單不在裡面
            status    目前的狀態：空字串（全部）／ACTIVE 用餐中／DONE 待結帳／PAID 已結帳／CANCELLED 已取消
            keyword   搜尋的文字（桌號或訂單編號）
            date      目前看的日期（2026-10-04）、dateText 顯示用的文字（10/04（日））、
@@ -110,15 +90,7 @@
         </div>
 
         <!-- 每一筆訂單一列，點一下可以展開餐點明細。
-             明細一開始是 hidden，展開／收合不需要後端（程式在 orders.js 的 A 區）。
-             每一筆訂單用到的欄位（名稱是範例）：
-               order.id、order.table、order.time 下單時間、
-               order.total 總價、order.discountTotal 總折扣、order.payAmount 實付金額、
-               order.statusText   用餐中／待結帳／已結帳／已取消
-               order.statusClass  tag-yellow／tag-red／tag-green／tag-gray（對應上面四種，決定標籤的顏色）
-               order.payInfo      結帳或取消的說明文字，例如「18:20 以刷卡結帳」「尚未結帳」「已刪除訂單」
-               order.items        餐點清單，每一道有 mealtype、name、qty、price、discount、status、note
-             狀態的中文、顏色、說明文字請在 Java 準備好。 -->
+             明細一開始是 hidden，展開／收合不需要後端（程式在 orders.js）。 -->
         <div id="dbOrderList">
           <p class="staff-empty" th:if="${#lists.isEmpty(orderslistAll)}">沒有符合條件的訂單</p>
 
@@ -154,7 +126,7 @@
                   <!-- 被取消的餐點仍然列出來（整列劃線變淡） -->
                   <tr th:each="item : ${order.ordersDetails}" th:classappend="${item.odStatus == '已取消'} ? 'row-cancelled'">
                     <td>
-                      <span class="dish-tag" th:if="${item.meal.mealType != null}" th:text="${item.meal.mealType.mealtypeName}">主菜</span><!-- 【菜單管理】刪除的菜品類別是 null：不顯示類別標籤 -->
+                      <span class="dish-tag" th:if="${item.meal.mealType != null}" th:text="${item.meal.mealType.mealtypeName}">主菜</span><!-- 刪除的菜品類別是 null：不顯示類別標籤 -->
                       <span th:text="${item.meal.mealName}">品名</span>
                       <small class="dish-note" th:if="${!#strings.isEmpty(item.odComment)}" th:text="${item.odComment}">備註</small>
                     </td>
@@ -171,9 +143,7 @@
                 </tbody>
               </table>
               <!-- 活動折扣（整單打折）：有參加才顯示這一行（活動名稱、幾折）；沒參加就整行不出現
-                   【Thymeleaf 串接】Controller（GET /staff/orders）要放 orderPromotes：Map，訂單編號 → OrderPromoteDTO
-                     （和結帳頁的 orderPromote 是同一個小物件：promoteName、promoteDisc 折數快照）
-                     沒參加活動折扣的訂單不放進 Map；Controller 還沒放 orderPromotes（是 null）時也不出現，頁面不會壞
+                   資料是 Controller 放的 orderPromotes（訂單編號 → OrderPromoteDTO，和結帳頁的 orderPromote 是同一個小物件）
                    折掉的金額不另外顯示：已經算在下面的「折扣金額」裡
                    th:if 會比 th:with 先算，所以 th:if 裡不能用 op，要直接寫 orderPromotes[order.orders] -->
               <p class="order-detail-promo" th:if="${orderPromotes != null and orderPromotes[order.orders] != null}"

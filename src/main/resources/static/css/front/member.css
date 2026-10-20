@@ -221,7 +221,7 @@ body.modal-open { overflow: hidden; }
 }
 .pw-toggle.showing .slash { display: none; }   /* 顯示密碼時拿掉斜線 */
 
-/* 驗證圖片（示範用文字） */
+/* 驗證碼圖片 */
 .captcha-img {
   flex: none;
   display: grid; place-items: center;

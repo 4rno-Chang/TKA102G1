@@ -1,9 +1,8 @@
 /* =========================================================
    Bistroops 員工後台：訂候位（templates/staff/booking.html）
-   需要先載入 staff.css（使用它的 --st-* 變數，以及 .staff-btn、.staff-input、.chip、.tag、.source-tag、.staff-empty）
+   需要先載入 staff.css（使用它的 --st-* 變數，以及 .staff-btn、.staff-input、.chip、.tag、.staff-empty）
    內容：1. 最上面一列（分頁、刷新頁面、新增）與訊息　2. 查詢的工具列（日期、午餐／晚餐、搜尋）　3. 列表（訂位、候位共用）
          4. 候位：左邊列表、右邊叫號　5. 對話框與表單　6. 自製的月曆與訂位時段　7. 平板直放與手機
-   資料庫的版本和假資料的版本用的是同一組 class，所以刪掉假資料之後這個檔案不用改。
    ========================================================= */
 
 
@@ -15,8 +14,6 @@
 /* 分頁（訂位／候位）：用 staff.css 的 .chip，這裡放大一點比較好按 */
 .booking-tabs .chip { min-width: 96px; min-height: 48px; justify-content: center; font-size: 17px; font-weight: 700; }
 .booking-top-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-left: auto; }   /* margin-left: auto：按鈕（刷新頁面…）靠右 */
-/* 按鈕裡的小標籤（資料庫／假資料同時出現時用來分辨） */
-.booking-top-actions .source-tag { margin-left: 8px; }
 
 /* 訊息：預設是錯誤（紅）；加上 booking-alert-ok 變成成功（綠） */
 .booking-alert {

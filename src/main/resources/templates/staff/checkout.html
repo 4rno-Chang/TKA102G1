@@ -15,7 +15,6 @@
   <link rel="stylesheet" th:href="@{/css/staff/staff.css}" />
   <link rel="stylesheet" th:href="@{/css/staff/checkout.css}" />
   <script th:src="@{/js/staff/staff.js}" defer></script>
-<!--   <script th:src="@{/js/staff/checkout.js}" defer></script> -->
     <!-- 產生 QR Code 的套件 -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
 
@@ -110,19 +109,17 @@
             </table>
 
             <!-- ================================================================
-               整單折扣（明細表格下方、總金額上方的那一行＋下面的 promoteDialog 對話框；程式在 staff.js 的 A-10，樣式在 checkout.css 最下面）
-               【Thymeleaf 串接】Controller（結帳頁 GET /staff/checkout?order=…）要放進 Model：
-                 promoteOptions   List：進行中、而且有設定整單折數（promote_disc 不是 NULL）的活動，每一筆有
-                                  promoteNo、promoteName、promoteDisc（存的百分比 10～90，80＝8 折、85＝85 折）、promoteRule（條件，沒有是 null）
-                 orderPromote     這張訂單已經用的整單折扣，沒用就不要放（null）。要有 promoteName、promoteDisc（折數快照）、
-                                  discountAmount（整單折扣的金額，四捨五入到元）、
-                                  autoApplied（這個活動沒有條件 → true，會多顯示「活動無條件限制自動套用」）
+               活動折扣（明細表格下方、總金額上方的那一行＋下面的 promoteDialog 對話框；程式在 staff.js 的 A-10，樣式在 checkout.css 最下面）
+               Controller（OrdersController.checkout）放進 Model 的資料：
+                 promoteOptions   進行中、而且有設定整單折數的活動：promoteNo、promoteName、promoteDisc（百分比 10～90，80＝8 折、85＝85 折）、promoteRule（條件，沒有是 null）
+                 orderPromote     這張訂單已經用的活動折扣，沒用是 null：promoteName、promoteDisc（折數快照）、
+                                  discountAmount（折掉的金額，四捨五入到元）、autoApplied（活動沒有條件 → true）
                ※ 沒有條件的活動，客人送單建立訂單時就會自動套用（FrontOrderService.submitOrder），
                  店員可以取消，或改選別的活動（會換掉自動套用的那個）
-               【Thymeleaf 串接】要新增的網址（送出後 redirect 回 /staff/checkout?order=訂單編號）：
-                 POST /staff/checkout/promote          欄位 order、promoteNo：加入（或換成）這個整單折扣
-                 POST /staff/checkout/promote/remove   欄位 order：取消整單折扣
-                 加入、取消的結果訊息（flash 的 promoteMsg）放在下面的 data-promote-msg，staff.js A-10 會用小提示顯示
+               送出的網址（staff.js A-10 在背景送出，不整頁重新整理）：
+                 POST /staff/checkout/promote          欄位 order、promoteNo：加入（或換成）這個活動折扣
+                 POST /staff/checkout/promote/remove   欄位 order：取消活動折扣
+                 結果訊息（flash 的 promoteMsg）放在下面的 data-promote-msg，用小提示顯示
                ================================================================ -->
             <!-- 明細表格下方、總金額上方的「整單折扣」那一行 -->
             <div class="promo-line" data-promote-line

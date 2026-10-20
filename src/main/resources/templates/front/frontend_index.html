@@ -55,7 +55,8 @@
 						<div class="slide-empty" th:if="${slide.imgSrc == null}">
 							<img th:src="@{/images/logo-mark.svg}" alt="">
 						</div>
-						<span class="slide-caption" th:if="${slide.kind == 'announcement' or slide.kind == 'promote'}"
+						<!-- 左上角的公告／活動名稱：只有沒有圖片的那一張才顯示（有圖片時，圖片本身就有標題） -->
+						<span class="slide-caption" th:if="${slide.imgSrc == null and (slide.kind == 'announcement' or slide.kind == 'promote')}"
 							th:text="${slide.title}"></span>
 					</a>
 				</div>
@@ -70,17 +71,32 @@
 			<div class="container">
 				<p class="eyebrow">Our Menu</p>
 				<h2 class="section-title">精選菜單</h2>
-				<!-- 三張圖只是展示，不是連結；要看菜單按下面的「查看完整菜單」 -->
+				<!-- 三張圖只是展示，不是連結；要看菜單按下面的「查看完整菜單」
+				     圖片和「瀏覽菜單」頁每個類別上方的代表圖用同一套規則（menu.html 的 cover）：
+				       ① 後台「設為類別代表」選的菜（menuCovers，存在 Redis）
+				       ② 沒有設定 → 那個類別第一道有圖片的菜　③ 都沒有圖片 → 插圖
+				     每張卡片找一個類別（和 menu.html 選插圖的規則一樣）：
+				       開胃菜＝標籤「前菜」的第一個類別、甜點＝標籤「甜點」的、主餐＝其他標籤的
+				     card 的四個值：要找的標籤、卡片上的中文、英文、插圖檔名
+				     __${...}__ 是先把值填進去再算（.^[ ] 裡面只看得到類別自己的欄位，看不到 card、pick，要先填好）
+				     Controller 沒有放 menuSections（是 null）時，三張都用插圖
+				     background-image 放兩層：菜的圖片在上、插圖在下，菜的圖片讀不到時就會看到插圖 -->
 				<div class="menu-grid">
-					<div class="menu-card placeholder"
-						th:style="|background-image: url('@{/images/dish-appetizer.svg}')|"><span
-						class="menu-card-text">開胃菜<small>Appetizer</small></span></div>
-					<div class="menu-card placeholder"
-						th:style="|background-image: url('@{/images/dish-main.svg}')|"><span
-						class="menu-card-text">主餐<small>main course</small></span></div>
-					<div class="menu-card placeholder"
-						th:style="|background-image: url('@{/images/dish-dessert.svg}')|"><span
-						class="menu-card-text">甜點<small>dessert</small></span></div>
+					<th:block th:each="card : ${ { {'前菜','開胃菜','Appetizer','dish-appetizer.svg'},
+					                              {'主餐','主餐','main course','dish-main.svg'},
+					                              {'甜點','甜點','dessert','dish-dessert.svg'} } }"
+						th:with="sec=${menuSections == null ? null
+						             : card[0] == '主餐' ? menuSections.^[meals[0].tagCode != '前菜' and meals[0].tagCode != '甜點']
+						             : menuSections.^[meals[0].tagCode == '__${card[0]}__']},
+						         pick=${sec != null and menuCovers != null ? menuCovers[sec.mealtypeNo] : null}">
+						<div class="menu-card placeholder"
+							th:with="cover=${sec == null ? null : (sec.meals.^[mealNo == __${pick ?: -1}__ and hasImg] ?: sec.meals.^[hasImg])},
+							         art=@{/images/{f}(f=${card[3]})}"
+							th:style="${cover != null}
+							          ? |background-image: url('@{/bistroops/order/mealImg(mealNo=${cover.mealNo})}'), url('${art}')|
+							          : |background-image: url('${art}')|"><span
+							class="menu-card-text">[[${card[1]}]]<small th:text="${card[2]}">Appetizer</small></span></div>
+					</th:block>
 				</div>
 				<div class="btn-center">
 					<a th:href="@{/bistroops/menu}" class="btn-outline">查看完整菜單</a>
