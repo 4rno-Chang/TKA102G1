@@ -1,4 +1,4 @@
--- createTable_v1_8_demo.sql（05 用，全天任何時間都可以匯入；正常營業時間用 createTable_v1_8.sql）＝ G1 createTable_v1_6.sql（af2567d，已有 meal.meal_promo_only 活動限定菜品）
+-- createTable_v1_9.sql（05 用，正常營業時段匯入；任何時間用 createTable_v1_9_demo.sql）＝ G1 createTable_v1_8.sql（0667d58，ishaya 活動整單折扣：orders.promote_no／orders_promote_disc、promote.promote_rule／promote_disc）
 --   ＋ 05 的簡化 demo 資料（第 19～27 節：會員 4～9、正式時段訂位、工作面板 6 張單、1 張待結帳的大單）
 --   ＋ 05 修正：promote 1 中秋節活動日期 2025 → 2026（G1 6cf9022 寫成 2025，和 2026-10-01 訂單明細的 promote_no 1 對不上）
 --   其餘（建表、1～18 節原始資料、外鍵）和 G1 v1_6 一樣；G1 改 v1_6 時，這份要照上面的規則重新產生
@@ -35,11 +35,13 @@ CREATE TABLE IF NOT EXISTS orders(
   orders_no INT UNSIGNED AUTO_INCREMENT COMMENT '訂單編號',
   seat_no CHAR(3) NOT NULL COMMENT '桌號',
   member_no INT UNSIGNED COMMENT '會員編號',
+  promote_no INT UNSIGNED COMMENT '活動編號',
   orders_time DATETIME COMMENT '下單時間',
   orders_total INT COMMENT '總金額',
   orders_discount_total INT COMMENT '折扣金額',
   orders_actual_price INT COMMENT '實付金額',
   orders_pay VARCHAR(2) COMMENT '付款方式',
+  orders_promote_disc TINYINT UNSIGNED COMMENT '整單折數快照',
   PRIMARY KEY(orders_no)
 ) COMMENT '訂單';
 
@@ -89,6 +91,8 @@ CREATE TABLE IF NOT EXISTS promote(
   promote_end DATETIME COMMENT '結束時間',
   promote_content MEDIUMTEXT COMMENT '活動內容',
   promote_img MEDIUMBLOB COMMENT '活動圖片',
+  promote_rule VARCHAR(100) COMMENT '活動條件',
+  promote_disc TINYINT UNSIGNED COMMENT '活動折扣',
   PRIMARY KEY(promote_no)
 ) COMMENT '活動';
 
@@ -405,20 +409,21 @@ INSERT INTO orders (seat_no, member_no, orders_time, orders_total, orders_discou
 ('C01', 3, '2026-10-16 19:40:00', 400, 0, 400, '現金');
 
 -- 7. 活動 (promote)
-INSERT INTO promote (promote_name, promote_begin, promote_end, promote_content) VALUES
-('中秋節活動', '2026-09-20 10:00:00', '2026-10-06 22:00:00',  '中秋節限定商品優惠，數量有限送完即止'),
-('2026生日禮', '2026-01-01 00:00:00', '2026-06-30 23:59:59', '2026年上半年限定，生日當月出示身份證，即可享當月生日禮提拉米蘇一份。'),
-('情人節套餐', '2026-03-10 11:00:00', '2026-03-15 22:00:00', '浪漫情人節，餐庭提供雙人浪漫限定套餐，伴隨燭光。讓您跟另一半獲得最好的體驗'),
-('母親節感恩祭', '2026-05-01 00:00:00', '2026-05-15 23:59:59', '溫馨母親節，全家帶媽媽來店用餐~來店拍照打卡即享全單 8 折。'),
-('畢業季優惠', '2026-06-01 00:00:00', '2026-06-30 23:59:59', '憑學生證或畢業證書，可獲得抽獎資格。將會在6月30日抽出1萬元現金，若無得獎也可憑抽獎券回來兌換安慰獎糖果一份'),
-('父親節特別獻禮', '2026-08-01 00:00:00', '2026-08-10 23:59:59', '爸爸節，辛苦爸爸感念爸爸！本店祭出父親專屬優惠，提供父親節特別套餐。不來可惜！'),
-('中秋慶團圓', '2026-09-15 00:00:00', '2026-09-25 23:59:59', '中秋節期間消費每滿500即贈品牌純手工限量月餅1份，可疊加。贈完為止。'),
-('秋季溫暖祭', '2026-10-05 10:00:00', '2026-10-20 22:00:00', '點購指定湯品或熱飲，即贈送每日精選甜點乙份。'),
-('雙十連假特惠', '2026-10-07 00:00:00', '2026-10-12 23:59:59', '連假期間來店贈送可愛小國旗，一起慶國慶。'),
-('雙十節活動', '2026-10-07 00:00:00', '2026-10-31 22:00:00', '雙十國慶期間限定活動，酥炸墨魚圈、卡布里沙拉半價優惠。一直以來都只吃主餐就走了嗎？不訪來吃吃看吧'),
-('跨年特別企劃', '2026-12-31 18:00:00', '2027-01-01 02:00:00', '跨年夜限定酒精飲品暢飲活動。跨年夜狂歡夜，讓我們今日不醉不歸'),
-('春季新菜上市', '2027-03-01 00:00:00', '2027-03-31 23:59:59', '春季新品主餐登場，嘗鮮價享有 85 折優惠，走過路過千萬別錯過。'),
-('週年慶活動', '2027-09-01 10:00:00', '2027-09-30 22:00:00',  '週年慶主廚推薦菜品享優惠活動，我們主廚有著多年老經驗，推薦菜品一等一，請務必要來嘗嘗');
+INSERT INTO promote (promote_name, promote_begin, promote_end, promote_content, promote_rule, promote_disc) VALUES
+('中秋節活動', '2026-09-20 10:00:00', '2026-10-06 22:00:00',  '中秋節限定商品優惠，數量有限送完即止', null, null),
+('2026生日禮', '2026-01-01 00:00:00', '2026-06-30 23:59:59', '2026年上半年限定，生日當月出示身份證，即可享當月生日禮提拉米蘇一份。', null, null),
+('情人節套餐', '2026-03-10 11:00:00', '2026-03-15 22:00:00', '浪漫情人節，餐庭提供雙人浪漫限定套餐，伴隨燭光。讓您跟另一半獲得最好的體驗', null, null),
+('母親節感恩祭', '2026-05-01 00:00:00', '2026-05-15 23:59:59', '溫馨母親節，全家帶媽媽來店用餐~來店拍照打卡即享全單 8 折。','和媽咪拍照打卡',80),
+('畢業季優惠', '2026-06-01 00:00:00', '2026-06-30 23:59:59', '憑學生證或畢業證書，可獲得抽獎資格。將會在6月30日抽出1萬元現金，若無得獎也可憑抽獎券回來兌換安慰獎糖果一份', null, null),
+('父親節特別獻禮', '2026-08-01 00:00:00', '2026-08-10 23:59:59', '爸爸節，辛苦爸爸感念爸爸！本店祭出父親專屬優惠，提供父親節特別套餐。不來可惜！', null, null),
+('中秋慶團圓', '2026-09-15 00:00:00', '2026-09-25 23:59:59', '中秋節期間消費每滿500即贈品牌純手工限量月餅1份，可疊加。贈完為止。', null, null),
+('秋季溫暖祭', '2026-10-05 10:00:00', '2026-10-20 22:00:00', '點購指定湯品或熱飲，即贈送每日精選甜點乙份。', null, null),
+('雙十連假特惠', '2026-10-07 00:00:00', '2026-10-12 23:59:59', '連假期間來店贈送可愛小國旗，一起慶國慶。', null, null),
+('雙十節活動', '2026-10-07 00:00:00', '2026-10-31 22:00:00', '雙十國慶期間限定活動，酥炸墨魚圈、卡布里沙拉半價優惠。一直以來都只吃主餐就走了嗎？不訪來吃吃看吧', null, null),
+('跨年特別企劃', '2026-12-31 18:00:00', '2027-01-01 02:00:00', '跨年夜限定酒精飲品暢飲活動。跨年夜狂歡夜，讓我們今日不醉不歸', null, null),
+('春季新菜上市', '2027-03-01 00:00:00', '2027-03-31 23:59:59', '春季新品主餐登場，嘗鮮價享有 85 折優惠，走過路過千萬別錯過。', null, null),
+('週年慶活動', '2027-09-01 10:00:00', '2027-09-30 22:00:00',  '週年慶主廚推薦菜品享優惠活動，我們主廚有著多年老經驗，推薦菜品一等一，請務必要來嘗嘗', null, null),
+('聖誕週活動', '2026-10-19 10:00:00', '2026-10-25 22:00:00',  '找不到地方聖誕節讓我們一起開心度過，來店和聖誕樹拍照打卡即可享有75折優惠！', '和店內聖誕樹拍照打卡上傳至任一平台', 75);
 
 -- 8. 活動商品 (promote_meal)
 INSERT INTO promote_meal (promote_no, meal_no, promote_discount) VALUES
@@ -567,8 +572,14 @@ INSERT INTO feedback (orders_no, fee_customer, fee_customer_tel, fee_time, fee_c
 (3, '顧客E', '0985510798', '2026-10-03 19:40:00', '肉醬麵送來時有點冷掉，希望改進。', 1);
 
 -- 17. 推播 (announcement)
-INSERT INTO announcement (ann_title, ann_begin, ann_img, ann_text) VALUES 
-('歡慶開幕！全館飲品8折', '2026-08-01 10:00:00', NULL, '即日起至月底，內用點選任意主餐即享飲品加購8折優惠！');
+INSERT INTO announcement (ann_title, ann_begin, ann_img, ann_text) VALUES
+('每週一固定公休', '2026-09-01 10:00:00', NULL,
+ '本店每週一固定公休，週二至週日營業。午餐 11:00～14:00、晚餐 17:00～21:00，最後點餐為打烊前 30 分鐘。'),
+('雙十連假正常營業', '2026-10-05 10:00:00', NULL,
+ '10/10～10/12 國慶連假期間正常營業，週一（10/12）公休順延至 10/13（二）。連假人潮較多，建議提前線上訂位或現場取號候位。'),
+('跨年夜營業時間調整', '2026-12-01 10:00:00', NULL,
+ '12/31 跨年夜延長營業至 01:30，晚餐時段僅接受訂位，不開放現場候位；1/1（五）元旦店休一天。');
+
 
 -- 18. QA (qa)：1、2 是 G1 原本的題目，3～11 是 05 新增
 --     qa_clicks 是 demo 用的點擊次數（首頁顯示點擊最多的 5 題）：1～6 題是 1～6 次；7～11 題都是 7 次，
@@ -589,20 +600,20 @@ INSERT INTO qa (qa_title, qa_content, qa_clicks) VALUES
 /* =========================================================
    以下是 05 的 demo 資料（19～27，簡化版：全組 demo 用）
    - 上面 1～18 節的原始資料不改，這裡只 INSERT；唯一的例外是第 23 節把原始的 A01、B01、C01 清成可使用
-   - 時間從「執行這份 SQL 的當下」推算，任何時間都可以匯入（demo 前重新匯入一次）：
-       營業中（11:00～21:00）：入座、下單照現在往前推，不早於今天 11:00
-       營業時間外：使用中的桌子都是 5～25 分鐘前入座，不跨日、不會時間異常，前台可以點餐
-       稍早已結帳的兩張單：開店 3 小時以上照現在往前推；否則放在最近一個營業日的 12:10、18:40
-   - 編號接在原始資料後面：member 4～9、reservation_datetime 5～10、reservation 4～12、waiting 4～7、orders 4～12
+   - 正常營業版：營業時段是午餐 11:00～14:00、晚餐 17:00～21:00；時間從「執行這份 SQL 的當下」推算（demo 前重新匯入一次）
+       營業中匯入：使用中的 7 桌和訂單 4～10 照現在往前推，不早於這個時段的開始（11:00 或 17:00）
+       非營業時間匯入（午休、打烊後）：店裡沒有客人 → 沒有使用中的桌子、沒有訂單 4～10、沒有候位
+       稍早已結帳的兩張單（11、12）放在上一個營業時段：午餐 12:10、12:40 或晚餐 18:40、19:10
+       任何時間都要看到用餐中的資料 → 改用 createTable_v1_8_demo.sql
+   - 編號接在原始資料後面：member 4～9、reservation_datetime 5～8、reservation 4～11、waiting 4～7、orders 4～12
    - 會員 4～9 前台登入密碼都是 Test0004
    - 寫法：INSERT … VALUES、INSERT … SELECT … JOIN、UPDATE … JOIN；JOIN 要讀前面新增的資料，順序不能調換
-   ---------- 匯入後馬上看，應該是這樣 ----------
+   ---------- 營業中匯入後馬上看，應該是這樣（非營業時間：工作面板、待結帳都是空的，17 桌都可使用） ----------
    工作面板（廚房）：6 張卡片（訂單 4～9，都有製作中的餐點），可以左右滑；訂單 6 有一道等待送餐
    結帳：訂單 10（C02，9 道菜，全部已送達）顯示「待結帳」；訂單 4～9 顯示「用餐中」
-   入座管理：使用中 A02 A03 A04 A05 B02 B03 C02（A05 訂位者使用，其他其它者使用），其他 10 桌可使用
+   入座管理：使用中 A02 A03 A04 A05 B02 B03 C02，其他 10 桌可使用
      → 在結帳頁把訂單 10 結帳，入座管理重新整理（或最慢 1 分鐘）C02 就自動變回可使用
-   訂位：現在前後的時段（約 −90、−50、−20、+30、+60、+150 分）
-     4 人桌逾時未到 1（訂位: 678）；2 人桌需保留 1（陳媽媽: 798）、6 人桌需保留 1（訂位: 009）；+150 分那筆不算保留
+   訂位：只有今天的正式時段（11:00、12:30、17:00、18:30），每個時段 2 筆
    ========================================================= */
 
 -- 以 Java 時鐘為主：NOW() 一律用台灣時間，跟入座管理（Java）的「現在」一致
@@ -610,13 +621,14 @@ SET time_zone = '+08:00';
 
 -- 現在（去掉秒）
 SET @now = NOW() - INTERVAL SECOND(NOW()) SECOND;
--- 營業中（11:00～21:00）？入座、下單時間不能早於 @floor：營業中是今天 11:00，營業時間外是今天 00:00（不跨日）
-SET @biz = (TIME(@now) >= '11:00:00' AND TIME(@now) < '21:00:00');
-SET @floor = IF(@biz, TIMESTAMP(CURDATE(), '11:00:00'), TIMESTAMP(CURDATE(), '00:00:00'));
--- 稍早已結帳的兩張單：營業中且已開店 3 小時以上 → 照現在往前推（@recent）；
--- 否則放在最近一個營業日的 12:10、18:40（21:00 後算今天，其他算昨天）
-SET @recent = (@biz AND CAST(@now AS DATETIME) - INTERVAL 180 MINUTE >= TIMESTAMP(CURDATE(), '11:00:00'));
-SET @hist = IF(TIME(@now) >= '21:00:00', CURDATE(), CURDATE() - INTERVAL 1 DAY);
+-- 現在是不是營業中（午餐 11:00～14:00、晚餐 17:00～21:00）；@floor＝這個時段的開始，入座、下單不能早於它
+SET @lunch = (TIME(@now) >= '11:00:00' AND TIME(@now) < '14:00:00');
+SET @dinner = (TIME(@now) >= '17:00:00' AND TIME(@now) < '21:00:00');
+SET @open = (@lunch OR @dinner);
+SET @floor = TIMESTAMP(CURDATE(), IF(@dinner, '17:00:00', '11:00:00'));
+-- 稍早已結帳的兩張單放在「上一個營業時段」：14:00 前 → 昨天晚餐；14:00～21:00 → 今天午餐；21:00 後 → 今天晚餐
+SET @hist_day = IF(TIME(@now) < '14:00:00', CURDATE() - INTERVAL 1 DAY, CURDATE());
+SET @hist_at = IF(TIME(@now) >= '14:00:00' AND TIME(@now) < '21:00:00', '12:10:00', '18:40:00');
 SET @pwd = '{bcrypt}$2a$10$UCU/PUmq7rIyr0fLtWD2teTjzAuaS1DMu.6JKqV83FsHPGsmclcrG';   -- 明碼 Test0004
 
 -- 19. 測試會員 (member 4～9)；會員 9 只用手機註冊、沒填姓名
@@ -628,22 +640,14 @@ INSERT INTO member (mem_no, mem_tel, mem_name, mem_account, mem_password, mem_ma
 (8, '0911000008', '林雅婷', 'linyt08',   @pwd, 'linyt08@example.com',   '/MN22222', '素食（蛋奶素）', '1992-06-30', NULL, NULL, NULL, NULL, '已驗證'),
 (9, '0911000009', NULL,     NULL,        @pwd, NULL,                    NULL,       NULL,             NULL,         NULL, NULL, NULL, NULL, '未驗證');
 
--- 20. 訂位時段 (reservation_datetime 5～10)：demo 版不用正式時段，改用「現在」前後的時段，任何時間匯入都看得到
---     逾時未到、需保留（90 分鐘內）、90 分鐘外；@t0＝現在取到 5 分鐘，時段一律落在今天 00:00～23:55（不跨日）
---     （正式時段 11:00、12:30、17:00、18:30 由程式啟動時自己補齊，前台訂位一樣只能選正式時段）
-SET @t0 = CAST(@now AS DATETIME) - INTERVAL MOD(MINUTE(@now), 5) MINUTE;
-INSERT INTO reservation_datetime (rsv_dt_no, rsv_dt_datetime)
-SELECT s.no, LEAST(GREATEST(@t0 + INTERVAL s.mins MINUTE, TIMESTAMP(CURDATE(), '00:00:00')), TIMESTAMP(CURDATE(), '23:55:00'))
-FROM (
-            SELECT 5 AS no, -90 AS mins   -- 已經過了：實到、未到
-  UNION ALL SELECT 6,  -50                -- 已經過了：實到、取消
-  UNION ALL SELECT 7,  -20                -- 剛過：實到（坐在 A05）、逾時未到
-  UNION ALL SELECT 8,   30                -- 90 分鐘內 → 需保留
-  UNION ALL SELECT 9,   60                -- 90 分鐘內 → 需保留
-  UNION ALL SELECT 10, 150                -- 90 分鐘外 → 不算保留
-) AS s;
+-- 20. 訂位時段 (reservation_datetime 5～8)：今天的正式時段
+INSERT INTO reservation_datetime (rsv_dt_no, rsv_dt_datetime) VALUES
+(5, TIMESTAMP(CURDATE(), '11:00:00')),
+(6, TIMESTAMP(CURDATE(), '12:30:00')),
+(7, TIMESTAMP(CURDATE(), '17:00:00')),
+(8, TIMESTAMP(CURDATE(), '18:30:00'));
 
--- 21. 訂位 (reservation 4～12)：時段已經過了用 past_status、還沒到用 future_status
+-- 21. 訂位 (reservation 4～11)：時段已經過了用 past_status、還沒到用 future_status
 --     past_status 是「預約」＝時間過了還沒來 → 入座管理顯示「逾時未到」
 --     成立時間一定早於時段（至少 1 小時前）
 --     rsv_name＝訂位聯絡姓名（CJ 的前台訂位時填，可以不填）：CJ 的訂位清單只看它，沒填顯示「未填寫」；
@@ -655,13 +659,12 @@ SELECT r.rsv_no, r.mem_no, r.rsv_dt_no, r.seat_type_no,
 FROM (
             SELECT 4 AS rsv_no, 4 AS mem_no, 5 AS rsv_dt_no, 2 AS seat_type_no, '實到' AS past_status, '預約' AS future_status, '2人用餐' AS rsv_comment, '黃大偉' AS rsv_name
   UNION ALL SELECT 5,  5, 5, 4, '未到', '預約', '4人聚餐',         '吳佩琪'
-  UNION ALL SELECT 6,  6, 6, 2, '實到', '預約', '2人用餐',         '周子翔'
+  UNION ALL SELECT 6,  6, 6, 2, '實到', '預約', '2人午餐',         '周子翔'
   UNION ALL SELECT 7,  7, 6, 2, '取消', '取消', '臨時有事',        '陳志明'
-  UNION ALL SELECT 8,  8, 7, 2, '實到', '預約', '2人用餐',         '林雅婷'   -- 實到 → 第 24 節 A05 是「訂位者使用」
+  UNION ALL SELECT 8,  8, 7, 2, '實到', '預約', '2人晚餐',         '林雅婷'
   UNION ALL SELECT 9,  1, 7, 4, '預約', '預約', '4人用餐',         NULL       -- 逾時未到；沒填 → 入座管理顯示 訂位: 678（王小明的電話）
-  UNION ALL SELECT 10, 2, 8, 2, '預約', '預約', '2人，幫媽媽訂位', '陳媽媽'   -- 需保留；入座管理顯示 陳媽媽: 798（陳小華的電話），CJ 的訂位清單顯示 陳媽媽
-  UNION ALL SELECT 11, 9, 9, 6, '預約', '預約', '6人慶生',         NULL       -- 需保留；沒填 → 入座管理顯示 訂位: 009
-  UNION ALL SELECT 12, 3, 10, 2, '預約', '預約', '2人用餐',        '林小美'   -- 90 分鐘外，不算需保留
+  UNION ALL SELECT 10, 2, 8, 2, '預約', '預約', '2人，幫媽媽訂位', '陳媽媽'   -- 填了別人的名字 → 入座管理顯示 陳媽媽: 798（陳小華的電話），CJ 的訂位清單顯示 陳媽媽
+  UNION ALL SELECT 11, 9, 8, 6, '預約', '預約', '6人慶生',         NULL       -- 沒填 → 入座管理顯示 訂位: 009
 ) AS r
 JOIN reservation_datetime d ON d.rsv_dt_no = r.rsv_dt_no;   -- JOIN：查時段時間，過了用 past_status、還沒到用 future_status
 
@@ -671,31 +674,34 @@ INSERT INTO waiting (waiting_no, seat_type_no, mem_no, waiting_tel, waiting_name
 (5, 2, NULL, '0912555666', '張先生', '2位',       '已通知', TIME(GREATEST(CAST(@now AS DATETIME) - INTERVAL 2 MINUTE,  CAST(@floor AS DATETIME))), CURDATE(), GREATEST(CAST(@now AS DATETIME) - INTERVAL 15 MINUTE, CAST(@floor AS DATETIME)), 2),
 (6, 2, 5,    '0911000005', '吳佩琪', '2位，會員', '候位中', NULL,                                                                       CURDATE(), GREATEST(CAST(@now AS DATETIME) - INTERVAL 8 MINUTE,  CAST(@floor AS DATETIME)), 3),
 (7, 4, NULL, '0933555666', '趙先生', '4位',       '候位中', NULL,                                                                       CURDATE(), GREATEST(CAST(@now AS DATETIME) - INTERVAL 5 MINUTE,  CAST(@floor AS DATETIME)), 1);
+-- 非營業時間沒有候位：把上面剛新增的 4～7 拿掉
+DELETE FROM waiting WHERE waiting_no BETWEEN 4 AND 7 AND NOT @open;
 
 -- 23. 桌位：原始資料的 A01、B01、C01 清成可使用
 --     B01、C01 的 seat_time 只有時間（18:30、19:00）沒有日期，白天 demo 時入座管理會判成「入座時間比現在還晚」
 UPDATE seat SET seat_status = '可使用', seat_time = NULL WHERE seat_no IN ('A01', 'B01', 'C01');
 
 -- 24. 桌位：補齊到平面圖上的 17 桌（2 人桌 A01～A10、4 人桌 B01～B05、6 人桌 C01～C02）
---     使用中的都是現場客（其它者使用）。入座時間：營業中往前推 biz_min 分、營業時間外只推 off_min 分，都不早於 @floor
+--     營業中：A02 A03 A04 A05 B02 B03 C02 是現場客（其它者使用），入座時間＝現在往前推 minutes 分，不早於 @floor
+--     非營業時間：這 7 桌也是可使用
 --     demo_seat 是匯入時用的暫存表（第 25 節下單時間要用同一個入座時間），最後會刪掉
 CREATE TEMPORARY TABLE demo_seat (seat_no CHAR(3) PRIMARY KEY, seat_type_no INT, seated_at DATETIME, order_after INT);
 INSERT INTO demo_seat (seat_no, seat_type_no, seated_at, order_after)
 SELECT s.seat_no, s.seat_type_no,
-       GREATEST(CAST(@now AS DATETIME) - INTERVAL IF(@biz, s.biz_min, s.off_min) MINUTE, CAST(@floor AS DATETIME)),
+       GREATEST(CAST(@now AS DATETIME) - INTERVAL s.minutes MINUTE, CAST(@floor AS DATETIME)),
        s.order_after
 FROM (
-            SELECT 'A02' AS seat_no, 2 AS seat_type_no, 40 AS biz_min, 20 AS off_min, 5 AS order_after
-  UNION ALL SELECT 'A03', 2, 35, 18, 4
-  UNION ALL SELECT 'A04', 2, 30, 15, 5
-  UNION ALL SELECT 'A05', 2, 15, 5,  3
-  UNION ALL SELECT 'B02', 4, 45, 22, 5
-  UNION ALL SELECT 'B03', 4, 25, 10, 5
-  UNION ALL SELECT 'C02', 6, 75, 25, 3
+            SELECT 'A02' AS seat_no, 2 AS seat_type_no, 40 AS minutes, 5 AS order_after
+  UNION ALL SELECT 'A03', 2, 35, 4
+  UNION ALL SELECT 'A04', 2, 30, 5
+  UNION ALL SELECT 'A05', 2, 15, 3
+  UNION ALL SELECT 'B02', 4, 45, 5
+  UNION ALL SELECT 'B03', 4, 25, 5
+  UNION ALL SELECT 'C02', 6, 75, 3
 ) AS s;
 
 INSERT INTO seat (seat_no, seat_type_no, seat_status, seat_time)
-SELECT seat_no, seat_type_no, IF(seat_no = 'A05', '訂位者使用', '其它者使用'), TIME(seated_at) FROM demo_seat;   -- A05＝訂位 #8 林雅婷（實到）
+SELECT seat_no, seat_type_no, IF(@open, '其它者使用', '可使用'), IF(@open, TIME(seated_at), NULL) FROM demo_seat;
 INSERT INTO seat (seat_no, seat_type_no, seat_status, seat_time) VALUES
 ('A06', 2, '可使用', NULL),
 ('A07', 2, '可使用', NULL),
@@ -706,7 +712,7 @@ INSERT INTO seat (seat_no, seat_type_no, seat_status, seat_time) VALUES
 ('B05', 4, '可使用', NULL);
 
 -- 25. 訂單 (orders 4～12)：orders_pay 是 NULL＝還沒結帳；金額先填 0，27 再從明細加總
---     4～10 的下單時間＝入座後 order_after 分（不晚於現在）
+--     4～10 只在營業中新增，下單時間＝入座後 order_after 分（不晚於現在）
 INSERT INTO orders (orders_no, seat_no, member_no, orders_time, orders_total, orders_discount_total, orders_actual_price, orders_pay)
 SELECT o.orders_no, o.seat_no, o.member_no,
        LEAST(d.seated_at + INTERVAL d.order_after MINUTE, CAST(@now AS DATETIME)), 0, 0, 0, NULL
@@ -721,12 +727,13 @@ FROM (
   -- 明細最多的一張：餐點都送完了、還沒結帳 → 結帳頁「待結帳」，結帳後入座管理自動清桌
   UNION ALL SELECT 10, 'C02', NULL
 ) AS o
-JOIN demo_seat d ON d.seat_no = o.seat_no;   -- JOIN：讀同一桌的入座時間
+JOIN demo_seat d ON d.seat_no = o.seat_no   -- JOIN：讀同一桌的入座時間
+WHERE @open;
 
--- 稍早用過餐、已結帳（桌子已經空了）：@recent 時照現在往前推 180、150 分；否則放在 @hist 那天的 12:10、18:40
+-- 上一個營業時段用過餐、已結帳（桌子已經空了）：@hist_day 的 @hist_at，和 30 分鐘後
 INSERT INTO orders (orders_no, seat_no, member_no, orders_time, orders_total, orders_discount_total, orders_actual_price, orders_pay) VALUES
-(11, 'B04', 4,    IF(@recent, CAST(@now AS DATETIME) - INTERVAL 180 MINUTE, TIMESTAMP(@hist, '12:10:00')), 0, 0, 0, '刷卡'),
-(12, 'A07', NULL, IF(@recent, CAST(@now AS DATETIME) - INTERVAL 150 MINUTE, TIMESTAMP(@hist, '18:40:00')), 0, 0, 0, '現金');
+(11, 'B04', 4,    TIMESTAMP(@hist_day, @hist_at),                      0, 0, 0, '刷卡'),
+(12, 'A07', NULL, TIMESTAMP(@hist_day, @hist_at) + INTERVAL 30 MINUTE, 0, 0, 0, '現金');
 
 -- 26. 訂單明細：單價從 meal 表讀；狀態照 G1：製作中／等待送餐／已送達／已取消
 --     只用上架、非活動限定的菜；已送達的送達時間＝下單後 mins 分鐘（不晚於現在），其他是 NULL
@@ -804,17 +811,18 @@ ALTER TABLE qa AUTO_INCREMENT = 1;
 -- 桌位 → 桌型
 ALTER TABLE seat ADD CONSTRAINT seat_seat_type_fk FOREIGN KEY (seat_type_no) REFERENCES seat_type(seat_type_no);
 
--- 訂單 → 桌位、會員
+-- 訂單 → 桌位、會員、活動
 ALTER TABLE orders ADD CONSTRAINT orders_seat_fk FOREIGN KEY (seat_no) REFERENCES seat(seat_no);
 ALTER TABLE orders ADD CONSTRAINT orders_member_fk FOREIGN KEY (member_no) REFERENCES member(mem_no);
+ALTER TABLE orders ADD CONSTRAINT orders_promote_fk FOREIGN KEY (promote_no) REFERENCES promote (promote_no);
 
 -- 回饋 → 訂單
 ALTER TABLE feedback ADD CONSTRAINT feedback_orders_fk FOREIGN KEY (orders_no) REFERENCES orders(orders_no);
 
--- 訂單明細 → 訂單、菜品、活動
+-- 訂單明細 → 訂單、菜品
 ALTER TABLE orders_details ADD CONSTRAINT orders_details_orders_fk FOREIGN KEY (orders_no) REFERENCES orders(orders_no);
 ALTER TABLE orders_details ADD CONSTRAINT orders_details_meal_fk FOREIGN KEY (meal_no) REFERENCES meal(meal_no);
-ALTER TABLE orders_details ADD CONSTRAINT orders_details_promote_fk FOREIGN KEY (promote_no) REFERENCES promote(promote_no);
+
 
 -- 菜品 → 菜品類別
 ALTER TABLE meal ADD CONSTRAINT meal_meal_type_fk FOREIGN KEY (meal_type_no) REFERENCES meal_type(meal_type_no);
