@@ -51,7 +51,6 @@ public class FrontOrderService {
 	private CartWebSocketHandler cartWebSocketHandler;   // 通知同一桌客人的手機（WebSocket）
 
 	// 為了讓客人手機的「已點餐點」跟工作面板同步：工作面板改了已送出的訂單之後，通知那一桌客人的手機
-	//   什麼時候呼叫：OrdersDetailsController 的「儲存變更」（刪除、復原單道餐點、改備註）和「取消整筆訂單」成功之後
 	//   方法：用訂單編號查出訂單 → 拿到桌位 → 算出那一組客人的代號（和點餐時 WebSocket 分組用的一樣，例如 A01:183042）
 	//         → 傳 order-changed 給那一組的手機，手機會在背景更新「已點餐點」並提示「餐廳已更新您的已點餐點」
 	//   不通知的情況：查不到訂單、客人已經離席（桌位的入座時間是 null，算不出代號）

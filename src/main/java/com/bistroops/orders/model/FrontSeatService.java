@@ -13,8 +13,8 @@ import com.bistroops.seattype.model.SeatingSeatService;
 @Service
 public class FrontSeatService {
 	
-	//測試先改小，正式版為90分鐘
-	public static final int DINING_MINUTES = 30;
+	
+	public static final int DINING_MINUTES = 90;
 	
 	public static final String MSG_CHANGED = "請重新掃描桌上的 QR code。";
 	
