@@ -113,9 +113,8 @@
                Controller（OrdersController.checkout）放進 Model 的資料：
                  promoteOptions   進行中、而且有設定整單折數的活動：promoteNo、promoteName、promoteDisc（百分比 10～90，80＝8 折、85＝85 折）、promoteRule（條件，沒有是 null）
                  orderPromote     這張訂單已經用的活動折扣，沒用是 null：promoteName、promoteDisc（折數快照）、
-                                  discountAmount（折掉的金額，四捨五入到元）、autoApplied（活動沒有條件 → true）
-               ※ 沒有條件的活動，客人送單建立訂單時就會自動套用（FrontOrderService.submitOrder），
-                 店員可以取消，或改選別的活動（會換掉自動套用的那個）
+                                  discountAmount（折掉的金額，四捨五入到元）
+               ※ 店員確認客人符合條件後手動加入；可以取消，或改選別的活動（一張訂單只能用一個）
                送出的網址（staff.js A-10 在背景送出，不整頁重新整理）：
                  POST /staff/checkout/promote          欄位 order、promoteNo：加入（或換成）這個活動折扣
                  POST /staff/checkout/promote/remove   欄位 order：取消活動折扣
@@ -128,7 +127,6 @@
 
               <!-- 已經加入整單折扣（Controller 有放 orderPromote）：名稱、折數、金額顯示在上面明細表格的最後一列，這裡只留取消折扣 -->
               <th:block th:if="${orderPromote != null}">
-                <span class="tag tag-green promo-line-auto" th:if="${orderPromote.autoApplied}">活動無條件限制自動套用</span>
                 <form class="promo-line-form" th:action="@{/staff/checkout/promote/remove}" method="post" data-promote-ajax
                       data-confirm="確定要取消這張訂單的整單折扣嗎？" data-loading=".receipt">
                   <input type="hidden" name="order" th:value="${order.orders}">
