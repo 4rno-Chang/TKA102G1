@@ -20,7 +20,6 @@ public class CartRedisService {
 
 	@Autowired
 	private StringRedisTemplate redisTemplate;
-	// 每一品項最多幾份（order.html 的數量欄 max、購物車「＋」按鈕的上限也是 10，改這裡時要一起改）
 	public static final int MAX_NUM = 10;
 	// 購物車保留 3 小時（每次寫入都重新算）
 	private static final Duration KEEP = Duration.ofHours(3);  
@@ -122,7 +121,6 @@ public class CartRedisService {
 	}
 
 	// 放鎖：成功回傳 true；已經有人在送單（鎖還在）回傳 false
-	//   setIfAbsent 就是 Redis 的 SET key value NX EX 10：key 不存在才寫入，「檢查」和「寫入」一次完成，兩個人不會同時拿到
 	public boolean lockSubmit(String seatingKey) {
 		Boolean ok = redisTemplate.opsForValue().setIfAbsent(submitLockKey(seatingKey), "1", SUBMIT_LOCK_TIME);
 		return Boolean.TRUE.equals(ok);
